@@ -1,0 +1,22 @@
+{
+  "sourceId": "nws_alerts",
+  "sourceName": "National Weather Service (NWS San Francisco CA) (Demo)",
+  "externalId": "urn:oid:2.49.0.1.840.0.demo-rfw-b.001.1",
+  "supersedesExternalIds": ["urn:oid:2.49.0.1.840.0.demo-rfw-a.001.1"],
+  "url": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.demo-rfw-b.001.1",
+  "title": "Red Flag Warning issued October 24 at 3:00PM PDT until October 25 at 8:00PM PDT by NWS San Francisco CA (DEMO)",
+  "body": "* AFFECTED AREA...North Bay Interior Valleys and North Bay Mountains.",
+  "hazardType": "wildfire",
+  "severity": "extreme",
+  "status": "actual",
+  "issuedAt": 1792854000000,
+  "updatedAt": 1792879200000,
+  "expiresAt": 1792897200000,
+  "areas": [{ "state": "CA", "nwsZone": "CAZ504", "label": "North Bay Interior Valleys (Demo)" }],
+  "incidentKey": "nws:KMTR.FW.W.0099",
+  "trustTier": "official",
+  "language": "en",
+  "contentHash": "1b2c3d4e5f6071",
+  "isFixture": true,
+  "timeBasis": "issued"
+}

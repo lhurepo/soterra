@@ -1,0 +1,6 @@
+{
+  "$comment": "FICTIONAL demo. Raw HTTP response envelope: body is the CAP XML exactly as https://www.tsunami.gov/events/xml/PAAQCAP.xml serves it (one <alert>).",
+  "url": "https://www.tsunami.gov/events/xml/PAAQCAP.xml",
+  "contentType": "application/xml",
+  "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!-- FICTIONAL DEMO DATA shaped like a Tsunami.gov CAP message -->\n<alert xmlns=\"urn:oasis:names:tc:emergency:cap:1.2\">\n  <identifier>DEMO-PAAQ-2026-10-24</identifier>\n  <sender>tsunami.gov</sender>\n  <sent>2026-10-24T12:00:00-00:00</sent>\n  <status>Exercise</status>\n  <msgType>Alert</msgType>\n  <scope>Public</scope>\n  <info>\n    <category>Geo</category>\n    <event>Tsunami Information Statement (DEMO EXERCISE)</event>\n    <urgency>Unknown</urgency>\n    <severity>Unknown</severity>\n    <certainty>Unlikely</certainty>\n    <headline>Demo exercise: no tsunami threat to the California coast</headline>\n    <description>This is a fictional exercise message. Exercise messages are never served to callers.</description>\n    <web>https://www.tsunami.gov/</web>\n    <area><areaDesc>California coast (DEMO)</areaDesc></area>\n  </info>\n</alert>\n"
+}

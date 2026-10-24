@@ -1,0 +1,29 @@
+[
+  {
+    "url": "https://demo.soterra.example/mock-sites/shelters.html",
+    "title": "Evacuation Shelters (Demo)",
+    "heading": "Evacuation Shelters",
+    "checkedText": "Checked by county staff at 6:15 PM PDT on October 24, 2026.",
+    "rows": [
+      {
+        "shelter": "Ridgeview Community Center",
+        "address": "500 Elm Street, Santa Rosa",
+        "status": "Open",
+        "capacity": "200",
+        "available": "35",
+        "pets": "Pets in crates",
+        "accessibility": "Wheelchair accessible"
+      },
+      {
+        "shelter": "Santa Rosa Veterans Building",
+        "address": "1351 Maple Avenue, Santa Rosa",
+        "status": "Open",
+        "capacity": "300",
+        "available": "150",
+        "pets": "Service animals only",
+        "accessibility": "Wheelchair accessible, accessible restrooms"
+      }
+    ],
+    "loadedAt": "2026-10-25T01:30:08.120Z"
+  }
+]

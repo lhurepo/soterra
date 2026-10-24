@@ -28,6 +28,7 @@ export function contentHashOf(draft: NormalizedBulletinDraft): string {
     severity: draft.severity,
     status: draft.status,
     expiresAt: draft.expiresAt ?? null,
+    incidentKey: draft.incidentKey ?? null,
     areas: draft.areas.map((a) => [a.state, a.countyFips ?? null, a.nwsZone ?? null, a.label]),
   };
   return hashString(JSON.stringify(material));
@@ -35,11 +36,4 @@ export function contentHashOf(draft: NormalizedBulletinDraft): string {
 
 export function finalizeBulletin(draft: NormalizedBulletinDraft): NormalizedBulletin {
   return { ...draft, contentHash: contentHashOf(draft) };
-}
-
-/** Parses an ISO-8601 time from a feed. Returns undefined instead of inventing a time. */
-export function parseFeedTime(value: unknown): number | undefined {
-  if (typeof value !== "string" || value.trim() === "") return undefined;
-  const ms = Date.parse(value);
-  return Number.isFinite(ms) ? ms : undefined;
 }

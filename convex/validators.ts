@@ -56,6 +56,10 @@ export const replyKind = v.union(
   v.literal("goodbye"),
 );
 
+export const runOutcome = v.union(v.literal("running"), v.literal("awaiting_apify"), v.literal("succeeded"), v.literal("failed"));
+
+export const timeBasis = v.union(v.literal("issued"), v.literal("page_updated"), v.literal("observed"));
+
 export const normalizedBulletin = v.object({
   sourceId: v.string(),
   sourceName: v.string(),
@@ -78,6 +82,8 @@ export const normalizedBulletin = v.object({
   language: v.string(),
   contentHash: v.string(),
   isFixture: v.boolean(),
+  timeBasis: v.optional(timeBasis),
+  supersedesExternalIds: v.optional(v.array(v.string())),
 });
 
 export const subscriptionTrigger = v.union(

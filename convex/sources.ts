@@ -1,7 +1,7 @@
-// [I] Source rows: synced from src/ingestion/registry.ts. `enabled` is preserved once a row exists,
-// so a source can be switched on from the dashboard or CLI without a deploy.
+// [I] Source rows, synced from src/ingestion/sources.ts. `enabled`, `mode` and run bookkeeping are
+// preserved once a row exists, so a source can be switched on or to live from the CLI without a deploy.
 import { v } from "convex/values";
-import { SOURCE_REGISTRY } from "../src/ingestion/registry";
+import { SOURCES } from "../src/ingestion/sources";
 import { internalMutation, internalQuery } from "./_generated/server";
 
 /** npx convex run sources:syncRegistry */
@@ -9,15 +9,16 @@ export const syncRegistry = internalMutation({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    for (const def of SOURCE_REGISTRY) {
+    for (const def of SOURCES) {
+      const { contentIsFixture: _f, jurisdiction: _j, apify: _a, ...row } = def;
       const existing = await ctx.db
         .query("sources")
         .withIndex("by_sourceId", (q) => q.eq("sourceId", def.sourceId))
         .unique();
-      if (existing) await ctx.db.patch("sources", existing._id, { ...def, enabled: existing.enabled });
-      else await ctx.db.insert("sources", def);
+      if (existing) await ctx.db.patch("sources", existing._id, { ...row, enabled: existing.enabled, mode: existing.mode ?? def.mode });
+      else await ctx.db.insert("sources", row);
     }
-    return SOURCE_REGISTRY.length;
+    return SOURCES.length;
   },
 });
 
@@ -36,6 +37,21 @@ export const setEnabled = internalMutation({
   },
 });
 
+/** npx convex run sources:setMode '{"sourceId":"nws_alerts","mode":"live"}' */
+export const setMode = internalMutation({
+  args: { sourceId: v.string(), mode: v.union(v.literal("fixture"), v.literal("live")) },
+  returns: v.null(),
+  handler: async (ctx, { sourceId, mode }) => {
+    const row = await ctx.db
+      .query("sources")
+      .withIndex("by_sourceId", (q) => q.eq("sourceId", sourceId))
+      .unique();
+    if (!row) throw new Error(`unknown source ${sourceId}; run sources:syncRegistry first`);
+    await ctx.db.patch("sources", row._id, { mode, consecutiveFailures: 0, lastError: undefined });
+    return null;
+  },
+});
+
 export const getBySourceId = internalQuery({
   args: { sourceId: v.string() },
   handler: async (ctx, { sourceId }) =>
@@ -43,18 +59,4 @@ export const getBySourceId = internalQuery({
       .query("sources")
       .withIndex("by_sourceId", (q) => q.eq("sourceId", sourceId))
       .unique(),
-});
-
-export const recordFetch = internalMutation({
-  args: { sourceId: v.string(), ok: v.boolean(), error: v.optional(v.string()) },
-  returns: v.null(),
-  handler: async (ctx, { sourceId, ok, error }) => {
-    const row = await ctx.db
-      .query("sources")
-      .withIndex("by_sourceId", (q) => q.eq("sourceId", sourceId))
-      .unique();
-    if (!row) return null;
-    await ctx.db.patch("sources", row._id, ok ? { lastSuccessAt: Date.now(), lastError: undefined } : { lastError: error });
-    return null;
-  },
 });

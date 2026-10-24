@@ -1,0 +1,13 @@
+{
+  "sourceId": "x_posts",
+  "platform": "x",
+  "externalId": "9000000000000000002",
+  "url": "https://x.com/somebody_local/status/9000000000000000002",
+  "authorHandle": "somebody_local",
+  "text": "DEMO: heard the wildfire jumped Bennett Valley Rd and everyone in Sonoma County zone SON-3B has to leave NOW?? can anyone confirm",
+  "postedAt": 1792875900000,
+  "observedAt": 1792876500000,
+  "hazardTypes": ["wildfire"],
+  "states": ["CA"],
+  "isFixture": true
+}

@@ -104,6 +104,43 @@
 - `pre_call_handler` `stt` config key (V).
 - Live behaviour of the Cartesia outbound adapter and its auth header (B, reviewed by V).
 - Moss cold-load time inside a `"use node"` action (B).
-- Apify `headersTemplate` key name and payload template `{{resource.defaultDatasetId}}` (I).
+- ~~Apify `headersTemplate` key name~~ verified 2026-10-24 (ingestion pass below). A live Apify run against the mock sites is still pending (I).
 - Anthropic adapter against a real key and its latency with Haiku 5.5 (B).
 - `Intl` time-zone formatting on the deployed Convex runtime (works in tests; falls back to UTC if not).
+
+## Ingestion pass (2026-10-24, branch `ingestion/pipeline`)
+
+### Verified
+
+| What we checked | Source | Finding | What it changes |
+| --- | --- | --- | --- |
+| Apify run endpoint | [Run Actor](https://docs.apify.com/api/v2/actors-runs-post), [API overview](https://docs.apify.com/api/v2) | Canonical path is `POST /v2/actors/{actorId}/runs`; "The `/v2/acts/` prefix is deprecated but still fully functional". Body = actor input. Query: `webhooks` (base64 JSON array), `maxItems`, `maxTotalChargeUsd`, `timeout`, `memory`. Actor id `username~actorName`. Response 201 `data.id`, `data.defaultDatasetId`. | We use `/v2/actors/` (the ingestion brief said `/v2/acts/`; the docs prefer `/actors/`). Every run is capped with `maxItems` and `maxTotalChargeUsd`. |
+| Ad-hoc webhook keys | [ad-hoc webhooks](https://docs.apify.com/platform/integrations/webhooks/ad-hoc-webhooks), [actions](https://docs.apify.com/platform/integrations/webhooks/actions), `apify-client` 2.25.0 `webhook.d.ts` | Keys `eventTypes`, `requestUrl`, `payloadTemplate`, `idempotencyKey`, and **`headersTemplate?: string`** (confirmed in the official client types). Default payload `{userId, createdAt, eventType, eventData, resource}`; run events carry `eventData.actorRunId`; `resource` is the run object (with `defaultDatasetId`). Events include `ACTOR.RUN.SUCCEEDED/FAILED/TIMED_OUT/ABORTED`. Unsigned; retried up to 11 times; may be delivered more than once. | We send the secret in `X-Soterra-Webhook-Secret` via `headersTemplate` (query `?secret=` also accepted), and our `payloadTemplate` echoes `soterra.runRecordId` so the receiver finds its run without a race. The receiver is idempotent per run. |
+| Dataset items | [Get dataset items](https://docs.apify.com/api/v2/dataset-items-get) | `GET /v2/datasets/{id}/items`, `format=json` (default), `clean=true` = skip empty and hidden (`#`) fields, `limit`. Bearer auth recommended. | `?clean=true&format=json&limit=N`. |
+| Actors | [Website Content Crawler](https://apify.com/apify/website-content-crawler), [Cheerio Scraper](https://apify.com/apify/cheerio-scraper), [Tweet Scraper V2](https://apify.com/apidojo/tweet-scraper) | WCC: `startUrls`, `crawlerType` (raw-HTTP option labelled "Raw HTTP client (Cheerio)"), `maxCrawlPages`, `maxCrawlDepth` (0 = start URLs only); items `url`, `text`, `metadata.title`, `crawl.loadedTime`; ≈ $0.2/1,000 pages raw HTTP. Cheerio Scraper: `startUrls`, `pageFunction(context)` with `$`, `request`; `maxPagesPerCrawl` (0 = unlimited); one dataset item per returned object; platform usage only. Tweet Scraper V2: `twitterHandles`, `searchTerms`, `maxItems`, `sort`; items `id`, `url`, `text`, `createdAt` ("Fri Nov 24 17:49:36 +0000 2023"), `author.userName`, `isRetweet`; from $0.40/1,000 tweets; ≥ 50 tweets per query; 1 concurrent run; no repeated queries at short intervals; no API use on the free plan. | Free text → WCC + extraction; structured shelter list → Cheerio + our page function + deterministic parser; X wired but fixture-only. **Unverified:** the exact `crawlerType` value string `"cheerio"` (the page shows labels, not values). |
+| Convex limits | [limits](https://docs.convex.dev/production/state/limits) | Per mutation: 16,000 documents / 16 MiB written, 32,000 documents scanned, 4,096 index ranges, 1 s of user code; documents ≤ 1 MiB; ≤ 1,000 scheduled functions per mutation; actions 30 min (Convex runtime) / 10 min (Node). | Upserts in batches of 25 items (≲ 10 writes each); geometry > 50,000 chars to file storage. |
+| `CONVEX_SITE_URL` in functions | [environment variables](https://docs.convex.dev/production/environment-variables) | `CONVEX_CLOUD_URL` and `CONVEX_SITE_URL` "are always available in Convex functions". | Webhook URL `${CONVEX_SITE_URL}/ingest/apify`; mock-site URLs for live actors. |
+| File storage | [store files](https://docs.convex.dev/file-storage/store-files) | `ctx.storage.store(blob)` from actions returns `Id<"_storage">`. | Raw payloads (24 h TTL, hourly purge cron) and large geometry are stored from actions; mutations only delete. |
+| NWS cancellations, live | Live `api.weather.gov/alerts/active?area=AK`, 2026-10-24 | Some cancellations arrive as `messageType: "Alert"` whose VTEC actions are all `CAN` ("The Winter Storm Watch has been cancelled."). Updates carry earlier ids in `references` with their `sent` times. | NWS adapter: Cancel messages **and** all-CAN/EXP VTEC alerts are `cancelled`; Update/Cancel `issuedAt` = earliest referenced `sent`, `updatedAt` = this `sent`. |
+| Live feed shapes | Live fetch of every direct feed, normalized in Node | NWS (88 alerts across 5 states), OpenFEMA (21), WFIGS (64), InciWeb (7), NHC (1), Tsunami.gov CAP (1): **0 rejections**. InciWeb `description` holds "Last updated: YYYY-MM-DD" (date only), "The type of incident is …", "State: …"; `pubDate` can be years old (incident creation). Tsunami.gov CAP is a single `<alert>`. | InciWeb: state from "State:", prescribed burns skipped, date-only "Last updated" not turned into a timestamp. |
+
+### Decisions
+
+| Date | Decision | Why |
+| --- | --- | --- |
+| 2026-10-24 | Ingestion settings live in `src/ingestion/config.ts` (own env parsing), not in the backend's `src/config/env.ts`. | Ingestion must not edit backend files. |
+| 2026-10-24 | Additive contract fields: `timeBasis`, `supersedesExternalIds` on `NormalizedBulletin`; `timeBasis` on `bulletins` and `chunks`; new `Signal` schema and `signals` table. `ExtractionResult` is deprecated (unused). | Required by the ingestion brief; additive and optional. |
+| 2026-10-24 | The extraction model returns **quotes only**; code derives hazard type, severity and page time from verified quotes. | Nothing the model writes reaches callers unless it is literally in the source. |
+| 2026-10-24 | Deterministic extraction mock in `src/ingestion/extractionMock.ts` (flagged). | The backend's `MockLlm` returns `{items: []}` for extraction. |
+| 2026-10-24 | X routing by `X_ALLOWLIST` (configuration), one `x_posts` source with trust tier `official_social`; non-allowlisted posts → `signals`. Retweets skipped. | Trust from configuration, never content. |
+| 2026-10-24 | Fixture bulletins trigger crisis mode only when `SERVE_FIXTURES=true`. | A demo deployment should behave like a real one; fictional data must not change polling on a real one. |
+| 2026-10-24 | Mock-site pages get `incidentKey` from the verified title ("Ridgeview Fire: …" → `ridgeview-fire`). | Lets callback subscriptions match ingested page updates; derived only from quoted text. |
+| 2026-10-24 | Shelter bulletins are one per row, built only from labeled cell values; a row without a status is rejected. | Never say a shelter is open unless the source says so. |
+| 2026-10-24 | Raw-payload storage is best effort (logged, never fails a run). | It exists only for debugging. |
+| 2026-10-24 | WFIGS: `FireDiscoveryDateTime` = issued; `ModifiedOnDateTime_dt` = updated (or `page_updated` basis when there is no discovery time). NHC: no units or movement restated (the file does not state units); severity from classification (HU severe, TS/STS moderate, others minor). | No invented facts. |
+
+### Still unverified (ingestion)
+
+- A live Apify run end to end (no `APIFY_TOKEN` here): `npm run ingest:apify-mock-sites` on the dev deployment.
+- WCC `crawlerType: "cheerio"` value and Cheerio `request.loadedUrl` in the page function.
+- Live fetches from inside a deployed Convex action (verified only from Node).
