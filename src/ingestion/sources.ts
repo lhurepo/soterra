@@ -208,3 +208,35 @@ export function effectiveMode(
 export function isFixtureRun(source: Pick<IngestionSource, "contentIsFixture">, mode: SourceMode): boolean {
   return mode === "fixture" || source.contentIsFixture === true;
 }
+
+
+/**
+ * Independence groups: sources in the same group are one voice, so agreeing with each other is not
+ * corroboration. InciWeb and WFIGS both come from NIFC's IRWIN incident data; an agency's X account is the same
+ * voice as that agency's feed. A source with no entry is its own group.
+ */
+export const INDEPENDENCE_GROUPS: Record<string, string> = {
+  nws_alerts: "nws",
+  demo_nws: "nws",
+  usgs_earthquakes: "usgs",
+  usgs_volcanoes: "usgs",
+  openfema_declarations: "fema",
+  nhc_storms: "nhc",
+  tsunami_ntwc: "ntwc",
+  inciweb: "nifc-irwin",
+  nifc_wfigs: "nifc-irwin",
+  // The fictional Sonoma County sources are one publisher (county government), so they never confirm each other.
+  demo_county: "sonoma-county",
+  demo_fire: "sonoma-county",
+  mock_county_emergency: "sonoma-county",
+  mock_shelters: "sonoma-county",
+  mock_disaster_assistance: "disasterassistance-demo",
+};
+
+export function independenceGroupOf(sourceId: string, sourceName: string, xAllowlist: { issuer: string; handle: string; group?: string }[] = []): string {
+  if (sourceId === "x_posts") {
+    const entry = xAllowlist.find((e) => e.issuer === sourceName);
+    return entry?.group ?? `x:${entry?.handle ?? sourceName}`;
+  }
+  return INDEPENDENCE_GROUPS[sourceId] ?? sourceId;
+}

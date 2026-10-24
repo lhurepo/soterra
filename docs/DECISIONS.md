@@ -236,3 +236,15 @@ Each has a safe default already in the code; change it if you disagree.
 Incident: while checking request validation, one real outbound call was placed to the fictional number +1 707 555 0123 (the 555-01xx range is reserved for fiction); Cartesia recorded it as failed after 1 s. No real person was called.
 
 Still unverified: a real inbound call end to end (latency, barge-in, keypad), a real callback end to end (`agent_call_id` equality, metadata pass-through), Spanish speech on the phone line. `cartesiaVerifiedLive` in `/health` stays false until a real callback has worked.
+
+## Corroboration (2026-10-24, branch `dhweya/ingestion`)
+
+| Date | Decision | Why |
+| --- | --- | --- |
+| 2026-10-24 | Confidence is computed in code from independent corroboration, not from an LLM's self-reported certainty. | Models are poorly calibrated about their own confidence; "two independent sources agree" is checkable. |
+| 2026-10-24 | Independence is by publisher group, not by source id: InciWeb and WFIGS share NIFC/IRWIN upstream (`nifc-irwin`); an agency's X account shares its feed's group. | Agreement between two views of the same data is not confirmation. |
+| 2026-10-24 | A match needs a compatible hazard, overlapping area, ≤ 72 h apart, and the incident's name (title words, minus generic words and place names) in the other chunk. Fixture and real data never match. | Errs toward "single": a missed match drops a sentence, a false match overstates confidence. |
+| 2026-10-24 | Tiers annotate and never gate: a single official source (NWS alone) is still spoken. Only `unverified` content is blocked, as before. | An authoritative source needs no second one to be useful. |
+| 2026-10-24 | Grounding code appends the sentence; the model is not told the tier and cannot invent one. | Keeps confidence deterministic and testable. |
+| 2026-10-24 | Only candidates retrieved for the caller's question are compared. | No extra database reads on the call path; a corroborating bulletin that does not match the question's words is missed. |
+

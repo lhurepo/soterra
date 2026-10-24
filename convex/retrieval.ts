@@ -4,7 +4,10 @@
 import { v } from "convex/values";
 import type { AreaRef, RetrievedChunk } from "../src/contracts";
 import { DEFAULTS } from "../src/config/defaults";
-import { rankChunks } from "../src/retrieval/rank";
+import { loadIngestionSettings } from "../src/ingestion/config";
+import { independenceGroupOf } from "../src/ingestion/sources";
+import { corroborate } from "../src/retrieval/corroboration";
+import { isServable, rankChunks } from "../src/retrieval/rank";
 import { searchText } from "../src/retrieval/text";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalQuery, type QueryCtx } from "./_generated/server";
@@ -79,6 +82,19 @@ async function hydrate(ctx: QueryCtx, candidates: Doc<"chunks">[]): Promise<Retr
     }));
 }
 
+/** Adds `corroboration` to the ranked chunks by comparing them with every servable candidate (src/retrieval/corroboration.ts). */
+function withCorroboration(ranked: RetrievedChunk[], pool: RetrievedChunk[], now: number, serveFixtures: boolean): RetrievedChunk[] {
+  const allowlist = loadIngestionSettings(process.env).xAllowlist;
+  const found = corroborate(
+    pool.filter((c) => isServable(c, now, serveFixtures)),
+    (c) => independenceGroupOf(c.sourceId, c.sourceName, allowlist),
+  );
+  return ranked.map((c) => {
+    const corroboration = found.get(c.chunkId);
+    return corroboration ? { ...c, corroboration } : c;
+  });
+}
+
 export const search = internalQuery({
   args: {
     text: v.string(),
@@ -128,7 +144,8 @@ export const search = internalQuery({
       }
     }
 
-    return rankChunks(await hydrate(ctx, candidates), {
+    const pool = await hydrate(ctx, candidates);
+    const ranked = rankChunks(pool, {
       queryText: args.text,
       contextText: args.contextText,
       area: args.area,
@@ -138,6 +155,7 @@ export const search = internalQuery({
       maxChunks: Math.min(args.topK, DEFAULTS.retrievalMaxChunks),
       tokenBudget: DEFAULTS.retrievalTokenBudget,
     });
+    return withCorroboration(ranked, pool, args.now, args.serveFixtures);
   },
 });
 
@@ -159,7 +177,8 @@ export const hydrateChunks = internalQuery({
       const chunk = id ? await ctx.db.get("chunks", id) : null;
       if (chunk) rows.push(chunk);
     }
-    return rankChunks(await hydrate(ctx, rows), {
+    const pool = await hydrate(ctx, rows);
+    const ranked = rankChunks(pool, {
       queryText: args.text,
       contextText: args.contextText,
       area: args.area,
@@ -168,6 +187,7 @@ export const hydrateChunks = internalQuery({
       maxChunks: Math.min(args.topK, DEFAULTS.retrievalMaxChunks),
       tokenBudget: DEFAULTS.retrievalTokenBudget,
     });
+    return withCorroboration(ranked, pool, args.now, args.serveFixtures);
   },
 });
 
