@@ -7,7 +7,7 @@ import { DEFAULTS, isSupportedLanguage, supportedLanguage } from "../src/config/
 import { buildCallerContext } from "../src/memory/callerContext";
 import { STALE_SESSION_MS } from "../src/memory/retention";
 import { stateForZip, type AreaCandidate } from "../src/orchestration/area";
-import { appCodeGreeting, inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
+import { appCodeGreeting, appVerifiedGreeting, inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
 import type { LlmMessage } from "../src/providers/llm/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -64,13 +64,27 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
       : null);
   // Outbound callbacks may not carry the dialed number; the notification knows who we called.
   const callerPhone = args.callerPhone ?? (args.direction === "outbound" ? notification?.recipientPhone : undefined);
-  // The callback check: a recent verification notification of ours, answered at the number we dialed. Valid for this call only.
-  const verifiedPhone =
+  // A call WE placed to the number (the callback check, an update, an answer to a saved question): whoever answers holds
+  // the phone, so it is verified for that call. The sign-in code call is not (it only reads a code).
+  const verifiedByCallback =
     args.direction === "outbound" &&
-    notification?.purpose === "verification" &&
+    notification !== null &&
+    (notification.purpose === undefined || notification.purpose === "update" || notification.purpose === "verification") &&
     callerPhone !== undefined &&
     callerPhone === notification.recipientPhone &&
     now - notification.createdAt <= DEFAULTS.verificationValidMs;
+  // "Call Soterra" in the signed-in app armed this number a moment ago: this inbound call is verified, once.
+  let arm: Doc<"appCallArms"> | undefined;
+  if (args.direction === "inbound" && callerPhone) {
+    const arms = await ctx.db
+      .query("appCallArms")
+      .withIndex("by_phone", (q) => q.eq("phone", callerPhone))
+      .order("desc")
+      .take(5);
+    arm = arms.find((a) => a.usedAt === undefined && a.expiresAt > now);
+    if (arm) await ctx.db.patch("appCallArms", arm._id, { usedAt: now });
+  }
+  const verifiedPhone = verifiedByCallback || arm !== undefined;
 
   let caller: Doc<"callers"> | null = null;
   if (callerPhone) {
@@ -122,11 +136,13 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
   const greeting =
     appCode !== undefined
       ? appCodeGreeting(language, appCode)
-      : verifiedPhone
+      : verifiedByCallback && notification?.purpose === "verification"
         ? verificationGreeting(language)
         : args.direction === "outbound" && notification
           ? outboundGreeting(language, notification.message)
-          : inboundGreeting(language);
+          : arm
+            ? appVerifiedGreeting(language)
+            : inboundGreeting(language);
 
   const callId = await ctx.db.insert("calls", {
     provider: "cartesia",
@@ -329,7 +345,7 @@ export const beginTurn = internalMutation({
     // An update callback: remember what we called about, and keep that bulletin in the sources so the caller can ask about it.
     let callReason: string | undefined;
     const pinnedChunkIds: string[] = [];
-    if (call.direction === "outbound" && call.notificationId && !call.verifiedPhone) {
+    if (call.direction === "outbound" && call.notificationId) {
       const notification = await ctx.db.get("notifications", call.notificationId);
       if (notification && (notification.purpose === undefined || notification.purpose === "update")) {
         callReason = notification.message;

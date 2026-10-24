@@ -77,6 +77,18 @@ export default defineSchema({
     .index("by_phone_and_createdAt", ["phone", "createdAt"])
     .index("by_notificationId", ["notificationId"]),
 
+  /**
+   * "Call Soterra" in the app: the signed-in app arms the user's next call. An inbound call from that number within a
+   * couple of minutes is treated as verified, once. Short-lived and single use.
+   */
+  appCallArms: defineTable({
+    phone: v.string(),
+    accountId: v.id("accounts"),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+  }).index("by_phone", ["phone"]),
+
   /** The app's private session after a phone code: every profile call needs this token, never a bare phone number. */
   appSessions: defineTable({
     token: v.string(),

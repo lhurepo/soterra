@@ -34,3 +34,8 @@ export function appCodeGreeting(language: string, code: string | null): string {
   const first = code ? tf("appCodeIntro", language, { code: code.split("").join(" ") }) : t("appCodeExpired", language);
   return [first, t("transcriptionNotice", language)].join(" ");
 }
+
+/** A call placed right after "Call Soterra" in the signed-in app: the notice, then that the caller is already confirmed. */
+export function appVerifiedGreeting(language: string): string {
+  return [t("welcome", language), t("emergencyLine", language), t("transcriptionNotice", language), t("appVerifiedNote", language), t("askQuestion", language)].join(" ");
+}
