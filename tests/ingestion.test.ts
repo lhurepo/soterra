@@ -12,6 +12,7 @@ import { backoffMs, intervalMs, isDue } from "../src/ingestion/schedule";
 import { SOURCES, effectiveMode, isFixtureRun } from "../src/ingestion/sources";
 import { parsePageTime, parseTwitterTime } from "../src/ingestion/time";
 import { validateBulletin } from "../src/ingestion/validate";
+import { buildRunActorRequest } from "../src/providers/apify";
 import initial from "../fixtures/normalized/ridgeview-initial.json";
 import update from "../fixtures/normalized/ridgeview-update.json";
 
@@ -193,5 +194,29 @@ describe("pipeline guards", () => {
       { handle: "nwsbayarea", issuer: "NWS Bay Area", states: ["CA", "NV"] },
     ]);
     expect(parseXAllowlist(undefined)[0].handle).toBe("sonomaoes_demo");
+  });
+});
+
+describe("Apify run request", () => {
+  const options = {
+    webhookUrl: "https://example.convex.site/ingest/apify",
+    webhookSecret: "s",
+    sourceId: "mock_shelters",
+    runRecordId: "run1",
+    maxItems: 50,
+    maxTotalChargeUsd: 0.5,
+    timeoutSecs: 300,
+  };
+
+  it("asks for the configured memory so concurrent runs fit the plan limit", () => {
+    const settings = loadIngestionSettings({});
+    expect(settings.APIFY_MEMORY_MB).toBe(2048);
+    const { url } = buildRunActorRequest("token", "apify~cheerio-scraper", {}, { ...options, memoryMbytes: settings.APIFY_MEMORY_MB });
+    expect(new URL(url).searchParams.get("memory")).toBe("2048");
+  });
+
+  it("leaves memory to the actor default when not set", () => {
+    const { url } = buildRunActorRequest("token", "apify~cheerio-scraper", {}, options);
+    expect(new URL(url).searchParams.has("memory")).toBe(false);
   });
 });

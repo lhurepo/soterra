@@ -49,6 +49,9 @@ export function isStale(chunk: RetrievedChunk, now: number): boolean {
 export function attributionSentence(chunk: RetrievedChunk, language: string, now?: number): string {
   const time = formatSpokenTime(sourceTime(chunk), chunk.areas[0]?.state, language);
   if (now !== undefined && isStale(chunk, now)) return tf("attributionStale", language, { source: chunk.sourceName, time });
+  // Scraped pages are not "issued" at the time we saw them: say what the time really is.
+  if (chunk.timeBasis === "observed") return tf("attributionObserved", language, { source: chunk.sourceName, time });
+  if (chunk.timeBasis === "page_updated") return tf("attributionPageUpdated", language, { source: chunk.sourceName, time });
   return tf("attribution", language, { source: chunk.sourceName, verb: t(chunk.updatedAt ? "updated" : "issued", language), time });
 }
 

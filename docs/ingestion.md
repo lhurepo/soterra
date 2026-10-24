@@ -68,7 +68,7 @@ npx convex run signals:recent
 - **Extraction model:** `LLM_PROVIDER=anthropic` uses Claude (`CLAUDE_SMART_MODEL`, `EXTRACTION_TIMEOUT_MS`); otherwise a **deterministic extraction mock** in `src/ingestion/extractionMock.ts` (flagged: the backend's `MockLlm` returns no items for `purpose: "extraction"`).
 - **Moss:** synced only when `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY` and `MOSS_INDEX_NAME` are set. Failures are recorded on the run (`mossSync: "failed"`) and never fail ingestion. The backend's sync function is still a placeholder, so today it records `failed` when configured.
 
-Ingestion env vars (all optional): `APIFY_MODE`, `APIFY_MIN_INTERVAL_MIN` (5), `APIFY_MAX_ITEMS` (50), `APIFY_MAX_CHARGE_USD` (0.5), `USGS_MIN_MAGNITUDE` (3), `X_ALLOWLIST` (`handle:Issuer:CA|OR,…`), `SIGNAL_BURST_THRESHOLD` (3), `SIGNAL_BURST_WINDOW_MIN` (30), `BACKOFF_CAP_MIN` (60), `RAW_PAYLOAD_TTL_HOURS` (24), `EXTRACTION_TIMEOUT_MS` (20000), `EXTRACTION_MAX_CHARS` (12000).
+Ingestion env vars (all optional): `APIFY_MODE`, `APIFY_MIN_INTERVAL_MIN` (5), `APIFY_MAX_ITEMS` (50), `APIFY_MAX_CHARGE_USD` (0.5), `APIFY_MEMORY_MB` (2048), `USGS_MIN_MAGNITUDE` (3), `X_ALLOWLIST` (`handle:Issuer:CA|OR,…`), `SIGNAL_BURST_THRESHOLD` (3), `SIGNAL_BURST_WINDOW_MIN` (30), `BACKOFF_CAP_MIN` (60), `RAW_PAYLOAD_TTL_HOURS` (24), `EXTRACTION_TIMEOUT_MS` (20000), `EXTRACTION_MAX_CHARS` (12000).
 
 ## Rules this module enforces
 
@@ -87,7 +87,7 @@ Ingestion env vars (all optional): `APIFY_MODE`, `APIFY_MIN_INTERVAL_MIN` (5), `
 | Structured lists | `apify~cheerio-scraper` | `startUrls`, `pageFunction` (`SHELTER_PAGE_FUNCTION`), `maxPagesPerCrawl: 1` | Free actor; platform usage only |
 | X posts | `apidojo~tweet-scraper` | `twitterHandles`, `searchTerms`, `sort: "Latest"`, `maxItems ≥ 50` | From $0.40 per 1,000 tweets (pay per event); ≥ 50 tweets per query; 1 concurrent run; no repeating the same query at short intervals; not usable via API on the free plan |
 
-Every run is capped with `maxItems` and `maxTotalChargeUsd` (`APIFY_MAX_ITEMS`, `APIFY_MAX_CHARGE_USD`), and Apify sources never run more often than every `APIFY_MIN_INTERVAL_MIN` minutes, even in crisis mode.
+Every run is capped with `maxItems` and `maxTotalChargeUsd` (`APIFY_MAX_ITEMS`, `APIFY_MAX_CHARGE_USD`) and asks Apify for `APIFY_MEMORY_MB` of memory (actors default to 4-8 GB, and the free plan allows 16 GB across all runs), and Apify sources never run more often than every `APIFY_MIN_INTERVAL_MIN` minutes, even in crisis mode.
 
 ## Known gaps
 

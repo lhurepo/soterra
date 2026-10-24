@@ -74,6 +74,7 @@ async function hydrate(ctx: QueryCtx, candidates: Doc<"chunks">[]): Promise<Retr
       incidentKey: c.incidentKey,
       isFixture: c.isFixture,
       chunkIndex: c.chunkIndex,
+      timeBasis: c.timeBasis,
       score: 0,
     }));
 }

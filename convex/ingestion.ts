@@ -550,6 +550,7 @@ export const runSource = internalAction({
         maxItems: Math.min(source.apify?.maxItems ?? settings.APIFY_MAX_ITEMS, settings.APIFY_MAX_ITEMS),
         maxTotalChargeUsd: settings.APIFY_MAX_CHARGE_USD,
         timeoutSecs: 300,
+        memoryMbytes: settings.APIFY_MEMORY_MB,
       });
       await ctx.runMutation(internal.ingestionRuns.markAwaitingApify, { runId, apifyRunId: started.runId, apifyDatasetId: started.datasetId });
       if (client.mode === "mock") {

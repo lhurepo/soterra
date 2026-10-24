@@ -30,6 +30,17 @@ describe("attribution", () => {
     expect(s).toBe(tf("attribution", "en", { source: "Sonoma County Emergency Management (Demo)", verb: t("issued", "en"), time: "October 24 at 1:45 PM Pacific" }));
   });
 
+  it("does not call a scraped page 'issued': observed and page-updated times say what they are", () => {
+    expect(attributionSentence(chunk({ timeBasis: "observed" }), "en", NOW)).toBe(
+      "That's from Sonoma County Emergency Management (Demo), as of our last check on October 24 at 1:45 PM Pacific.",
+    );
+    expect(attributionSentence(chunk({ timeBasis: "page_updated" }), "en", NOW)).toBe(
+      "That's from Sonoma County Emergency Management (Demo). The page was last updated on October 24 at 1:45 PM Pacific.",
+    );
+    expect(attributionSentence(chunk({ timeBasis: "observed" }), "es", NOW)).toMatch(/^Fuente: .+, según nuestra revisión del 24 de octubre/);
+    expect(attributionSentence(chunk({ timeBasis: "issued" }), "en", NOW)).toMatch(/, issued October 24/);
+  });
+
   it("says 'as of' when the newest cited source is older than three hours", () => {
     const later = NOW + 5 * 3_600_000;
     expect(attributionSentence(chunk(), "en", later)).toBe(

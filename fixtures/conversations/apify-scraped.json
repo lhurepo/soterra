@@ -1,0 +1,11 @@
+{
+  "name": "apify-scraped",
+  "description": "Questions only the Apify-scraped mock pages can answer (needs npm run ingest:apify-mock-sites first).",
+  "requiresFixtures": ["ridgeview-initial"],
+  "session": { "direction": "inbound", "languageHint": "en" },
+  "turns": [
+    { "utterance": "Is the Santa Rosa Veterans Building open as a shelter?", "expectKind": "answer" },
+    { "utterance": "Has individual assistance been announced for Sonoma County?", "expectKind": "answer" },
+    { "utterance": "Thanks, goodbye.", "expectKind": "goodbye", "expectEndCall": true }
+  ]
+}

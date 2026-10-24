@@ -13,5 +13,6 @@
   "incidentKey": "ridgeview-fire-demo",
   "isFixture": true,
   "chunkIndex": 0,
+  "timeBasis": "issued",
   "score": 1.43
 }

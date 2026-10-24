@@ -38,6 +38,8 @@ const IngestionEnv = z.object({
   APIFY_MIN_INTERVAL_MIN: num(5),
   APIFY_MAX_ITEMS: num(50),
   APIFY_MAX_CHARGE_USD: num(0.5),
+  /** Memory requested per Apify run. Actors default to 4-8 GB; one page needs far less, and the free plan allows 16 GB in total. */
+  APIFY_MEMORY_MB: num(2048),
   USGS_MIN_MAGNITUDE: num(3),
   X_ALLOWLIST: z.string().optional(),
   SIGNAL_BURST_THRESHOLD: num(3),
