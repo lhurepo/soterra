@@ -87,6 +87,16 @@
       "python": false
     },
     {
+      "file": "caller-context.json",
+      "schema": "CallerContext",
+      "python": false
+    },
+    {
+      "file": "retrieved-chunk.json",
+      "schema": "RetrievedChunk",
+      "python": false
+    },
+    {
       "file": "normalized-bulletin.page-observed.json",
       "schema": "NormalizedBulletin",
       "python": false

@@ -4,8 +4,11 @@ import { createAnthropicLlm } from "./anthropic";
 import { createMockLlm } from "./mock";
 import type { LlmClient } from "./types";
 
-export type { LlmClient, LlmRequest, LlmResponse, LlmPurpose } from "./types";
+export type { LlmClient, LlmRequest, LlmResponse, LlmPurpose, LlmMessage } from "./types";
+export { LlmError, isLlmError } from "./errors";
 
 export function selectLlm(config: Config): LlmClient {
-  return config.LLM_PROVIDER === "anthropic" ? createAnthropicLlm(config.ANTHROPIC_API_KEY) : createMockLlm();
+  return config.LLM_PROVIDER === "anthropic"
+    ? createAnthropicLlm(config.ANTHROPIC_API_KEY)
+    : createMockLlm({ mode: config.MOCK_LLM_MODE });
 }

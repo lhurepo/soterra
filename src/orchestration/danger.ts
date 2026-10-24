@@ -1,31 +1,40 @@
 // [B] Deterministic danger check. Runs before any retrieval or LLM call; a hit short-circuits the turn.
-// Patterns are deliberately broad: a false positive costs one sentence, a miss can cost a life.
-// TODO(B): review the patterns in every supported language with a native speaker.
+// Patterns are broad on purpose (a false positive costs one sentence, a miss can cost a life) but are
+// statements about the caller's situation, so news questions like "is there a fire near me?" pass.
+// English and Spanish patterns run on every turn whatever the session language: callers switch under stress.
+// TODO(B): review the patterns with a native Spanish speaker before the demo.
+import { normalizeForMatch } from "./text";
 
+// Matched against normalizeForMatch() output: lowercase, no accents, straight apostrophes.
 const PATTERNS: Record<"en" | "es", RegExp[]> = {
   en: [
-    /\b(i'?m|i am|we'?re|we are|they'?re|he'?s|she'?s|someone is|somebody is)\s+(trapped|stuck|drowning|injured|hurt|bleeding|unconscious|not breathing|on fire)\b/i,
-    /\btrapped\b/i,
-    /\b(can'?t|cannot|can not)\s+(breathe|get out|escape|leave)\b/i,
-    /\b(fire|flames|smoke|water)\s+(is\s+)?(in|inside|at|reaching)\s+(my|our|the)\s+(house|home|room|car|apartment)\b/i,
-    /\bwater\s+(is\s+)?(rising|coming)\s+(in|inside)\b/i,
-    /\b(heart attack|stroke|not breathing|unconscious|seizure|bleeding badly|overdose)\b/i,
-    /\b(need|send|get)\s+(an?\s+)?(ambulance|rescue|firefighters|police)\b/i,
-    /\bcall\s+911\s+for\s+me\b/i,
+    /\b(i'?m|i am|we'?re|we are|they'?re|he'?s|she'?s|someone'?s|someone is|somebody is|people are|my \w+ (is|are))\s+(still\s+)?(trapped|stuck inside|drowning|injured|hurt|bleeding|unconscious|not breathing|on fire|burning)\b/,
+    /\btrapped (in|inside|under|by)\b/,
+    /\b(can'?t|cannot|can not|unable to)\s+(breathe|get out|escape|get away|leave the house)\b/,
+    /\b(my|our|the) (house|home|apartment|building|car|room) is (on fire|burning|flooding)\b/,
+    /\b(fire|flames|smoke) (is |are )?(in|inside|reaching) (my|our|the) (house|home|room|car|apartment|building)\b/,
+    /\bwater is (rising|coming) (in|into|inside)\b/,
+    /\b(heart attack|having a stroke|not breathing|unconscious|seizure|bleeding badly|overdose)\b/,
+    /\b(need|send|get me|call me)\s+(an?\s+)?(ambulance|rescue|firefighters|fire department|police)\b/,
+    /\bcall 911 for me\b/,
   ],
   es: [
-    /\batrapad[oa]s?\b/i,
-    /\bno\s+(puedo|podemos)\s+(respirar|salir|escapar)\b/i,
-    /\b(me|nos|se)\s+(estoy|estamos|está)\s+ahogando\b/i,
-    /\b(herid[oa]s?|sangrando|inconsciente|no respira)\b/i,
-    /\b(fuego|incendio|humo|agua)\s+(está\s+)?(en|dentro de)\s+(mi|nuestra)\s+(casa|cuarto|carro|coche)\b/i,
-    /\b(ataque al corazón|derrame)\b/i,
-    /\b(necesito|manden|envíen)\s+(una\s+)?(ambulancia|rescate|bomberos|policía)\b/i,
+    /\batrapad[oa]s?\b/,
+    /\bno (puedo|podemos|puede|pueden) (respirar|salir|escapar)\b/,
+    /\bahogando(me|nos|se)?\b/,
+    /\b(alguien|hay alguien|mi \w+) (esta |estan )?(herid[oa]s?|sangrando|inconsciente)\b/,
+    /\b(estoy|estamos|esta|estan) (herid[oa]s?|sangrando|inconsciente)\b/,
+    /\bno respira\b/,
+    /\b(mi|nuestra|la) casa (se esta quemando|esta en llamas|se esta inundando|se quema)\b/,
+    /\bse esta (quemando|incendiando|inundando) (mi|nuestra) casa\b/,
+    /\b(fuego|incendio|humo|agua) (esta |estan )?(en|dentro de|entrando en|entrando a) (mi|nuestra) (casa|cuarto|carro|coche|apartamento)\b/,
+    /\b(el )?agua (ya )?esta entrando\b/,
+    /\b(ataque al corazon|derrame cerebral|convulsion)\b/,
+    /\b(necesito|necesitamos|manden|envien|mande) (una |un )?(ambulancia|rescate|bomberos|policia)\b/,
   ],
 };
 
 export function detectDanger(utterance: string): boolean {
-  const text = utterance.normalize("NFC");
-  // Check every language: callers switch languages under stress.
+  const text = normalizeForMatch(utterance);
   return [...PATTERNS.en, ...PATTERNS.es].some((re) => re.test(text));
 }

@@ -1,0 +1,17 @@
+{
+  "chunkId": "k97demo0chunk0000000000000000000",
+  "bulletinId": "jh7demo0bulletin0000000000000000",
+  "text": "Evacuation Warning for the Ridgeview Fire. An Evacuation Warning is in effect for zones SON-3A and SON-3B near the Ridgeview Fire, east of Santa Rosa.",
+  "sourceId": "demo_county",
+  "sourceName": "Sonoma County Emergency Management (Demo)",
+  "url": "https://example.org/soterra-demo/sonoma/evacuations",
+  "trustTier": "official",
+  "issuedAt": 1792874700000,
+  "areas": [{ "state": "CA", "county": "Sonoma", "countyFips": "06097", "city": "Santa Rosa", "label": "Sonoma County zones SON-3A and SON-3B" }],
+  "hazardType": "evacuation",
+  "severity": "severe",
+  "incidentKey": "ridgeview-fire-demo",
+  "isFixture": true,
+  "chunkIndex": 0,
+  "score": 1.43
+}

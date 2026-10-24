@@ -42,7 +42,7 @@ describe("mock end-to-end call", () => {
       const caller = await ctx.db.query("callers").first();
       expect(caller?.lastCallSummaryId).toBe(summaries[0]._id);
       const questions = await ctx.db.query("unansweredQuestions").collect();
-      expect(questions.map((q) => q.question)).toEqual(["Is Hillcrest Elementary open as a shelter?"]);
+      expect(questions.map((q) => q.text)).toEqual(["Is Hillcrest Elementary open as a shelter?"]);
     });
   });
 

@@ -28,7 +28,6 @@ import { ApifyWebhookPayload, LiveApifyClient, RUN_END_EVENTS, WEBHOOK_SECRET_HE
 import { actorInput } from "../src/providers/apify/actors";
 import { MockApifyClient } from "../src/providers/apify/mock";
 import { createAnthropicLlm } from "../src/providers/llm/anthropic";
-import { syncChunksToMoss } from "../src/providers/moss";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { httpAction, internalAction, internalMutation, internalQuery, type ActionCtx, type MutationCtx } from "./_generated/server";
@@ -372,7 +371,24 @@ async function syncMoss(ctx: ActionCtx, cfg: Config, changed: string[], removed:
   if (!mossConfigured(cfg) || (changed.length === 0 && removed.length === 0)) return "skipped";
   try {
     const chunks: RetrievedChunk[] = await ctx.runQuery(internal.ingestion.chunksForMoss, { chunkIds: changed.slice(0, 500) });
-    await syncChunksToMoss(cfg, chunks, removed);
+    // The Moss SDK only loads in the Node runtime, so the sync itself runs in convex/mossNode.ts.
+    const upserts = chunks.map((c) => ({
+      chunkId: c.chunkId,
+      bulletinId: c.bulletinId,
+      text: c.text,
+      sourceName: c.sourceName,
+      trustTier: c.trustTier,
+      hazardType: c.hazardType,
+      severity: c.severity,
+      issuedAt: c.issuedAt,
+      expiresAt: c.expiresAt,
+      isFixture: c.isFixture ?? false,
+    }));
+    const result = await ctx.runAction(internal.mossNode.syncChunks, { upserts, removedChunkIds: removed });
+    if (!result.ok) {
+      console.error("[ingestion] Moss sync failed:", result.error);
+      return "failed";
+    }
     return "ok";
   } catch (err) {
     console.error("[ingestion] Moss sync failed:", errorMessage(err));

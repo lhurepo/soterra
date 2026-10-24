@@ -1,0 +1,12 @@
+{
+  "name": "spanish",
+  "description": "A Spanish-speaking caller: grounded answer with citations, unknown fact, follow-up, goodbye. Bulletins are in English; replies are in Spanish.",
+  "requiresFixtures": ["ridgeview-initial"],
+  "session": { "direction": "inbound", "callerPhone": "+17075550134", "languageHint": "es-US" },
+  "turns": [
+    { "utterance": "¿Qué está pasando con el incendio Ridgeview?", "expectKind": "answer", "expectLanguage": "es", "expectReplyIncludes": "Sonoma County" },
+    { "utterance": "¿La escuela Hillcrest Elementary está abierta como refugio?", "expectKind": "no_info", "expectUnanswered": true, "expectLanguage": "es" },
+    { "utterance": "Llámeme si cambia la evacuación.", "expectKind": "followup", "expectSubscription": true },
+    { "utterance": "Gracias, adiós.", "expectKind": "goodbye", "expectEndCall": true }
+  ]
+}

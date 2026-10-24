@@ -1,5 +1,6 @@
 // [B] Parses Convex deployment env vars into a typed config. Pass `process.env`; never read it at module load.
 import { z } from "zod";
+import { DEFAULTS } from "./defaults";
 
 const bool = z
   .enum(["true", "false", "1", "0", ""])
@@ -45,8 +46,15 @@ const EnvSchema = z.object({
   SMS_NOTIFIER: z.enum(["unconfigured"]).default("unconfigured"),
   SERVE_FIXTURES: bool,
   ENABLE_MOCK_SITES: bool,
-  ANON_TRANSCRIPT_TTL_HOURS: positiveInt(72),
-  ANON_MEMORY_TTL_DAYS: positiveInt(30),
+  ANON_TRANSCRIPT_TTL_HOURS: positiveInt(DEFAULTS.anonTranscriptTtlMs / 3_600_000),
+  ANON_MEMORY_TTL_DAYS: positiveInt(DEFAULTS.anonMemoryTtlMs / 86_400_000),
+  /** Model for call summaries (defaults to CLAUDE_SMART_MODEL). */
+  CLAUDE_SUMMARY_MODEL: optionalString,
+  /** Dev and test only: makes MockLlm fail on purpose (see src/providers/llm/mock.ts). */
+  MOCK_LLM_MODE: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.enum(["normal", "invalid_json", "uncited_answer", "unknown_chunk", "timeout", "error"]).default("normal"),
+  ),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

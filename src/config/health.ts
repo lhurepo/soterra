@@ -31,5 +31,12 @@ export function integrationStatus(config: Config): Record<string, IntegrationSta
 }
 
 export function healthFlags(config: Config): Record<string, boolean> {
-  return { serveFixtures: config.SERVE_FIXTURES, mockSites: config.ENABLE_MOCK_SITES };
+  return {
+    serveFixtures: config.SERVE_FIXTURES,
+    mockSites: config.ENABLE_MOCK_SITES,
+    // The Cartesia outbound adapter was written from the docs only; it has never placed a real call.
+    cartesiaVerifiedLive: false,
+    // True when MockLlm is deliberately failing (MOCK_LLM_MODE), so a degraded demo is not a surprise.
+    mockLlmFailureMode: config.LLM_PROVIDER === "mock" && config.MOCK_LLM_MODE !== "normal",
+  };
 }

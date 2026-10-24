@@ -1,0 +1,11 @@
+{
+  "name": "withheld",
+  "description": "Caller ID withheld: answers still work, there is no memory, and a callback is declined politely.",
+  "requiresFixtures": ["ridgeview-initial"],
+  "session": { "direction": "inbound", "languageHint": "en" },
+  "turns": [
+    { "utterance": "Is Ridgeview Road closed?", "expectKind": "answer" },
+    { "utterance": "Keep me updated if the evacuation changes.", "expectKind": "followup", "expectReplyIncludes": "number is hidden" },
+    { "utterance": "Okay, bye.", "expectKind": "goodbye", "expectEndCall": true }
+  ]
+}

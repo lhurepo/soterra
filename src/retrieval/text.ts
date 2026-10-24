@@ -5,7 +5,8 @@ const STOPWORDS = new Set(
     "a an and are as at be been but by can could do does for from had has have how i i'm if in is it its " +
     "me my near of on or our please should so tell that the their them there these this to us was we " +
     "what what's whats when where which who why will with would you your going happening any about know " +
-    "el la los las un una de del en y o que qué es está hay por para mi me se cerca"
+    "el la los las un una de del en y o que qué es está esta hay por para mi me se cerca con sobre como cómo " +
+    "donde dónde cual cuál cuando cuándo pasando pasa sucede ocurre puede saber quiero"
   ).split(/\s+/),
 );
 

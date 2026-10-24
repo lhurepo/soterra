@@ -76,6 +76,22 @@
 | NIFC / WFIGS | Catalog mirrors + live query 2026-10-24 | `https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Incident_Locations_Current/FeatureServer/0/query` returns GeoJSON (`POOState` = `US-CA`). The official NIFC open-data page did not render for us, so the URL comes from catalog mirrors (it answered live). |
 | DisasterAssistance.gov | Homepage | No API found; scrape (via Apify) if needed. |
 
+### Backend build verification (2026-10-24, Alonso's session)
+
+| What we checked | Source | Finding | What it changes |
+| --- | --- | --- | --- |
+| Claude model ids | `npx convex run llmCheck:verify` on the dev deployment (key stays in Convex) | `client.models.retrieve` returns `claude-haiku-5-5` and `claude-sonnet-5-5`. | Defaults confirmed. |
+| `temperature` | Same | `400 invalid_request_error: "temperature: Extra inputs are not permitted"`; the installed SDK (1.3.0) no longer types the field. | The 0.2 default from the build prompt is kept in `src/config/defaults.ts` for reference and **never sent**. |
+| Structured output | Same; `@anthropic-ai/sdk` 1.3.0 types (`output_config.format: { type: "json_schema", schema }`) | The real turn prompt returns a valid `AnswerDraft` citing the given chunk id. | `AnthropicLlm` sends the AnswerDraft / CallSummary JSON schema; zod still validates. |
+| Prompt caching | Same | `cache_read_input_tokens: 1921` on the 2nd and 3rd call (static system prompt + schema). First call 4.3 s (cold), then ~1.0–1.3 s. | System prompt is static and marked `cache_control: ephemeral`. |
+| Thinking for turns | Skill docs + live runs | Haiku 5.5 accepts `thinking: disabled` at low effort; Sonnet/Opus 5.5 reject `disabled`. Haiku turns took 1.0–2.0 s end to end on dev. | `requestTuning()`: Haiku turns = thinking off + `effort: low`; other models = adaptive + low; summaries = medium. |
+| Live smoke | `RUN_LIVE_TESTS=1 npx vitest run tests/live.smoke.test.ts` (ran on dev) | Grounded answer (cited, 42 words), unknown fact → `no_info`, Spanish address question → refusal + clarify. All three pass. | — |
+| Moss SDK, local | `npx tsx scripts/moss-check.ts` with the project key, run twice | `createIndex` ~4 s, `addDocs` ~3 s, `deleteDocs` ~2.5 s work. Cloud `query` → HTTP 503 every time; `loadIndex` → 401 downloading `moss-minilm` from models.moss.link. | Moss queries are unusable with this project's credentials today. |
+| Moss inside Convex | `convex.json` `node.externalPackages: ["@moss-dev/moss"]`, push + `npx convex run mossNode:*` on dev | Push-time analysis fails with "Cannot find native binding" if the SDK is imported at module load; with a lazy import the push succeeds but the action fails the same way at runtime. | Moss stays behind `RETRIEVER=moss`, which falls back to Convex (verified live: `retriever: "moss>convex"`, +120–380 ms). Convex search is the default. |
+| Pre-LLM latency | `npm run sim:call -- --all` on dev | Median 104 ms, p90 173 ms, max 247 ms (cold) with MockLlm; 84–142 ms with Claude. | Target (≤ 300 ms) met without an optimization pass. |
+| `Intl` time zones on the deployed runtime | Live replies on dev | "October 24 at 2:10 PM Pacific" and "24 de octubre a las 2:10 p.m. hora del Pacífico" render correctly. | Removes that item from "still unverified". |
+| Cartesia outbound calls | — | **Not verified live** (no credentials). Unit-tested against the documented request/response shapes only. | Behind `PHONE_NOTIFIER=cartesia`; `/health` flag `cartesiaVerifiedLive: false`. |
+
 ## Decisions
 
 | Date | Decision | Why |
@@ -96,20 +112,46 @@
 | 2026-10-24 | Python `TurnResponse.kind` is a plain string. | A new reply kind must not crash a live call. |
 | 2026-10-24 | `package-lock.json` was regenerated (npm optional-dependency bug left out the macOS x64 rolldown binding needed by Vitest 5). | `npm install` must work on every teammate's machine. |
 | 2026-10-24 | `/health` is public. | It exposes only integration status and flags, and the voice agent's first task is to reach it. |
+| 2026-10-24 | A turn is two mutations and one query around the LLM: `calls.beginTurn` (resolve/lazy start, replay check, interrupted marking, persist the user turn, return cached context, area labels, history) → retrieval query → `calls.completeTurn` (all side effects + the reply, atomically). The pipeline returns a side-effect *plan* instead of calling the database. | Latency (fewer round trips) and atomic side effects. |
+| 2026-10-24 | All spoken wording moved to `src/config/strings.ts` (en, es) with a "human review required" header; `src/orchestration/phrases.ts` was removed. The fallback line changed to "Sorry, I can't find that answer right now…" | Build prompt. **Leia:** sync `voice/soterra_voice/phrases.py`. |
+| 2026-10-24 | Stale-session sweep stays at **15 minutes** of silence. | `live-call.md` says 15; the build prompt said 10; the contract wins. |
+| 2026-10-24 | Follow-up subscriptions now last **24 hours** (max 72) instead of 7 days; the spoken confirmation says "for the next 24 hours" and how to stop. | Build prompt defaults; a "stop updates" flow now exists. TEAM_PLAN demo script updated. |
+| 2026-10-24 | Anonymous transcripts are kept **7 days** (was 72 h); anonymous memory 30 days. Deadlines are stamped on the call at finalize (`transcriptExpiresAt`, `memoryExpiresAt`) and on the caller (`expiresAt`); account-linked data has none. | Build prompt; indexable, batched purge. |
+| 2026-10-24 | Caller memory: the last summary (≤ 7 days) is in the server-side caller context and triggers a generic "welcome back" offer, but on caller ID alone the model sees only language, a county-level area, active update topics and public incident keys (`recentIncidentKeys`). Summary text and needs reach the model only for a verified account. | Reconciles the build prompt ("second call gets the last summary in its context") with rule 5 ("on caller ID alone the model never sees … past summaries"). |
+| 2026-10-24 | Grounding is strict: citing any chunk id not retrieved this turn rejects the whole answer. Any rewrite of the model's draft (uncited, unknown id, address claim, unsupported shelter claim) sets `degraded: true` and an `errorCode` on the turn. | Build prompt; makes model drift visible. |
+| 2026-10-24 | Deterministic address and shelter guards (TEAM_PLAN to-do 2): an address-in-zone claim for an exact-address question becomes the canonical refusal; "shelter is open" needs a cited chunk that says "open"; non-answer kinds may not make either claim. | Rule 2 hardened. |
+| 2026-10-24 | "Stop updates" and "summary only" are deterministic intents handled before the model; "stop updates" cancels every active subscription for the caller's number (also on outbound calls, whose number comes from the notification). | Must work even if the model fails. |
+| 2026-10-24 | Rate-limited notifications are stored as `status: "failed"`, `error: "rate_limited: …"` (no enum change) and are not retried for that bulletin version. | Every attempt is stored without a contract change. |
+| 2026-10-24 | After validation `/voice/turn` always returns 200 (fallback + `degraded`). `/voice/session/start` and `/voice/session/end` return `500 internal` on internal failure because there is no session or call id to return; an unknown `sessionId` stays `404` per the contract. | Contract error codes + build prompt rule. |
+| 2026-10-24 | ZIP codes map to a state with a 3-digit prefix table and keep the known county when it is in the same state; place names match active `bulletinAreas` labels (roads excluded), cached on the call for 10 minutes. | US only; no ZIP→county data in the repo. |
+| 2026-10-24 | Withheld caller ID creates no caller row (ephemeral, `identity: "anonymous"`); its call and summary still follow the anonymous TTLs. | Build prompt. |
+| 2026-10-24 | The call follows the caller's language: a turn in a supported language (en/es) updates `calls.language`; other languages get English replies and do not change it. | Build prompt scope. |
+| 2026-10-24 | Incidents cited earlier in the call feed "call me if it changes" when the current turn retrieves nothing (e.g. a Spanish follow-up over English bulletins). | Found with the Spanish scenario. |
+| 2026-10-24 | `MOCK_LLM_MODE` env var scripts MockLlm failures for integration tests and drills; `/health` flags it. | Failure modes must be testable through HTTP. |
+| 2026-10-24 | `convex.json` added with `node.externalPackages: ["@moss-dev/moss"]`; the SDK is imported lazily in `convex/mossNode.ts`. | Required for any Node action using Moss; lazy import keeps pushes working. |
+| 2026-10-24 | `npm run inject:update` now writes through `internal.ingestion.upsertBulletins` (the ingestion contract) and prints the resulting notifications. | Build prompt. |
+| 2026-10-24 | Dev deployment state left by this session: `VOICE_API_SECRET` (random; read it with `npx convex env get VOICE_API_SECRET`), `SERVE_FIXTURES=true`, fixtures seeded and the escalation applied once; `LLM_PROVIDER` unset (mock). | Rotate the secret when Leia connects. |
 
 ## Still unverified (owners)
 
 - `cartesia deploy` accepting new agents before the Dec 1, 2026 shutdown (V).
 - Whether outbound `dynamic_variables` reach `CallRequest.metadata`, and `from_`/`to` on outbound calls (V).
 - `pre_call_handler` `stt` config key (V).
-- Live behaviour of the Cartesia outbound adapter and its auth header (B, reviewed by V).
-- Moss cold-load time inside a `"use node"` action (B).
+- Live behaviour of the Cartesia outbound adapter and its auth header (B, reviewed by V). Not verified: no credentials.
+- Moss: why cloud queries return 503 and model downloads 401 for this project, and whether Moss can run anywhere inside Convex (B; ask Moss).
 - ~~Apify `headersTemplate` key name~~ verified 2026-10-24 (ingestion pass below). A live Apify run against the mock sites is still pending (I).
-- Anthropic adapter against a real key and its latency with Haiku 5.5 (B).
-- `Intl` time-zone formatting on the deployed Convex runtime (works in tests; falls back to UTC if not).
+
+## Open questions for Alonso (backend session, 2026-10-24)
+
+Each has a safe default already in the code; change it if you disagree.
+
+1. **Canonical wording**: every string in `src/config/strings.ts` needs a human read, the Spanish ones by a native speaker. Default: the drafted text.
+2. **Subscription lifetime**: 24 hours (build prompt) vs. 7 days (old decision and demo script). Default: 24 h; the demo script now says 24 hours.
+3. **Returning-caller greeting**: generic "we can pick up where we left off" (never names the incident on caller ID). Default: generic.
+4. **Rate-limited updates**: dropped for that bulletin version, not retried later. Default: dropped.
+5. **Moss**: drop it from the call path for the demo, or run it outside Convex (a small Node service) once Moss fixes the 503/401? Default: Convex search; Moss behind the flag.
 
 ## Ingestion pass (2026-10-24, branch `ingestion/pipeline`)
-## Voice pass (2026-10-24, branch `voice/agent`)
 
 ### Verified
 
@@ -124,17 +166,6 @@
 | File storage | [store files](https://docs.convex.dev/file-storage/store-files) | `ctx.storage.store(blob)` from actions returns `Id<"_storage">`. | Raw payloads (24 h TTL, hourly purge cron) and large geometry are stored from actions; mutations only delete. |
 | NWS cancellations, live | Live `api.weather.gov/alerts/active?area=AK`, 2026-10-24 | Some cancellations arrive as `messageType: "Alert"` whose VTEC actions are all `CAN` ("The Winter Storm Watch has been cancelled."). Updates carry earlier ids in `references` with their `sent` times. | NWS adapter: Cancel messages **and** all-CAN/EXP VTEC alerts are `cancelled`; Update/Cancel `issuedAt` = earliest referenced `sent`, `updatedAt` = this `sent`. |
 | Live feed shapes | Live fetch of every direct feed, normalized in Node | NWS (88 alerts across 5 states), OpenFEMA (21), WFIGS (64), InciWeb (7), NHC (1), Tsunami.gov CAP (1): **0 rejections**. InciWeb `description` holds "Last updated: YYYY-MM-DD" (date only), "The type of incident is …", "State: …"; `pubDate` can be years old (incident creation). Tsunami.gov CAP is a single `<alert>`. | InciWeb: state from "State:", prescribed burns skipped, date-only "Last updated" not turned into a timestamp. |
-| SDK version | PyPI, installed package | `cartesia-line` **0.2.19** is still the latest (uploaded 2026-09-30), `Requires-Python >=3.10`. | Pin unchanged. |
-| Runner behaviour | `line/voice_agent_app.py` (`ConversationRunner`) | Run filter default `CallStarted`, `UserTurnEnded`, `CallEnded`; `UserTurnStarted` cancels the in-flight task. **Any new run event also cancels the previous task** (so `CallEnded` cancels a pending turn). On websocket disconnect the runner emits `CallEnded` and awaits the agent task. A cancelled task still sends `response_end`. | Barge-in and hang-up paths cancel the HTTP request; `end_session` in `CallEnded` runs to completion. |
-| Caller text and keypad | `events.py`, `_turn_content` | `UserTurnEnded.content` holds every `UserTextSent` **and** `UserDtmfSent` since the turn's `UserTurnStarted`, so keypad presses arrive with the turn without changing the run filter. | Keypad 2/1 switches language inside a normal turn. Unverified on a real call: whether Cartesia wraps a keypad press in a user turn. |
-| Language mid-call | `_map_output_event` | `AgentUpdateCall(language, voice_id)` is sent as a `config` message with `stt.language`, `tts.language` and `tts.voice_id` (tested through the runner). Docs: the table says STT and TTS, the prose says ASR. | Mid-call switching is supported by the SDK; real-call behaviour unverified. |
-| Pre-call | `VoiceAgentApp.create_chat_session`, [agents](https://docs.cartesia.ai/line/sdk/agents.md) | `pre_call_handler(call_request)` returns `PreCallResult(metadata, config)`; returning `None` rejects the call (403). Config keys: `tts.voice_id`, `tts.model` (sonic-3.6/3.5/3), `tts.language`, `tts.pronunciation_dict_id`, `stt.language`. The SDK returns the metadata in the `/chats` response; **whether Cartesia forwards it into the websocket start message (`call_request.metadata`) is not documented.** The `/chats` body is read with key `from_`, the websocket start with `from`. | Pre-call starts the session only with a real call id and a caller number (or an outbound callback), so a placeholder id or a parsing gap can't create a wrong session; the agent re-calls the idempotent start if the metadata doesn't arrive. |
-| CallRequest | SDK source | `call_id`, `from_` (alias `from`), `to` (dialed number), `agent_call_id`, `agent`, `metadata`, `agent_token`, `api_base_url`. | `to` is the dialed number for the language map. |
-| Outbound metadata | [create outbound call](https://docs.cartesia.ai/api-reference/agents/calls/create-outbound-call.md), [dynamic variables](https://docs.cartesia.ai/agents/dynamic-variables.md) | `outbound_calls[]` items have only `to_number` and `dynamic_variables` — **no `metadata`** (the voice brief assumed `outbound_calls[].metadata`). Nothing says either reaches a code agent's `call_request.metadata`. | The agent reads `metadata.notificationId` / `notification_id`; confirm on the first real callback. If it doesn't arrive, the backend needs another way to tie the call to the notification (e.g. look up the latest queued notification for the dialed number). |
-| Voices | [Sonic 3.6](https://docs.cartesia.ai/build-with-cartesia/tts-models/latest.md), [multilingual voices](https://docs.cartesia.ai/build-with-cartesia/capability-guides/multilingual-voices.md), [choosing a voice](https://docs.cartesia.ai/build-with-cartesia/capability-guides/choosing-a-voice.md) | Sonic 3.6: 44 languages incl. Spanish; "Every voice can speak every language the model supports" (with the voice's accent). Stable English voices include Jacqueline `9626c31c-bec5-4cca-baa8-f8ba9e84c8bc`, Daniel `47c38ca4-5f35-497b-b1a3-415245fb35e1`, Skylar `db6b0ed5-d5d3-463d-ae85-518a07d3c2b4`. No Spanish voice IDs or "calm" tag on the pages read. | Default voice Jacqueline for both languages; `VOICE_ID_ES` configurable. |
-| STT | [Ink 2](https://docs.cartesia.ai/build-with-cartesia/stt/latest.md), changelog | Ink 2: en, fr, hi, ja, es. Keyterms exist for the STT WebSocket (`keyterm`) and managed agents; **no keyterm option for Line code agents** is documented. Pronunciation dictionaries are passed as `tts.pronunciation_dict_id`. | `PRONUNCIATION_DICT_ID` setting; no STT keyterms. |
-| Observability | [observability](https://docs.cartesia.ai/line/infrastructure/observability.md) | `LogMetric(name, value)` and `LogMessage` appear in the Playground call transcript. | Metrics: `backend_start_ms`, `backend_turn_ms`, `filler_used`, `backend_turn_failed`, `backend_start_failed`. |
-| CLI and hosting | [CLI](https://docs.cartesia.ai/line/cli.md), [migration](https://docs.cartesia.ai/agents/migrate-from-line-sdk.md), changelog | `cartesia init`, `deploy`, `env set [--from .env]`, `chat <port>`, `connect --agent-id --url`, `phone-numbers provision "<label>" --agent-id`, `phone-numbers assign <id> --agent-id`. No `cartesia call` command is documented. Hosting ends Dec 1, 2026; "existing agents keep running until that date"; **whether new hosted deployments are accepted is not stated.** | README documents deploy and the `cartesia connect` fallback. The CLI is not installed here and no Cartesia credentials were available, so nothing was deployed. |
 
 ### Decisions
 
@@ -156,6 +187,29 @@
 - A live Apify run end to end (no `APIFY_TOKEN` here): `npm run ingest:apify-mock-sites` on the dev deployment.
 - WCC `crawlerType: "cheerio"` value and Cheerio `request.loadedUrl` in the page function.
 - Live fetches from inside a deployed Convex action (verified only from Node).
+
+## Voice pass (2026-10-24, branch `voice/agent`)
+
+### Verified
+
+| What we checked | Source | Finding | What it changes |
+| --- | --- | --- | --- |
+| SDK version | PyPI, installed package | `cartesia-line` **0.2.19** is still the latest (uploaded 2026-09-30), `Requires-Python >=3.10`. | Pin unchanged. |
+| Runner behaviour | `line/voice_agent_app.py` (`ConversationRunner`) | Run filter default `CallStarted`, `UserTurnEnded`, `CallEnded`; `UserTurnStarted` cancels the in-flight task. **Any new run event also cancels the previous task** (so `CallEnded` cancels a pending turn). On websocket disconnect the runner emits `CallEnded` and awaits the agent task. A cancelled task still sends `response_end`. | Barge-in and hang-up paths cancel the HTTP request; `end_session` in `CallEnded` runs to completion. |
+| Caller text and keypad | `events.py`, `_turn_content` | `UserTurnEnded.content` holds every `UserTextSent` **and** `UserDtmfSent` since the turn's `UserTurnStarted`, so keypad presses arrive with the turn without changing the run filter. | Keypad 2/1 switches language inside a normal turn. Unverified on a real call: whether Cartesia wraps a keypad press in a user turn. |
+| Language mid-call | `_map_output_event` | `AgentUpdateCall(language, voice_id)` is sent as a `config` message with `stt.language`, `tts.language` and `tts.voice_id` (tested through the runner). Docs: the table says STT and TTS, the prose says ASR. | Mid-call switching is supported by the SDK; real-call behaviour unverified. |
+| Pre-call | `VoiceAgentApp.create_chat_session`, [agents](https://docs.cartesia.ai/line/sdk/agents.md) | `pre_call_handler(call_request)` returns `PreCallResult(metadata, config)`; returning `None` rejects the call (403). Config keys: `tts.voice_id`, `tts.model` (sonic-3.6/3.5/3), `tts.language`, `tts.pronunciation_dict_id`, `stt.language`. The SDK returns the metadata in the `/chats` response; **whether Cartesia forwards it into the websocket start message (`call_request.metadata`) is not documented.** The `/chats` body is read with key `from_`, the websocket start with `from`. | Pre-call starts the session only with a real call id and a caller number (or an outbound callback), so a placeholder id or a parsing gap can't create a wrong session; the agent re-calls the idempotent start if the metadata doesn't arrive. |
+| CallRequest | SDK source | `call_id`, `from_` (alias `from`), `to` (dialed number), `agent_call_id`, `agent`, `metadata`, `agent_token`, `api_base_url`. | `to` is the dialed number for the language map. |
+| Outbound metadata | [create outbound call](https://docs.cartesia.ai/api-reference/agents/calls/create-outbound-call.md), [dynamic variables](https://docs.cartesia.ai/agents/dynamic-variables.md) | `outbound_calls[]` items have only `to_number` and `dynamic_variables` — **no `metadata`** (the voice brief assumed `outbound_calls[].metadata`). Nothing says either reaches a code agent's `call_request.metadata`. | The agent reads `metadata.notificationId` / `notification_id`; confirm on the first real callback. If it doesn't arrive, the backend needs another way to tie the call to the notification (e.g. look up the latest queued notification for the dialed number). |
+| Voices | [Sonic 3.6](https://docs.cartesia.ai/build-with-cartesia/tts-models/latest.md), [multilingual voices](https://docs.cartesia.ai/build-with-cartesia/capability-guides/multilingual-voices.md), [choosing a voice](https://docs.cartesia.ai/build-with-cartesia/capability-guides/choosing-a-voice.md) | Sonic 3.6: 44 languages incl. Spanish; "Every voice can speak every language the model supports" (with the voice's accent). Stable English voices include Jacqueline `9626c31c-bec5-4cca-baa8-f8ba9e84c8bc`, Daniel `47c38ca4-5f35-497b-b1a3-415245fb35e1`, Skylar `db6b0ed5-d5d3-463d-ae85-518a07d3c2b4`. No Spanish voice IDs or "calm" tag on the pages read. | Default voice Jacqueline for both languages; `VOICE_ID_ES` configurable. |
+| STT | [Ink 2](https://docs.cartesia.ai/build-with-cartesia/stt/latest.md), changelog | Ink 2: en, fr, hi, ja, es. Keyterms exist for the STT WebSocket (`keyterm`) and managed agents; **no keyterm option for Line code agents** is documented. Pronunciation dictionaries are passed as `tts.pronunciation_dict_id`. | `PRONUNCIATION_DICT_ID` setting; no STT keyterms. |
+| Observability | [observability](https://docs.cartesia.ai/line/infrastructure/observability.md) | `LogMetric(name, value)` and `LogMessage` appear in the Playground call transcript. | Metrics: `backend_start_ms`, `backend_turn_ms`, `filler_used`, `backend_turn_failed`, `backend_start_failed`. |
+| CLI and hosting | [CLI](https://docs.cartesia.ai/line/cli.md), [migration](https://docs.cartesia.ai/agents/migrate-from-line-sdk.md), changelog | `cartesia init`, `deploy`, `env set [--from .env]`, `chat <port>`, `connect --agent-id --url`, `phone-numbers provision "<label>" --agent-id`, `phone-numbers assign <id> --agent-id`. No `cartesia call` command is documented. Hosting ends Dec 1, 2026; "existing agents keep running until that date"; **whether new hosted deployments are accepted is not stated.** | README documents deploy and the `cartesia connect` fallback. The CLI is not installed here and no Cartesia credentials were available, so nothing was deployed. |
+
+### Decisions
+
+| Date | Decision | Why |
+| --- | --- | --- |
 | 2026-10-24 | Language priority: saved language (backend returns it when no hint is sent) → dialed-number map (sent as `languageHint`, which the backend treats as explicit) → keypad 2/1 mid-call. The spoken keypad offer is off by default (`OFFER_SPANISH_DTMF`). | A dedicated Spanish number is the most reliable option; keypad behaviour on real calls is unverified. |
 | 2026-10-24 | Only the transcription-notice sentence of the greeting is uninterruptible. | The brief; the SDK supports per-message `interruptible`. |
 | 2026-10-24 | One filler per turn after 1.2 s; total turn budget 8 s; 3 consecutive failures end the call (reason `error`). | The brief; keeps silence short and failure bounded. |

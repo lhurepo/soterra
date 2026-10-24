@@ -28,6 +28,8 @@ export function requireVoiceAuth(req: Request, cfg: Config): Response | null {
 export async function parseBody<T extends z.ZodType>(
   req: Request,
   schema: T,
+  /** Optional normalization applied to the raw JSON before validation (e.g. phone numbers to E.164). */
+  prepare?: (raw: unknown) => unknown,
 ): Promise<{ ok: true; data: z.infer<T> } | { ok: false; response: Response }> {
   let raw: unknown;
   try {
@@ -35,6 +37,7 @@ export async function parseBody<T extends z.ZodType>(
   } catch {
     return { ok: false, response: errorResponse(400, "bad_request", "body must be JSON") };
   }
+  if (prepare) raw = prepare(raw);
   const version = (raw as { contractVersion?: unknown } | null)?.contractVersion;
   if (typeof version === "string" && version.split(".")[0] !== CONTRACT_VERSION.split(".")[0]) {
     return {

@@ -8,7 +8,7 @@ import update from "../fixtures/normalized/ridgeview-update.json";
 import countyHtml from "../fixtures/mock-sites/v1/county-emergency.html?raw";
 import { internal } from "./_generated/api";
 
-export const modules = import.meta.glob(["./**/*.ts", "./**/*.js", "!./**/*.d.ts", "!./**/*.test.ts", "!./test.setup.ts"]);
+export const modules = import.meta.glob(["./**/*.ts", "./**/*.js", "!./**/*.d.ts", "!./**/*.test.ts", "!./**/*.helpers.ts", "!./test.setup.ts"]);
 
 export const SECRET = "test-voice-secret";
 

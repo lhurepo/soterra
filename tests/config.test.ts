@@ -4,7 +4,7 @@ import { checkBearer } from "../src/config/auth";
 import { loadConfig } from "../src/config/env";
 import { NotConfiguredError } from "../src/config/errors";
 import { integrationStatus } from "../src/config/health";
-import { createMossRetriever } from "../src/providers/moss";
+import { requireMoss } from "../src/providers/moss";
 import { selectLlm } from "../src/providers/llm";
 
 describe("config", () => {
@@ -28,7 +28,7 @@ describe("config", () => {
 
   it("unconfigured live adapters throw NotConfiguredError naming the env vars", () => {
     expect(() => selectLlm(loadConfig({ LLM_PROVIDER: "anthropic" }))).toThrow(/ANTHROPIC_API_KEY/);
-    expect(() => createMossRetriever(loadConfig({ RETRIEVER: "moss" }))).toThrow(NotConfiguredError);
+    expect(() => requireMoss(loadConfig({ RETRIEVER: "moss" }))).toThrow(NotConfiguredError);
   });
 
   it("checks bearer tokens and fails closed", () => {

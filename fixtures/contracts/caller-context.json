@@ -1,0 +1,8 @@
+{
+  "callerId": "jd7demo0caller000000000000000000",
+  "identity": "caller_id",
+  "language": "en",
+  "knownArea": { "state": "CA", "county": "Sonoma", "countyFips": "06097", "label": "Santa Rosa" },
+  "activeSubscriptions": ["incident ridgeview-fire-demo (evacuation change)"],
+  "recentIncidentKeys": ["ridgeview-fire-demo"]
+}
