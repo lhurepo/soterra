@@ -16,11 +16,12 @@ struct HomeView: View {
                         onWhatToDo: { model.homePath.append(.alert(alert.id)) },
                         onAsk: askAction(about: alert)
                     )
+                    CallSoterraCard()
                     nextSteps
-                    if model.isOffline { offlineCallCard }
                     today
                 } else {
                     calmCard
+                    CallSoterraCard()
                     following
                     recentCalls
                 }
@@ -58,24 +59,6 @@ struct HomeView: View {
                 model.selectedTab = .household
             }
         }
-    }
-
-    private var offlineCallCard: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "phone")
-                .font(.title3)
-                .foregroundStyle(Palette.accent)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Calling still works offline")
-                    .font(.headline)
-                    .foregroundStyle(Palette.textPrimary)
-                Text("Soterra by phone: \(DemoConfig.hotlineDisplay). English · Español · 24/7")
-                    .font(.footnote)
-                    .foregroundStyle(Palette.textSecondary)
-            }
-        }
-        .surfaceCard()
     }
 
     private var today: some View {

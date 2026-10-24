@@ -46,10 +46,17 @@ struct MoreView: View {
                 .listRowBackground(Palette.surface)
                 Toggle("Offline", isOn: $model.isOffline)
                     .listRowBackground(Palette.surface)
+                Toggle("Use live backend data", isOn: $model.useLiveData)
+                    .listRowBackground(Palette.surface)
+                    .onChange(of: model.useLiveData) { _, isOn in
+                        if isOn { Task { await model.refresh() } }
+                    }
             } header: {
                 Text("Demo controls")
             } footer: {
-                Text("Demo data only. This build does not connect to the live backend.")
+                Text(model.isShowingLive
+                     ? "Showing the latest alerts from the Soterra backend. The scenario picker only applies to demo data."
+                     : "Showing demo data. Turn on live data to load alerts from the Soterra backend.")
             }
 
             Section {

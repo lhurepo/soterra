@@ -3,6 +3,7 @@ import SwiftUI
 /// Tabs: Home · Alerts · Map · Household · More. The danger sheet and toasts can appear over any of them.
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var model = model
@@ -53,6 +54,9 @@ struct RootView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: model.toast)
+        .task(id: scenePhase) {
+            if scenePhase == .active { await model.refresh() }
+        }
     }
 }
 

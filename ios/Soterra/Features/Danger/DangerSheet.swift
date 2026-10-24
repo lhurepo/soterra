@@ -42,6 +42,14 @@ struct DangerSheet: View {
                     .foregroundStyle(Palette.textSecondary)
                     .frame(maxWidth: .infinity)
 
+                Button {
+                    openURL(DemoConfig.hotlineURL)
+                } label: {
+                    Label("Call Soterra for information", systemImage: "phone")
+                }
+                .buttonStyle(OutlineButtonStyle())
+                .accessibilityHint("Calls the Soterra hotline, \(DemoConfig.hotlineDisplay). It can't send help.")
+
                 Button("I'm safe — show information") { dismiss() }
                     .buttonStyle(OutlineButtonStyle())
 
