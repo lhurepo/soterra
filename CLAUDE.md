@@ -40,9 +40,12 @@ rolldown binding (Vitest then fails "Cannot find native binding"); fix with
 | Voice agent (code, deployed from `voice/`) | `soterra-voice` = `agent_5qooPJfkYWFfcHxGj2GqS1` |
 | Cartesia account | Dhweya's organization (key in Convex env `CARTESIA_API_KEY`, never in git). Create a fresh agent and number with `~/.cartesia/bin/cartesia init --new <name>` and `phone-numbers provision <label>` |
 | Convex dev deployment | `brazen-perch-21` → `https://brazen-perch-21.convex.site` (`/health`) |
+| Twilio webhooks (texts) | `https://brazen-perch-21.convex.site/twilio/status` (set per text) and `/twilio/inbound` (set on the Twilio number) |
 
 The dev deployment has `PHONE_NOTIFIER=cartesia`, so `npm run inject:update` places **real phone calls**
-to subscribers. Never place calls (or run `inject:update`) toward numbers that have not agreed to it.
+to subscribers. Never place calls (or run `inject:update`) toward numbers that have not agreed to it. With
+`SMS_NOTIFIER=twilio` it also sends **real texts** (update texts, missed-call texts, recaps, confirmations); a Twilio
+trial account only texts numbers verified in the Twilio console.
 
 ## After you change code
 

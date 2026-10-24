@@ -45,7 +45,8 @@ Enforced in code where marked ✅.
 | Moss retriever | P1 | Alonso/Hikaru | 🟡 adapter + sync + fallback ✅; blocked: SDK can't load in Convex, queries 503/401 (DECISIONS.md) |
 | Subscriptions + outbound callbacks | P2 | Alonso/Hikaru (Leia reviews) | 🟡 matcher, rate limits, stop updates, answered questions, mock notifier ✅ (live on dev); Cartesia adapter **not verified live** |
 | X ingestion | P2 | Dhweya | 🟡 fixture mode ✅ (allowlist → official_social, others → signals, burst → early poll); live actor not enabled |
-| SMS | P2 | — | ⬜ provider not chosen |
+| SMS (Twilio): text updates, missed-call texts, call recaps, confirmations, STOP | P2 | Leia | 🟡 built and tested with mock texts (branch `Leia/text-alerts`); Twilio adapter + webhooks written from the docs, **not verified live** (trial account: verified numbers only) |
+| Time-based updates ("text me every 2 hours") | P2 | Leia | 🟡 built and tested (cron `subscriptions.runScheduled`); not yet run on dev |
 | Streaming turns (`/voice/turn/stream`) | P2 | Alonso/Hikaru + Leia | ⬜ reserved |
 | Zone check (point in official polygon) | P2 | — | ⬜ geometry is stored when feeds give it |
 
@@ -129,7 +130,14 @@ Keep this list current: tick items off and add new ones as they come up. (Last u
 4. ⬜ When 2 and 3 pass: set `cartesiaVerifiedLive` to true, move M1/M4 to ✅, and record what was verified in
    `docs/DECISIONS.md` (outbound `from_`/`to`, whether metadata arrives, real latency).
 5. ⬜ Spanish on the phone: pick a Spanish-native voice, set `VOICE_ID_ES` with `cartesia env set`, test keypad 2.
-6. ⬜ Then M2 (live NWS + crisis mode), M3 (memory + Spanish), M5 (Apify, X, Moss).
+6. ⬜ **Text alerts live (Twilio trial):** in the Twilio console verify each teammate's phone (and a judge's on
+   the day: Phone Numbers → Verified Caller IDs). Set the number's "A message comes in" webhook to
+   `https://brazen-perch-21.convex.site/twilio/inbound`. Then `npx convex env set SMS_NOTIFIER twilio` plus
+   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `HOTLINE_NUMBER=+18046066867`. Check: say "text me
+   if the evacuation changes", hang up (confirmation text), `npm run inject:update` (update text), reply STOP. Then
+   "call me if it changes", don't answer the callback (a text about 100 s later), and once more answering it (recap
+   text). Record what was verified in `docs/DECISIONS.md` and set `twilioVerifiedLive` to true in `src/config/health.ts`.
+7. ⬜ Then M2 (live NWS + crisis mode), M3 (memory + Spanish), M5 (Apify, X, Moss).
 
 ## Integration milestones
 
@@ -176,6 +184,8 @@ Setup: `SERVE_FIXTURES=true`, `npm run seed:fixtures`, call from a phone whose n
 | 6 | "Thanks, goodbye." | Goodbye with the 911 line; call ends; summary written. |
 | — | Presenter runs `npm run inject:update` | Zone SON-3A becomes an Evacuation **Order**; bulletin event → notification. |
 | 7 | Soterra calls back (with `PHONE_NOTIFIER=cartesia`, not verified live) | "This is Soterra calling with the update you asked for. Update from Sonoma County Emergency Management (Demo)…: Evacuation Order for zone SON-3A…", then how to stop updates and the 911 line |
+| 8 | (Optional, Twilio) Hang up after 7 | A recap text: "Soterra recap: Update from Sonoma County Emergency Management (Demo)… On the call: …", then STOP and the 911 line. A callback nobody answers is texted instead, about 100 s later. |
+| 9 | (Optional, Twilio) On another call: "Text me every 2 hours about the Ridgeview Fire." | Confirms texts every 2 hours for the next 24 hours and how to stop (reply STOP); a confirmation text arrives after hang-up. `npx convex run subscriptions:runScheduled` sends a due update now (after the 2 h). |
 | — | Separately: "I'm trapped, the fire is at my house" | First words: "If you are in immediate danger, hang up and dial 911 now." |
 
 ## Changelog
@@ -189,4 +199,4 @@ Setup: `SERVE_FIXTURES=true`, `npm run seed:fixtures`, call from a phone whose n
 - 2026-10-24 — Team workflow: `npm run setup` / `npm run check` (`scripts/setup.sh`, `scripts/dev-check.sh`), a Claude Code SessionStart hook that runs the check, `CLAUDE.md` "Soterra — team workflow" (live ids, what to run after changing code), and "Next steps" above. (Claude, for Hikaru)
 - 2026-10-24 — Time basis spoken. Additive, optional: `RetrievedChunk.timeBasis?` (`issued` | `page_updated` | `observed`; golden fixture `retrieved-chunk.json`). Scraped pages are now attributed "as of our last check on …" (`observed`) or "the page was last updated on …" (`page_updated`) instead of "issued" (`attributionObserved`, `attributionPageUpdated` in `src/config/strings.ts`; Spanish needs native review); the model prompt carries `timeBasis` on each source. Also: Apify runs request `APIFY_MEMORY_MB` (default 2048) so concurrent runs fit the free plan's 16 GB. No voice contract fields changed (the Python mirror ignores the new field). (Claude, for Alonso)
 - 2026-10-24 — Corroboration tiers (branch `dhweya/ingestion`; Claude for Dhweya). **Additive contract change:** `RetrievedChunk.corroboration?: { tier: "confirmed" | "single" | "differs", sources: string[] }` (`src/contracts/orchestration.ts`, golden fixture `retrieved-chunk.json`; the voice agent never sees chunks, so no Python mirror). Retrieval compares candidates in code (`src/retrieval/corroboration.ts`, no model): a chunk is confirmed when a source in a *different independence group* reports the same incident (compatible hazard, overlapping area, within 72 h, incident name in both); "differs" when both state acres or containment and disagree (>25 % and >50 acres, or ≥15 points). Groups live in `src/ingestion/sources.ts` (`INDEPENDENCE_GROUPS`: InciWeb + WFIGS share `nifc-irwin`; NWS alerts and NWS X accounts share `nws`); `X_ALLOWLIST` takes an optional 4th segment, `handle:Issuer:CA:group`. Grounding appends "Also reported by {sources}." or "Sources differ on the figures." after the attribution (`src/config/strings.ts`, en + es, **Spanish needs native review**); a single source says nothing extra, and confidence never suppresses an answer. **Backend to know:** the sentence is added by `enforceGrounding`, never by the model. Limit: only candidates retrieved for this question are compared.
-
+- 2026-10-24 — Text alerts and time-based updates (branch `Leia/text-alerts`; Claude for Leia). Callers choose calls or texts by voice ("text me", "call me"; remembered as `callers.preferredChannel`) and can ask for updates on a schedule ("every 2 hours", 1–24 h; cron `subscriptions.runScheduled`). A missed update call (no session within 100 s, voicemail only, or the call could not be placed) is texted; an answered one gets a short recap text; every call that set up updates gets a confirmation text. Twilio adapter (`SMS_NOTIFIER=mock|twilio|unconfigured`, `TWILIO_*`, `HOTLINE_NUMBER`) and signed webhooks `POST /twilio/status`, `POST /twilio/inbound` (STOP). Landline errors switch a subscription to calls. **Additive contract changes:** `FollowUpRequest.channel?`/`intervalMinutes?`, `Subscription.mode?`/`intervalMs?`/`nextRunAt?`/`lastRunAt?`, new `NotificationPurpose` (golden fixtures `subscription.scheduled-sms.json`, `notification-request.sms.json`, `follow-up-request.text-scheduled.json`; `health.response.json` shows `sms: "mock"` and `twilioVerifiedLive`). Storage: `notifications.purpose` widened, `parentNotificationId`, `outcome`, `providerStatus`; indexes `calls.by_notificationId`, `subscriptions.by_status_and_nextRunAt`, `subscriptions.by_createdFromCallId`, `bulletins.by_incidentKey_and_isActive`. Behaviour: `SMS_NOTIFIER` now defaults to `mock`; rate limits count only update notifications. No voice contract fields changed (Python mirror untouched). New strings (`followupCreatedSms`, `followupScheduled*`, `followupMissedCallNote`, `stopTexts`, `sms*`, `scheduled*`) need review, Spanish by a native speaker. Twilio **not verified live**. (Claude, for Leia)

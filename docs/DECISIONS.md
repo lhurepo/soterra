@@ -248,3 +248,30 @@ Still unverified: a real inbound call end to end (latency, barge-in, keypad), a 
 | 2026-10-24 | Grounding code appends the sentence; the model is not told the tier and cannot invent one. | Keeps confidence deterministic and testable. |
 | 2026-10-24 | Only candidates retrieved for the caller's question are compared. | No extra database reads on the call path; a corroborating bulletin that does not match the question's words is missed. |
 
+
+## Text alerts (2026-10-24, branch `Leia/text-alerts`)
+
+### From the Twilio docs (not verified live yet: `twilioVerifiedLive` stays false)
+
+| Topic | Source | Fact | Consequence |
+| --- | --- | --- | --- |
+| Send a text | Twilio Messages API | `POST https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages.json`, Basic auth (Account SID : Auth Token), form-encoded `To`, `From` (or `MessagingServiceSid`), `Body`, optional `StatusCallback` → 201 `{ sid: "SM…", status: "queued" }`; errors are 4xx `{ code, message }`. | `src/providers/twilio/sms.ts` uses `fetch` with no SDK, so it runs in the default Convex runtime and needs no `npm install`. |
+| Delivery status | StatusCallback | Twilio POSTs `MessageSid`, `MessageStatus` (`queued`, `sent`, `delivered`, `undelivered`, `failed`) and `ErrorCode` to the callback URL. | `POST /twilio/status` stores `providerStatus`; a failure sets `status: "failed"`, `error: "code <ErrorCode>: <status>"`. |
+| Request signature | Webhook security | `X-Twilio-Signature` = base64 HMAC-SHA1 with the Auth Token over the full URL followed by each POST parameter name and value, sorted by name. | Both webhooks check it (Web Crypto, constant-time compare) against `req.url` and `${CONVEX_SITE_URL}${path}`, and return 403 without `TWILIO_AUTH_TOKEN`. |
+| Landlines | Error codes | 21614 "'To' number is not a valid mobile number" (when sending); 30006 "Landline or unreachable carrier" (status callback). | Either one switches the subscription to calls and calls that update instead. |
+| Opt-out | Advanced Opt-Out | STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT: Twilio confirms and blocks later texts to that number itself (error 21610). | `POST /twilio/inbound` also cancels that number's subscriptions (and the Spanish PARAR, ALTO, BAJA). |
+| Trial accounts | Trial limits | Texts go only to verified numbers and start with "Sent from your Twilio trial account". | Demo: verify each teammate's number. A judge's number can be verified on the spot (Console → Phone Numbers → Verified Caller IDs). |
+| Paid US texting | A2P 10DLC / toll-free verification | Upgrading lifts the verified-numbers limit, but texts from a US local number need A2P 10DLC registration, and from a toll-free number need toll-free verification. Both take days to weeks. | Paying does not make texting to anyone work in time for the demo. Re-check Twilio's current rules before relying on this. |
+
+### Decisions
+
+| Date | Decision | Why |
+| --- | --- | --- |
+| 2026-10-24 | Twilio for texts, via one `fetch` call; `SMS_NOTIFIER` is `mock` (default), `twilio` or `unconfigured`. | Team choice. Mock by default, the same as `PHONE_NOTIFIER`. |
+| 2026-10-24 | The caller chooses calls or texts by voice ("text me", "call me"; English and Spanish, matched in code first, then the model's `channel`). Otherwise the saved `callers.preferredChannel` applies, else a call. Asking for both means a call. | Every update call is followed by a text anyway, so "both" adds nothing. |
+| 2026-10-24 | A call is missed when there is still no session for it 100 s after it is placed (Cartesia rings for 45 s), or when every caller turn looks like an answering machine ("leave a message after the tone"), or when the call could not be placed. A missed call gets the update by text. | Does not depend on a Cartesia call-status API we have not verified. Voicemail greetings are transcribed as turns, so they need their own check. |
+| 2026-10-24 | When an answered update call ends: one recap text, made from fixed templates (the update, then up to two answers with their source sentence removed), within 320 characters. The LLM-written call summary is never texted. | User decision: short, and nothing in it is new or unchecked. |
+| 2026-10-24 | When any call that set up updates ends: one confirmation text (topics, call or text, schedule, until when, STOP, 911). | User decision (both callbacks and inbound calls). It also catches landlines early. |
+| 2026-10-24 | A text the number cannot receive (21614, 30006) switches the subscription and `preferredChannel` to calls, and that update is called. Texts about a call (recap, missed call, confirmation) are never called. | User decision. Avoids loops. |
+| 2026-10-24 | Time-based updates: "every 2 hours", "hourly", "daily", "cada hora"… The interval is clamped to 1–24 hours. A subscription lasts at least three updates (24 h by default, 72 h at most). A cron sends due updates every minute, even when nothing changed ("No new official updates since…"). Scheduled subscriptions never fire on bulletin events. No quiet hours. | User decision: an emergency line should not hold back updates at night. |
+| 2026-10-24 | Rate limits and the per-number burst rule count only update notifications (on change or scheduled), not the verification call or texts about a call. | Found in testing: a confirmation text was blocking the first real update for 15 minutes. |
