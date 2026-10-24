@@ -25,7 +25,7 @@ Soterra is an emergency information service. People ask questions and Soterra an
 timestamped bulletins**, naming the source and time. When it does not know, it says "I don't know yet", saves
 the question, and follows up when officials answer. It calls people back when news they follow changes.
 
-The phone hotline (**+1 804 606 6867**, live) is the main product and needs no app. The app adds visual
+The phone hotline (**+1 712 600 3362**, live) is the main product and needs no app. The app adds visual
 alerts, a map, household check-ins, call history and followed topics on top of it. Success: a resident gets
 a correct, sourced answer, or an honest "not yet", in seconds, and hears about changes without having to
 check.
@@ -85,7 +85,7 @@ notifications, walking routes, languages beyond English and Spanish.
 
 ## Evidence on Hand
 
-- Live hotline +1 804 606 6867 (Cartesia voice agent on the Convex dev backend).
+- Live hotline +1 712 600 3362 (Cartesia voice agent on the Convex dev backend).
 - Demo scenario: the fictional **Ridgeview Fire** with demo bulletins from "Sonoma County Emergency
   Management (Demo)" in `fixtures/normalized/`; real hotline wording in `src/config/strings.ts`.
 - All demo content is fictional and labeled "(Demo)". There are no real users, testimonials, partnerships or

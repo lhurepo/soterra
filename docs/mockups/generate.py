@@ -241,7 +241,7 @@ def home_offline():
         '<div class="spine">', '<div class="spine" style="opacity:.85">')
     body += f"""<div class="card" style="margin-top:12px;display:flex;gap:12px;align-items:center">
   <span style="color:var(--accent)">{ic("phone",24)}</span>
-  <div style="flex:1"><b style="font-size:16px">Calling still works offline</b><p style="font-size:13px;color:var(--muted)">Soterra by phone: +1 804 606 6867. English &middot; Espa&ntilde;ol &middot; 24/7</p></div>
+  <div style="flex:1"><b style="font-size:16px">Calling still works offline</b><p style="font-size:13px;color:var(--muted)">Soterra by phone: +1 712 600 3362. English &middot; Espa&ntilde;ol &middot; 24/7</p></div>
 </div>"""
     body += '<div class="sect"><span>Saved at 2:14 PM</span></div>' + today(TODAY)
     return body + (f'<div class="callbar"><span class="btn btn-p">{ic("phone",18)}Call Soterra</span>'
@@ -405,7 +405,7 @@ def more():
     body += '<div style="height:20px"></div><div class="list">' + li("globe","Language","English") + \
             li("lock","Privacy","Transcripts off &middot; Delete my data") + li("gear","Settings") + li("info","About Soterra") + '</div>'
     body += f"""<div class="card" style="margin-top:20px;display:flex;gap:12px;align-items:center">
-  <span style="color:var(--accent)">{ic("phone",24)}</span><div><b>+1 804 606 6867</b><p style="font-size:13px;color:var(--muted)">Soterra hotline &middot; English &middot; Espa&ntilde;ol &middot; 24/7</p></div></div>
+  <span style="color:var(--accent)">{ic("phone",24)}</span><div><b>+1 712 600 3362</b><p style="font-size:13px;color:var(--muted)">Soterra hotline &middot; English &middot; Espa&ntilde;ol &middot; 24/7</p></div></div>
 <p class="foot">Soterra shares official information. It does not replace emergency services.</p>"""
     return body + tabs("More")
 

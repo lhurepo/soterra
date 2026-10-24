@@ -28,7 +28,7 @@ Simulator: pick any iPhone simulator and press Run. Tests: **Product → Test** 
 - **911 pill** (every screen): opens the danger sheet. **Demo safety:** "Call 911" opens the dialer with
   **119**, not 911 (`DemoConfig.emergencyDialNumber`). iOS asks before calling. 119 is an emergency number in
   some countries, such as Japan and South Korea.
-- **Call Soterra** really dials the live hotline, +1 804 606 6867.
+- **Call Soterra** really dials the live hotline, +1 712 600 3362.
 - **Ask Soterra:** try "What's going on with the Ridgeview Fire?", "Where are the shelters?",
   "Is Hillcrest Elementary open as a shelter?" (I don't know yet), then "Call me when you know", or
   "I'm trapped" (danger sheet).

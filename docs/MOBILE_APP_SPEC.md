@@ -19,7 +19,7 @@ calls people back when the news changes.
 
 There are four ways in. All of them use one shared backend (Convex):
 
-1. **Phone hotline.** This is the main product: anyone can call **+1 804 606 6867** from any phone and talk to a
+1. **Phone hotline.** This is the main product: anyone can call **+1 712 600 3362** from any phone and talk to a
    voice AI, with no app needed. It is already live.
 2. **Mobile app (iOS).** This is what we are designing. It adds visual alerts, a map, household check-ins and
    call history on top of the hotline.
@@ -97,7 +97,7 @@ Onboarding (first launch)
 
 Home
   ├─ Top alert card → Alert detail
-  ├─ Hotline card → native dialer (+1 804 606 6867)
+  ├─ Hotline card → native dialer (+1 712 600 3362)
   ├─ Ask Soterra → Assistant (in-app)
   ├─ Your next step → Map / Household
   ├─ Following list → Following feed (per topic)
@@ -185,7 +185,7 @@ For each screen: **Purpose · Elements and buttons · Data · States**.
   - **Top alert card**, large: hazard icon, "Evacuation Warning for the Ridgeview Fire", severity
     *Severe*, "Zones SON-3A and SON-3B, east of Santa Rosa", freshness, source line. Buttons: **View
     details**, **Ask Soterra**.
-  - **Hotline card:** "Talk to Soterra by phone — +1 804 606 6867", with **Call** (opens the dialer) and a
+  - **Hotline card:** "Talk to Soterra by phone — +1 712 600 3362", with **Call** (opens the dialer) and a
     note "English · Español · 24/7".
   - **Ask Soterra** button, which starts or returns to the in-app assistant (it reads "Return to Soterra"
     while a session is active).
@@ -280,7 +280,7 @@ For each screen: **Purpose · Elements and buttons · Data · States**.
 - **End call → Summary sheet:** a 2–3 sentence summary, topics, saved questions, follow-ups created, "Transcript
   saved / Summary only", then **Done** and **View in history**.
 - **States:** ready/empty; checking (typing indicator + "Checking the latest official updates…", which appears
-  after 1.2 s); speaking (waveform); offline ("You're offline. Call +1 804 606 6867 — calls work without
+  after 1.2 s); speaking (waveform); offline ("You're offline. Call +1 712 600 3362 — calls work without
   data." + Call button); minimized (mini call bar).
 
 ### 6.8 Question detail (my saved question)
@@ -446,7 +446,7 @@ privacy · **Call the hotline**.
 Household sample: Maya (you, Parent, On my way), Daniel (Parent, At the meeting point), Leo (Child, Awaiting
 check-in, last 45 min ago ⚠), Rosa (Grandparent, Checking in).
 
-Hotline: **+1 804 606 6867**.
+Hotline: **+1 712 600 3362**.
 
 ---
 
