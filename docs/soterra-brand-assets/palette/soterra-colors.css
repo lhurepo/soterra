@@ -1,0 +1,7 @@
+:root {
+  --soterra-abyss: #041421; /* Primary dark background */
+  --soterra-deep-teal: #042630; /* Cards, surfaces */
+  --soterra-slate-teal: #4c7273; /* Borders, secondary */
+  --soterra-sage: #86b9b0; /* Accent, links, buttons */
+  --soterra-mist: #d0d6d6; /* Text on dark, light background */
+}

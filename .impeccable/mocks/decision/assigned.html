@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--abyss:#041421;--deep:#042630;--slate:#4C7273;--sage:#86B9B0;--mist:#D0D6D6;--sev:#E8833A;--red:#E5484D;--muted:#8FA6A6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:390px;height:844px;overflow:hidden;background:var(--abyss);color:var(--mist);font:400 15px/1.35 Inter,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.sb{height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font-weight:600;font-size:15px}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:6px 16px 0}
+.loc{font-size:15px;color:var(--sage);font-weight:500}
+.pill{background:var(--red);color:#fff;font-weight:700;font-size:15px;padding:7px 14px;border-radius:999px;display:flex;gap:6px;align-items:center}
+h1{font:600 34px/1.1 Outfit,sans-serif;letter-spacing:-.02em;padding:4px 16px 12px}
+.plate{margin:0 16px;background:var(--mist);color:var(--abyss);border-radius:14px;padding:16px;position:relative;box-shadow:0 0 0 2px var(--sev)}
+.sev{display:inline-flex;gap:6px;align-items:center;background:var(--sev);color:#1d0e02;font-weight:700;font-size:13px;padding:4px 10px;border-radius:999px}
+.plate h2{font:600 24px/1.15 Outfit,sans-serif;letter-spacing:-.01em;margin:10px 0 4px}
+.zones{font-size:15px;color:#22393c}
+.spine{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:14px;border-top:1px solid #9fb0b0;padding-top:8px;font-size:12px;color:#3c5557}
+.spine b{display:block;font-size:15px;color:var(--abyss);font-weight:600}
+.spine .now b{color:var(--slate)}
+.src{margin-top:10px;font-size:12px;color:#3c5557}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.btn{height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px}
+.pri{background:var(--abyss);color:var(--mist)}.sec{background:transparent;color:var(--abyss);box-shadow:inset 0 0 0 1.5px var(--abyss)}
+.sect{display:flex;justify-content:space-between;padding:20px 16px 6px;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tbl{margin:0 16px;border-top:1px solid var(--slate)}
+.row{display:grid;grid-template-columns:70px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #12333d}
+.t{font-weight:600;color:var(--sage);font-size:14px}
+.row p{font-size:14px;color:var(--mist)}.row small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.next{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 16px 0}
+.tile{background:var(--deep);border-radius:12px;padding:12px;font-weight:600;font-size:15px;min-height:64px}
+.tile small{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:4px}
+.call{position:absolute;left:0;right:0;bottom:83px;padding:10px 16px;background:var(--deep);display:grid;grid-template-columns:1.3fr 1fr;gap:8px;border-top:1px solid #12333d}
+.call .a{background:var(--sage);color:var(--abyss)}.call .b{background:transparent;color:var(--sage);box-shadow:inset 0 0 0 1.5px var(--sage)}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:83px;background:#06192a;border-top:1px solid #12333d;display:grid;grid-template-columns:repeat(5,1fr);padding-top:8px;text-align:center;font-size:10px;color:var(--muted)}
+.tabs i{display:block;width:24px;height:24px;margin:0 auto 3px;border-radius:6px;background:currentColor;opacity:.8}
+.tabs .on{color:var(--sage)}
+</style></head><body>
+<div class="sb"><span>2:22</span><span>●●● 41%</span></div>
+<div class="nav"><span class="loc">Sonoma County, CA ▾</span><span class="pill">✆ 911</span></div>
+<h1>Ridgeview Fire</h1>
+<section class="plate">
+  <span class="sev">▲ Severe · Warning</span>
+  <h2>Evacuation Warning. Be ready to leave.</h2>
+  <p class="zones">Zones SON-3A and SON-3B, east of Santa Rosa</p>
+  <div class="spine">
+    <span>Issued<b>1:40 PM</b></span><span>Updated<b>2:10 PM</b></span><span class="now">Now<b>2:22 PM</b></span>
+  </div>
+  <p class="src">Sonoma County Emergency Management (Demo) · Official source</p>
+  <div class="acts"><span class="btn pri">What to do</span><span class="btn sec">Ask about this</span></div>
+</section>
+<div class="next">
+  <div class="tile">Find a shelter<small>2 open · checked 2:30 PM</small></div>
+  <div class="tile">Household<small>Leo hasn't checked in · 45 min</small></div>
+</div>
+<div class="sect"><span>Today</span><span style="color:var(--sage);text-transform:none;letter-spacing:0">Following 2 new</span></div>
+<div class="tbl">
+  <div class="row"><span class="t">2:10 PM</span><p>Fire about 1,200 acres, 10% contained<small>Sonoma County Fire Information (Demo)</small></p></div>
+  <div class="row"><span class="t">12:05 PM</span><p>Ridgeview Rd closed, Hwy 12 to Bennett Valley Rd<small>Caltrans District 4 (Demo)</small></p></div>
+</div>
+<div class="call"><span class="btn a">Call Soterra</span><span class="btn b">Ask Soterra</span></div>
+<nav class="tabs"><span class="on"><i></i>Home</span><span><i></i>Alerts</span><span><i></i>Map</span><span><i></i>Household</span><span><i></i>More</span></nav>
+</body></html>

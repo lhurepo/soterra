@@ -9,3 +9,20 @@ __pycache__/
 .pytest_cache/
 voice/build/
 voice/*.egg-info/
+
+# Personal Claude Code settings
+.claude/settings.local.json
+
+# Impeccable design skill: installed per machine, not vendored
+.claude/skills/impeccable/
+.agents/skills/impeccable/
+.claude/agents/impeccable-*.md
+.codex/
+.impeccable/config.local.json
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+ios/build/
+DerivedData/
+.DS_Store
