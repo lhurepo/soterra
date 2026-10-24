@@ -1,8 +1,9 @@
 # Soterra iOS app (demo build)
 
 SwiftUI app built from the Tide Table mockups (`docs/mockups/`, Figma "Soterra iOS – Tide Table"), the spec
-(`docs/MOBILE_APP_SPEC.md`) and the product record (`PRODUCT.md`). It runs on fictional Ridgeview Fire data from
-`fixtures/normalized/` and does **not** connect to the Convex backend yet. Light mode is the default.
+(`docs/MOBILE_APP_SPEC.md`) and the product record (`PRODUCT.md`). It loads alerts and crisis mode from the Convex backend (`GET /app/state`, `convex/app.ts`) and falls back to
+fictional Ridgeview Fire demo data when the backend is unreachable or **More → Demo controls → Use live backend
+data** is off (launch argument `-SoterraLive NO`). Shelters, household and the typed assistant are still demo-only. Light mode is the default.
 
 ## Run it on an iPhone
 

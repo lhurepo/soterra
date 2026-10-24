@@ -80,6 +80,12 @@ final class AppModel {
     var isShowingDanger = false
     var toast: Toast?
 
+    // Live data (GET /app/state). The demo scenarios below are used until a fetch succeeds, or when live is off.
+    var useLiveData = true
+    private(set) var liveState: AppStateResponse?
+    private(set) var isRefreshing = false
+    @ObservationIgnored var client: AppStateFetching = BackendClient()
+
     // Demo controls
     var scenario: HomeScenario = .crisis
     var isOffline = false
@@ -124,6 +130,7 @@ final class AppModel {
             self.appearance = appearance
         }
         isOffline = defaults.bool(forKey: "SoterraOffline")
+        if defaults.object(forKey: "SoterraLive") != nil { useLiveData = defaults.bool(forKey: "SoterraLive") }
         switch defaults.string(forKey: "SoterraScreen") {
         case "alert": homePath = [.alert(topAlert?.id ?? DemoData.warningID)]
         case "assistant": homePath = [.assistant(topic: "Evacuation Warning")]
@@ -136,11 +143,26 @@ final class AppModel {
 
     // MARK: Derived
 
-    var alerts: [HazardAlert] { DemoData.alerts(for: scenario) }
+    /// True when Home, Alerts and Today show the backend's bulletins instead of the demo scenarios.
+    var isShowingLive: Bool { useLiveData && liveState != nil }
+    var alerts: [HazardAlert] {
+        if isShowingLive, let liveState { return LiveAlerts.alerts(from: liveState) }
+        return DemoData.alerts(for: scenario)
+    }
     var topAlert: HazardAlert? { alerts.first }
-    var todayItems: [TimelineItem] { DemoData.today(for: scenario) }
-    var homeTitle: String { scenario == .calm ? "Home" : "Ridgeview Fire" }
-    var newUpdateCount: Int { scenario == .escalated ? 3 : 2 }
+    var todayItems: [TimelineItem] {
+        if isShowingLive, let liveState { return LiveAlerts.timeline(from: liveState) }
+        return DemoData.today(for: scenario)
+    }
+    var homeTitle: String { isShowingLive || scenario == .calm ? "Home" : "Ridgeview Fire" }
+    var newUpdateCount: Int {
+        if isShowingLive, let liveState { return liveState.alerts.filter { $0.updatedAt != nil }.count }
+        return scenario == .escalated ? 3 : 2
+    }
+
+    func alert(id: HazardAlert.ID) -> HazardAlert? {
+        alerts.first { $0.id == id } ?? DemoData.alert(id: id)
+    }
 
     var visibleAlerts: [HazardAlert] {
         switch alertsFilter {
@@ -252,6 +274,18 @@ final class AppModel {
         for index in followedTopics.indices { followedTopics[index].isActive = false }
         followedAlertIDs.removeAll()
         show("Deleted what Soterra saved and stopped updates")
+    }
+
+    /// Fetches the latest alerts and crisis state. On failure it keeps whatever was shown before.
+    func refresh() async {
+        guard useLiveData, !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        do {
+            liveState = try await client.fetchAppState()
+        } catch {
+            if liveState == nil { show("Can't reach Soterra. Showing demo information.") }
+        }
     }
 
     func show(_ message: String) {

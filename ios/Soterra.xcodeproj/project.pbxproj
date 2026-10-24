@@ -12,6 +12,8 @@
 		1D3145050D2C6F582A9BB675 = {isa = PBXBuildFile; fileRef = FE92C2A14A4F849A95FFF8DB /* SeverityStyle.swift */; };
 		22AC4B2B49E4F71E802412BF = {isa = PBXBuildFile; fileRef = 989D2F4B11DEFCA44371559F /* HouseholdView.swift */; };
 		30C242914CE0AFA468ED1818 = {isa = PBXBuildFile; fileRef = 5E9DCFDA34393CCD5D5121AA /* Buttons.swift */; };
+		E1F53392A64D7C3B773502A5 = {isa = PBXBuildFile; fileRef = E11E7D0560204C5DA3F3D4B4 /* BackendClient.swift */; };
+		E90257511C32DABF28247B41 = {isa = PBXBuildFile; fileRef = D26A1447054A77AF56ECB884 /* LiveAlerts.swift */; };
 		32CCB4FE1B6606B37A89A3D8 = {isa = PBXBuildFile; fileRef = 9CC5DE654293F0E5DDC60732 /* DemoConfig.swift */; };
 		332C2CF777B47E2A40DCCA1C = {isa = PBXBuildFile; fileRef = B53EEED5D14E2B9543E30F72 /* DemoData.swift */; };
 		4543D699F1490F0186B2D06C = {isa = PBXBuildFile; fileRef = 8D021A34B7FD2B667497E674 /* Palette.swift */; };
@@ -25,6 +27,7 @@
 		92E0D4F50C28F4F059C49F8B = {isa = PBXBuildFile; fileRef = 73661683B95B1100658759E8 /* DangerSheet.swift */; };
 		A38B53C0486A18E933FDFAD5 = {isa = PBXBuildFile; fileRef = 95EA1204454E21935FE0236C /* Typography.swift */; };
 		AA140505D918A4A8DCB8F3A0 = {isa = PBXBuildFile; fileRef = 464C36FD41B69400630031CC /* Assets.xcassets */; };
+		417FE5C5BD146ABEEE265554 = {isa = PBXBuildFile; fileRef = 077F982813F9B4146A326F77 /* LiveDataTests.swift */; };
 		B4F683040094739F0ED94E85 = {isa = PBXBuildFile; fileRef = 0F68A5D7188BCA4ABAF55AB1 /* AppModelTests.swift */; };
 		BA81EC6428D0AE19369AE459 = {isa = PBXBuildFile; fileRef = FECFD9BB402419BC6F252C49 /* DemoAssistantTests.swift */; };
 		BF80B4252795F24D053089FA = {isa = PBXBuildFile; fileRef = 49F3DF8D78CEBA8B2FDD5DCC /* Outfit-SemiBold.ttf */; };
@@ -46,6 +49,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		077F982813F9B4146A326F77 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveDataTests.swift"; sourceTree = "<group>"; };
 		0F68A5D7188BCA4ABAF55AB1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModelTests.swift"; sourceTree = "<group>"; };
 		0FD2DE29D47A429E515A1FCE = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL.txt"; sourceTree = "<group>"; };
 		34CAC7C8C70F6B0C6EE1CB83 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models.swift"; sourceTree = "<group>"; };
@@ -63,6 +67,8 @@
 		948AE2568A18CA1F0EECF71B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RootView.swift"; sourceTree = "<group>"; };
 		95EA1204454E21935FE0236C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Typography.swift"; sourceTree = "<group>"; };
 		989D2F4B11DEFCA44371559F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HouseholdView.swift"; sourceTree = "<group>"; };
+		E11E7D0560204C5DA3F3D4B4 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BackendClient.swift"; sourceTree = "<group>"; };
+		D26A1447054A77AF56ECB884 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveAlerts.swift"; sourceTree = "<group>"; };
 		9CC5DE654293F0E5DDC60732 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DemoConfig.swift"; sourceTree = "<group>"; };
 		A4812E4A79E49C1FB99D90FD = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Components.swift"; sourceTree = "<group>"; };
 		B4A5C4557E654E04BBF907F9 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeView.swift"; sourceTree = "<group>"; };
@@ -129,6 +135,8 @@
 			children = (
 				CF401E918324C74F54583643 /* DemoAssistant.swift */,
 				9CC5DE654293F0E5DDC60732 /* DemoConfig.swift */,
+				D26A1447054A77AF56ECB884 /* LiveAlerts.swift */,
+				E11E7D0560204C5DA3F3D4B4 /* BackendClient.swift */,
 				B53EEED5D14E2B9543E30F72 /* DemoData.swift */,
 				34CAC7C8C70F6B0C6EE1CB83 /* Models.swift */,
 			);
@@ -158,6 +166,7 @@
 			isa = PBXGroup;
 			children = (
 				0F68A5D7188BCA4ABAF55AB1 /* AppModelTests.swift */,
+				077F982813F9B4146A326F77 /* LiveDataTests.swift */,
 				FECFD9BB402419BC6F252C49 /* DemoAssistantTests.swift */,
 			);
 			path = "SoterraTests";
@@ -358,6 +367,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B4F683040094739F0ED94E85 /* AppModelTests.swift in Sources */,
+				417FE5C5BD146ABEEE265554 /* LiveDataTests.swift in Sources */,
 				BA81EC6428D0AE19369AE459 /* DemoAssistantTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -385,6 +395,8 @@
 				D4518307D263824B69B45FD5 /* MoreView.swift in Sources */,
 				8C9A0D77FA6382A641B5A6C9 /* DemoAssistant.swift in Sources */,
 				32CCB4FE1B6606B37A89A3D8 /* DemoConfig.swift in Sources */,
+				E90257511C32DABF28247B41 /* LiveAlerts.swift in Sources */,
+				E1F53392A64D7C3B773502A5 /* BackendClient.swift in Sources */,
 				332C2CF777B47E2A40DCCA1C /* DemoData.swift in Sources */,
 				C223CA60665628C6A48DEE9A /* Models.swift in Sources */,
 			);

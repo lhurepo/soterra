@@ -417,6 +417,31 @@ struct CallBar: View {
     }
 }
 
+/// A large, labelled way to phone the hotline from Home. It uses the dialer, so it works offline.
+struct CallSoterraCard: View {
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Talk to Soterra")
+                .font(.headline)
+                .foregroundStyle(Palette.textPrimary)
+            Text("Call \(DemoConfig.hotlineDisplay) from any phone. English · Español · 24/7")
+                .font(.footnote)
+                .foregroundStyle(Palette.textSecondary)
+            Button {
+                openURL(DemoConfig.hotlineURL)
+            } label: {
+                Label("Call Soterra", systemImage: "phone.fill")
+            }
+            .buttonStyle(FilledButtonStyle())
+            .accessibilityHint("Calls the Soterra hotline, \(DemoConfig.hotlineDisplay)")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .surfaceCard()
+    }
+}
+
 struct OfflineBanner: View {
     @Environment(AppModel.self) private var model
 
