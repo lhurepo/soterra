@@ -26,7 +26,10 @@ export function integrationStatus(config: Config): Record<string, IntegrationSta
       config.PHONE_NOTIFIER === "cartesia",
       has(config.CARTESIA_API_KEY, config.CARTESIA_AGENT_ID, config.CARTESIA_FROM_NUMBER_ID),
     ),
-    sms: "unconfigured",
+    sms:
+      config.SMS_NOTIFIER === "unconfigured"
+        ? "unconfigured"
+        : liveIf(config.SMS_NOTIFIER === "twilio", has(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN) && has(config.TWILIO_FROM_NUMBER ?? config.TWILIO_MESSAGING_SERVICE_SID)),
   };
 }
 
@@ -36,6 +39,8 @@ export function healthFlags(config: Config): Record<string, boolean> {
     mockSites: config.ENABLE_MOCK_SITES,
     // The Cartesia outbound adapter was written from the docs only; it has never placed a real call.
     cartesiaVerifiedLive: false,
+    // Twilio texts were written from the docs; set true once a real text has been delivered on the dev deployment.
+    twilioVerifiedLive: false,
     // True when MockLlm is deliberately failing (MOCK_LLM_MODE), so a degraded demo is not a surprise.
     mockLlmFailureMode: config.LLM_PROVIDER === "mock" && config.MOCK_LLM_MODE !== "normal",
   };

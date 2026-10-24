@@ -95,6 +95,16 @@ export const subscriptionTrigger = v.union(
 
 export const notificationChannel = v.union(v.literal("phone_call"), v.literal("sms"));
 
+/** Mirrors NotificationPurpose in src/contracts/notifications.ts. Absent on old rows = "update". */
+export const notificationPurpose = v.union(
+  v.literal("update"),
+  v.literal("scheduled_update"),
+  v.literal("verification"),
+  v.literal("missed_call_text"),
+  v.literal("call_recap"),
+  v.literal("subscription_confirmation"),
+);
+
 export const notificationStatus = v.union(
   v.literal("sent"),
   v.literal("queued"),
@@ -137,4 +147,6 @@ export const followUpRequest = v.object({
   incidentKey: v.optional(v.string()),
   area: v.optional(areaRef),
   trigger: subscriptionTrigger,
+  channel: v.optional(notificationChannel),
+  intervalMinutes: v.optional(v.number()),
 });

@@ -82,6 +82,10 @@ export const FollowUpRequest = z.object({
   incidentKey: z.string().optional(),
   area: AreaRef.optional(),
   trigger: z.enum(["any_update", "severity_change", "evacuation_change", "answer_available"]),
+  /** Additive (2026-10-24): how the caller wants updates. Absent = their saved preference, else a phone call. */
+  channel: z.enum(["phone_call", "sms"]).optional(),
+  /** Additive (2026-10-24): time-based updates ("every 2 hours"). Clamped to 60 minutes–24 hours. */
+  intervalMinutes: z.number().positive().optional(),
 });
 export type FollowUpRequest = z.infer<typeof FollowUpRequest>;
 

@@ -24,6 +24,16 @@ export const DEFAULTS = {
   /** Per subscription: at most one notification per window, and at most `notifyMaxPerHour` per hour. */
   notifyMinIntervalMs: 15 * MINUTE,
   notifyMaxPerHour: 4,
+  /** Time-based updates ("every 2 hours"): the interval is clamped to this range. */
+  scheduledMinIntervalMs: HOUR,
+  scheduledMaxIntervalMs: DAY,
+  /**
+   * After an update call is placed: when to check whether it was answered. Cartesia rings for 45 s
+   * (src/providers/cartesia/outbound.ts), so a call with no session by then was missed.
+   */
+  callOutcomeCheckMs: 100_000,
+  /** Texts are kept to about two SMS segments; longer recaps are cut at a sentence. */
+  smsMaxChars: 320,
   /** When the newest cited source is older than this, the reply says "as of" its time. */
   staleSourceMs: 3 * HOUR,
   /** Sessions silent this long are finalized by the sweeper (docs/contracts/live-call.md says 15 minutes). */
