@@ -1,0 +1,18 @@
+{
+  "sourceId": "mock_county_emergency",
+  "sourceName": "Sonoma County Emergency Management (Demo)",
+  "externalId": "page",
+  "url": "https://demo.soterra.example/mock-sites/county-emergency.html",
+  "title": "A page",
+  "body": "Text.",
+  "hazardType": "other",
+  "severity": "unknown",
+  "status": "actual",
+  "issuedAt": 1792875612345,
+  "areas": [],
+  "trustTier": "official",
+  "language": "en",
+  "contentHash": "00000000000000",
+  "isFixture": true,
+  "timeBasis": "guessed"
+}

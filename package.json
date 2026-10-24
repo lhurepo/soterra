@@ -10,7 +10,10 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p convex/tsconfig.json",
     "seed:fixtures": "tsx scripts/seed-fixtures.ts",
     "sim:call": "tsx scripts/sim-call.ts",
-    "inject:update": "tsx scripts/inject-update.ts"
+    "inject:update": "tsx scripts/inject-update.ts",
+    "ingest:run": "tsx scripts/ingest-run.ts",
+    "ingest:escalate": "tsx scripts/ingest-escalate.ts",
+    "ingest:apify-mock-sites": "tsx scripts/ingest-apify-mock-sites.ts"
   },
   "engines": {
     "node": ">=20.19"

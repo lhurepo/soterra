@@ -12,11 +12,11 @@ This repo is the **shared skeleton**: contracts, Convex schema and functions, pr
 | `src/orchestration/` | Alonso, Hikaru | turn pipeline, danger check, grounding, phrases, prompt |
 | `src/retrieval/`, `src/memory/`, `src/notifications/`, `src/config/` | Alonso, Hikaru | ranking, caller-memory rules, notifiers, env/health |
 | `src/providers/` | Alonso, Hikaru (Apify: Dhweya) | Anthropic/mock LLM, Moss, Apify, Cartesia outbound |
-| `src/ingestion/` | Dhweya | source registry, adapters, normalize, validate, dedupe, chunk, extract, crisis |
+| `src/ingestion/` | Dhweya | source registry, adapters (7 feeds + Apify pages + X), normalize, validate, dedupe, chunk, extract, crisis ([docs/ingestion.md](docs/ingestion.md)) |
 | `convex/` | per file header | thin Convex functions; `schema.ts`, `http.ts`, `crons.ts` are shared |
 | `voice/` | Leia | Python Line SDK agent ([voice/README.md](voice/README.md)) |
 | `fixtures/` | shared | fictional "Ridgeview Fire" demo data, golden contract JSON, scripted calls ([fixtures/README.md](fixtures/README.md)) |
-| `scripts/` | shared | `seed:fixtures`, `sim:call`, `inject:update` |
+| `scripts/` | shared | `seed:fixtures`, `sim:call`, `inject:update`, `ingest:run`, `ingest:escalate`, `ingest:apify-mock-sites` |
 | `tests/` | shared | Vitest unit tests (Convex function tests live in `convex/tests/`) |
 | `docs/` | shared | [live-call contract](docs/contracts/live-call.md), [ingestion-retrieval contract](docs/contracts/ingestion-retrieval.md), [DECISIONS.md](docs/DECISIONS.md), [SYSTEM_OVERVIEW.md](docs/SYSTEM_OVERVIEW.md) (reference only) |
 
@@ -58,8 +58,9 @@ npm run test:voice  # pytest in voice/ (uv)
 | --- | --- |
 | HTTP contract, auth, idempotency, danger check, grounding, unanswered questions, summaries, retention purge, stale-session sweeper, bulletin upsert/versioning/events/expiry, Convex search retrieval, crisis mode | Working (skeleton quality) |
 | LLM | `MockLlm` by default; Anthropic adapter is a placeholder (`LLM_PROVIDER=anthropic`) |
-| Official feeds | Registry + adapter stubs, all disabled. NWS has request building and mapping notes. |
-| Moss, Apify, Cartesia outbound | Placeholders that throw `NotConfiguredError` naming missing env vars |
+| Official feeds | NWS, USGS, OpenFEMA, NHC, Tsunami.gov, InciWeb, WFIGS adapters; fixture mode by default, live-ready; all disabled until enabled ([docs/ingestion.md](docs/ingestion.md)) |
+| Apify | MockApify by default; live client wired for the Convex-served mock sites (not yet run with a real token) |
+| Moss, Cartesia outbound | Placeholders that throw `NotConfiguredError` naming missing env vars |
 | SMS | `UnconfiguredSmsNotifier` (no provider chosen) |
 | Voice agent | Working against `MockBackendClient` and the HTTP backend; not yet on a phone number |
 

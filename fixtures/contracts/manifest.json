@@ -1,28 +1,132 @@
 {
   "$comment": "Golden examples for every HTTP and storage contract. TS (tests/contracts.test.ts) and Python (voice/tests/test_models.py) both validate these. 'python' marks schemas mirrored in voice/soterra_voice/models.py.",
   "valid": [
-    { "file": "voice.session-start.request.json", "schema": "SessionStartRequest", "python": true },
-    { "file": "voice.session-start.outbound.request.json", "schema": "SessionStartRequest", "python": true },
-    { "file": "voice.session-start.response.json", "schema": "SessionStartResponse", "python": true },
-    { "file": "voice.turn.request.json", "schema": "TurnRequest", "python": true },
-    { "file": "voice.turn.request.by-provider-call-id.json", "schema": "TurnRequest", "python": true },
-    { "file": "voice.turn.response.answer.json", "schema": "TurnResponse", "python": true },
-    { "file": "voice.turn.response.no_info.json", "schema": "TurnResponse", "python": true },
-    { "file": "voice.turn.response.safety.json", "schema": "TurnResponse", "python": true },
-    { "file": "voice.turn.response.future-field.json", "schema": "TurnResponse", "python": true },
-    { "file": "voice.session-end.request.json", "schema": "SessionEndRequest", "python": true },
-    { "file": "voice.session-end.response.json", "schema": "SessionEndResponse", "python": true },
-    { "file": "error.json", "schema": "ErrorResponse", "python": true },
-    { "file": "health.response.json", "schema": "HealthResponse", "python": true },
-    { "file": "normalized-bulletin.json", "schema": "NormalizedBulletin", "python": false },
-    { "file": "subscription.json", "schema": "Subscription", "python": false },
-    { "file": "notification-request.json", "schema": "NotificationRequest", "python": false },
-    { "file": "call-summary.json", "schema": "CallSummary", "python": false }
+    {
+      "file": "voice.session-start.request.json",
+      "schema": "SessionStartRequest",
+      "python": true
+    },
+    {
+      "file": "voice.session-start.outbound.request.json",
+      "schema": "SessionStartRequest",
+      "python": true
+    },
+    {
+      "file": "voice.session-start.response.json",
+      "schema": "SessionStartResponse",
+      "python": true
+    },
+    {
+      "file": "voice.turn.request.json",
+      "schema": "TurnRequest",
+      "python": true
+    },
+    {
+      "file": "voice.turn.request.by-provider-call-id.json",
+      "schema": "TurnRequest",
+      "python": true
+    },
+    {
+      "file": "voice.turn.response.answer.json",
+      "schema": "TurnResponse",
+      "python": true
+    },
+    {
+      "file": "voice.turn.response.no_info.json",
+      "schema": "TurnResponse",
+      "python": true
+    },
+    {
+      "file": "voice.turn.response.safety.json",
+      "schema": "TurnResponse",
+      "python": true
+    },
+    {
+      "file": "voice.turn.response.future-field.json",
+      "schema": "TurnResponse",
+      "python": true
+    },
+    {
+      "file": "voice.session-end.request.json",
+      "schema": "SessionEndRequest",
+      "python": true
+    },
+    {
+      "file": "voice.session-end.response.json",
+      "schema": "SessionEndResponse",
+      "python": true
+    },
+    {
+      "file": "error.json",
+      "schema": "ErrorResponse",
+      "python": true
+    },
+    {
+      "file": "health.response.json",
+      "schema": "HealthResponse",
+      "python": true
+    },
+    {
+      "file": "normalized-bulletin.json",
+      "schema": "NormalizedBulletin",
+      "python": false
+    },
+    {
+      "file": "subscription.json",
+      "schema": "Subscription",
+      "python": false
+    },
+    {
+      "file": "notification-request.json",
+      "schema": "NotificationRequest",
+      "python": false
+    },
+    {
+      "file": "call-summary.json",
+      "schema": "CallSummary",
+      "python": false
+    },
+    {
+      "file": "normalized-bulletin.page-observed.json",
+      "schema": "NormalizedBulletin",
+      "python": false
+    },
+    {
+      "file": "normalized-bulletin.nws-update.json",
+      "schema": "NormalizedBulletin",
+      "python": false
+    },
+    {
+      "file": "signal.json",
+      "schema": "Signal",
+      "python": false
+    }
   ],
   "invalid": [
-    { "file": "invalid/voice.turn.request.no-session.json", "schema": "TurnRequest", "python": true },
-    { "file": "invalid/voice.session-start.request.bad-phone.json", "schema": "SessionStartRequest", "python": false },
-    { "file": "invalid/voice.turn.response.bad-kind.json", "schema": "TurnResponse", "python": false },
-    { "file": "invalid/normalized-bulletin.no-url.json", "schema": "NormalizedBulletin", "python": false }
+    {
+      "file": "invalid/voice.turn.request.no-session.json",
+      "schema": "TurnRequest",
+      "python": true
+    },
+    {
+      "file": "invalid/voice.session-start.request.bad-phone.json",
+      "schema": "SessionStartRequest",
+      "python": false
+    },
+    {
+      "file": "invalid/voice.turn.response.bad-kind.json",
+      "schema": "TurnResponse",
+      "python": false
+    },
+    {
+      "file": "invalid/normalized-bulletin.no-url.json",
+      "schema": "NormalizedBulletin",
+      "python": false
+    },
+    {
+      "file": "invalid/normalized-bulletin.bad-time-basis.json",
+      "schema": "NormalizedBulletin",
+      "python": false
+    }
   ]
 }

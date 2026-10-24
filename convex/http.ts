@@ -1,6 +1,6 @@
 // [S] HTTP router only. Handlers live in their owners' files. Served on the deployment's .convex.site URL.
 import { httpRouter } from "convex/server";
-import { mockSite } from "./dev";
+import { mockSite } from "./mockSites";
 import { health } from "./health";
 import { apifyWebhook } from "./ingestion";
 import { sessionEnd, sessionStart, turn } from "./voice";
@@ -16,7 +16,7 @@ http.route({ path: "/health", method: "GET", handler: health });
 // [I] Apify run webhook.
 http.route({ path: "/ingest/apify", method: "POST", handler: apifyWebhook });
 
-// [S] Dev only (404 unless ENABLE_MOCK_SITES=true).
+// [I] Dev only (404 unless ENABLE_MOCK_SITES=true).
 http.route({ pathPrefix: "/mock-sites/", method: "GET", handler: mockSite });
 
 export default http;

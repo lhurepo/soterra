@@ -1,0 +1,19 @@
+[
+  {
+    "url": "https://demo.soterra.example/mock-sites/county-emergency.html",
+    "crawl": {
+      "loadedUrl": "https://demo.soterra.example/mock-sites/county-emergency.html",
+      "loadedTime": "2026-10-24T21:00:12.345Z",
+      "referrerUrl": "https://demo.soterra.example/mock-sites/county-emergency.html",
+      "depth": 0,
+      "httpStatusCode": 200
+    },
+    "metadata": {
+      "canonicalUrl": "https://demo.soterra.example/mock-sites/county-emergency.html",
+      "title": "Sonoma County Emergency Updates (Demo)",
+      "description": null,
+      "languageCode": "en"
+    },
+    "text": "FICTIONAL DEMO PAGE for the Soterra hackathon project. Not a real county site.\nRidgeview Fire: Evacuation Updates\nLast updated: October 24, 2026, 1:45 PM PDT\nEvacuation Warning\nAn Evacuation Warning is in effect for zones SON-3A and SON-3B near the Ridgeview Fire, east of Santa Rosa.\nZone SON-3A: Ridgeview Road from Highway 12 to Bennett Valley Road\nZone SON-3B: Matanzas Creek area\nLeave immediately if an Evacuation Order is issued for your zone."
+  }
+]

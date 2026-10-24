@@ -1,11 +1,50 @@
 {
   "type": "FeatureCollection",
-  "properties": { "exceededTransferLimit": false },
+  "properties": {
+    "exceededTransferLimit": false
+  },
   "features": [
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [-122.62, 38.44] },
-      "properties": { "IncidentName": "Ridgeview (DEMO)", "POOState": "US-CA", "POOCounty": "Sonoma", "ModifiedOnDateTime_dt": 1792876200000, "IncidentSize": 1200, "PercentContained": 10, "UniqueFireIdentifier": "2026-CALNU-099999" }
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.62,
+          38.44
+        ]
+      },
+      "properties": {
+        "IncidentName": "Ridgeview (DEMO)",
+        "POOState": "US-CA",
+        "POOCounty": "Sonoma",
+        "ModifiedOnDateTime_dt": 1792876200000,
+        "IncidentSize": 1200,
+        "PercentContained": 10,
+        "UniqueFireIdentifier": "2026-CALNU-099999",
+        "FireDiscoveryDateTime": 1792868400000,
+        "IncidentTypeCategory": "WF"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -121.9,
+          39.7
+        ]
+      },
+      "properties": {
+        "IncidentName": "Demo Rx (DEMO)",
+        "POOState": "US-CA",
+        "POOCounty": "Butte",
+        "ModifiedOnDateTime_dt": 1792870000000,
+        "FireDiscoveryDateTime": 1792860000000,
+        "IncidentSize": 40,
+        "PercentContained": null,
+        "UniqueFireIdentifier": "2026-CABTU-099998",
+        "IncidentTypeCategory": "RX"
+      }
     }
   ]
 }

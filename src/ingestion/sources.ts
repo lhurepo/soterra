@@ -1,0 +1,197 @@
+// [I] Typed source registry, synced into the `sources` table by internal.sources.syncRegistry.
+// Sources start disabled (the cron tick only runs enabled ones) and in fixture mode (no network, no keys).
+// Trust tier is a property of the source and is never taken from content or from a model.
+// Endpoints verified 2026-10-24 (docs/DECISIONS.md, docs/ingestion.md).
+import type { AreaRef, SourceDefinition } from "../contracts";
+
+export type SourceMode = "fixture" | "live";
+export type ApifyActorKind = "website-content-crawler" | "cheerio-scraper" | "tweet-scraper";
+
+export type IngestionSource = SourceDefinition & {
+  mode: SourceMode;
+  /** The content is fictional even when fetched live (the Convex-served mock sites): always isFixture. */
+  contentIsFixture?: boolean;
+  /** The area this source has authority over. Comes from configuration, never from content. */
+  jurisdiction?: AreaRef;
+  apify?: { actor: ApifyActorKind; mockSitePath?: string; maxItems?: number };
+};
+
+const SONOMA: AreaRef = { state: "CA", county: "Sonoma", countyFips: "06097", label: "Sonoma County" };
+
+export const SOURCES: IngestionSource[] = [
+  {
+    sourceId: "nws_alerts",
+    name: "National Weather Service",
+    kind: "official_api",
+    trustTier: "official",
+    fetchVia: "direct",
+    normalIntervalMin: 5,
+    crisisIntervalMin: 1,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["CA"],
+    endpoint: "https://api.weather.gov/alerts/active?area={STATE}",
+  },
+  {
+    sourceId: "usgs_earthquakes",
+    name: "U.S. Geological Survey",
+    kind: "official_api",
+    trustTier: "official",
+    fetchVia: "direct",
+    normalIntervalMin: 5,
+    crisisIntervalMin: 2,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["CA"],
+    endpoint: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_hour.geojson",
+  },
+  {
+    sourceId: "openfema_declarations",
+    name: "FEMA",
+    kind: "official_api",
+    trustTier: "official",
+    fetchVia: "direct",
+    normalIntervalMin: 60,
+    crisisIntervalMin: 30,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["CA"],
+    endpoint: "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$filter=state eq '{STATE}'&$orderby=declarationDate desc&$top=50",
+  },
+  {
+    sourceId: "nhc_storms",
+    name: "National Hurricane Center",
+    kind: "official_api",
+    trustTier: "official",
+    fetchVia: "direct",
+    normalIntervalMin: 30,
+    crisisIntervalMin: 10,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["*"],
+    endpoint: "https://www.nhc.noaa.gov/CurrentStorms.json",
+  },
+  {
+    sourceId: "tsunami_ntwc",
+    name: "National Tsunami Warning Center",
+    kind: "official_api",
+    trustTier: "official",
+    fetchVia: "direct",
+    normalIntervalMin: 5,
+    crisisIntervalMin: 1,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["*"],
+    endpoint: "https://www.tsunami.gov/events/xml/PAAQCAP.xml",
+  },
+  {
+    sourceId: "inciweb",
+    name: "InciWeb",
+    kind: "official_api",
+    trustTier: "official",
+    fetchVia: "direct",
+    normalIntervalMin: 30,
+    crisisIntervalMin: 10,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["*"],
+    endpoint: "https://inciweb.wildfire.gov/incidents/rss.xml",
+  },
+  {
+    sourceId: "nifc_wfigs",
+    name: "National Interagency Fire Center",
+    kind: "official_api",
+    trustTier: "official",
+    fetchVia: "direct",
+    normalIntervalMin: 15,
+    crisisIntervalMin: 5,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["CA"],
+    endpoint:
+      "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Incident_Locations_Current/FeatureServer/0/query?where=POOState%3D%27US-{STATE}%27&outFields=*&f=geojson",
+  },
+  {
+    sourceId: "mock_county_emergency",
+    name: "Sonoma County Emergency Management (Demo)",
+    kind: "official_web",
+    trustTier: "official",
+    fetchVia: "apify",
+    normalIntervalMin: 30,
+    crisisIntervalMin: 5,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["CA"],
+    endpoint: "{CONVEX_SITE_URL}/mock-sites/county-emergency.html",
+    contentIsFixture: true,
+    jurisdiction: SONOMA,
+    apify: { actor: "website-content-crawler", mockSitePath: "county-emergency.html", maxItems: 1 },
+  },
+  {
+    sourceId: "mock_shelters",
+    name: "Sonoma County Emergency Management (Demo)",
+    kind: "official_web",
+    trustTier: "official",
+    fetchVia: "apify",
+    normalIntervalMin: 30,
+    crisisIntervalMin: 5,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["CA"],
+    endpoint: "{CONVEX_SITE_URL}/mock-sites/shelters.html",
+    contentIsFixture: true,
+    jurisdiction: SONOMA,
+    apify: { actor: "cheerio-scraper", mockSitePath: "shelters.html", maxItems: 1 },
+  },
+  {
+    sourceId: "mock_disaster_assistance",
+    name: "DisasterAssistance.gov (Demo)",
+    kind: "official_web",
+    trustTier: "official",
+    fetchVia: "apify",
+    normalIntervalMin: 360,
+    crisisIntervalMin: 60,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["CA"],
+    endpoint: "{CONVEX_SITE_URL}/mock-sites/disaster-assistance.html",
+    contentIsFixture: true,
+    jurisdiction: SONOMA,
+    apify: { actor: "website-content-crawler", mockSitePath: "disaster-assistance.html", maxItems: 1 },
+  },
+  {
+    // Allowlisted accounts (X_ALLOWLIST) become official_social bulletins; every other post is a signal only.
+    sourceId: "x_posts",
+    name: "X (official accounts)",
+    kind: "social",
+    trustTier: "official_social",
+    fetchVia: "apify",
+    // The Tweet Scraper actor forbids repeating the same query at short intervals.
+    normalIntervalMin: 60,
+    crisisIntervalMin: 30,
+    enabled: false,
+    mode: "fixture",
+    regionStates: ["CA"],
+    apify: { actor: "tweet-scraper", maxItems: 50 },
+  },
+];
+
+export function sourceById(sourceId: string): IngestionSource | undefined {
+  return SOURCES.find((s) => s.sourceId === sourceId);
+}
+
+/** Effective mode for one run: explicit override, else APIFY_MODE=live promotes Apify sources, else the row's mode. */
+export function effectiveMode(
+  source: Pick<IngestionSource, "fetchVia" | "mode">,
+  override: SourceMode | undefined,
+  apifyMode: "mock" | "live",
+): SourceMode {
+  if (override) return override;
+  if (source.fetchVia === "apify" && apifyMode === "live") return "live";
+  return source.mode;
+}
+
+/** Fixture runs and fictional content are always flagged; live official data never is. */
+export function isFixtureRun(source: Pick<IngestionSource, "contentIsFixture">, mode: SourceMode): boolean {
+  return mode === "fixture" || source.contentIsFixture === true;
+}

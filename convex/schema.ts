@@ -11,8 +11,10 @@ import {
   notificationChannel,
   notificationStatus,
   replyKind,
+  runOutcome,
   severity,
   subscriptionTrigger,
+  timeBasis,
   trustTier,
 } from "./validators";
 
@@ -126,6 +128,7 @@ export default defineSchema({
     .index("by_status", ["status"]),
 
   // ───────────── [I] Ingestion ─────────────
+  /** One row per source: the SourceDefinition plus mode and run bookkeeping. Synced from src/ingestion/sources.ts. */
   sources: defineTable({
     sourceId: v.string(),
     name: v.string(),
@@ -137,9 +140,16 @@ export default defineSchema({
     enabled: v.boolean(),
     regionStates: v.array(v.string()),
     endpoint: v.optional(v.string()),
-    lastFetchedAt: v.optional(v.number()),
+    /** Optional only so rows written by the skeleton (before modes existed) still validate; absent = "fixture". */
+    mode: v.optional(v.union(v.literal("fixture"), v.literal("live"))),
+    lastRunAt: v.optional(v.number()),
+    nextDueAt: v.optional(v.number()),
+    lastOutcome: v.optional(runOutcome),
+    consecutiveFailures: v.optional(v.number()),
     lastSuccessAt: v.optional(v.number()),
     lastError: v.optional(v.string()),
+    /** @deprecated Skeleton field, superseded by lastRunAt. Kept so existing rows validate. */
+    lastFetchedAt: v.optional(v.number()),
   }).index("by_sourceId", ["sourceId"]),
 
   /** Latest state of each official item, keyed by (sourceId, externalId). */
@@ -166,9 +176,17 @@ export default defineSchema({
     primaryState: v.string(),
     geometry: v.optional(v.string()),
     geometryStorageId: v.optional(v.id("_storage")),
+    timeBasis: v.optional(timeBasis),
   })
     .index("by_sourceId_and_externalId", ["sourceId", "externalId"])
     .index("by_isActive_and_expiresAt", ["isActive", "expiresAt"]),
+
+  /** Every external id seen for a bulletin (NWS Update/Cancel messages get new ids that reference old ones). */
+  bulletinAliases: defineTable({
+    sourceId: v.string(),
+    externalId: v.string(),
+    bulletinId: v.id("bulletins"),
+  }).index("by_sourceId_and_externalId", ["sourceId", "externalId"]),
 
   /** Full history: one row per distinct content version (the normalized payload, minus geometry). */
   bulletinVersions: defineTable({
@@ -198,6 +216,7 @@ export default defineSchema({
     isActive: v.boolean(),
     isFixture: v.boolean(),
     primaryState: v.string(),
+    timeBasis: v.optional(timeBasis),
   })
     .index("by_bulletinId", ["bulletinId"])
     .searchIndex("search_text", {
@@ -237,7 +256,69 @@ export default defineSchema({
     /** Truncated raw item for debugging; full raw payloads belong in file storage. */
     rawExcerpt: v.string(),
     createdAt: v.number(),
+    runId: v.optional(v.id("ingestionRuns")),
   }),
+
+  /** Unverified posts kept only as signals: never bulletins, never chunked, never retrievable. */
+  signals: defineTable({
+    sourceId: v.string(),
+    platform: v.literal("x"),
+    externalId: v.string(),
+    url: v.string(),
+    authorHandle: v.string(),
+    text: v.string(),
+    postedAt: v.optional(v.number()),
+    observedAt: v.number(),
+    /** postedAt when known, else observedAt: the time used for burst windows. */
+    signalAt: v.number(),
+    hazardTypes: v.array(hazardType),
+    states: v.array(v.string()),
+    /** First of `states` (or "US"): indexed for burst detection. */
+    primaryState: v.string(),
+    isFixture: v.boolean(),
+  })
+    .index("by_externalId", ["externalId"])
+    .index("by_primaryState_and_signalAt", ["primaryState", "signalAt"]),
+
+  /** One row per source run. Every run ends with a recorded outcome. */
+  ingestionRuns: defineTable({
+    sourceId: v.string(),
+    trigger: v.union(v.literal("tick"), v.literal("manual"), v.literal("signal_burst"), v.literal("escalation")),
+    mode: v.union(v.literal("fixture"), v.literal("live")),
+    status: v.union(v.literal("running"), v.literal("awaiting_apify"), v.literal("processing"), v.literal("succeeded"), v.literal("failed")),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    apifyRunId: v.optional(v.string()),
+    apifyDatasetId: v.optional(v.string()),
+    apifyEventType: v.optional(v.string()),
+    counts: v.optional(
+      v.object({
+        fetched: v.number(),
+        created: v.number(),
+        updated: v.number(),
+        unchanged: v.number(),
+        cancelled: v.number(),
+        rejected: v.number(),
+        skipped: v.number(),
+        signals: v.number(),
+      }),
+    ),
+    mossSync: v.optional(v.union(v.literal("skipped"), v.literal("ok"), v.literal("failed"))),
+    error: v.optional(v.string()),
+  })
+    .index("by_apifyRunId", ["apifyRunId"])
+    .index("by_sourceId", ["sourceId"]),
+
+  /** Raw fetched payloads, kept briefly in file storage for debugging (RAW_PAYLOAD_TTL_HOURS). */
+  rawPayloads: defineTable({
+    sourceId: v.string(),
+    runId: v.id("ingestionRuns"),
+    storageId: v.id("_storage"),
+    url: v.string(),
+    contentType: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  }).index("by_expiresAt", ["expiresAt"]),
 
   systemState: defineTable({
     key: v.literal("global"),
@@ -246,7 +327,18 @@ export default defineSchema({
     triggeredByBulletinId: v.optional(v.id("bulletins")),
     since: v.number(),
     expiresAt: v.optional(v.number()),
+    /** When a signal burst last triggered an early poll of official sources. */
+    lastSignalPollAt: v.optional(v.number()),
   }).index("by_key", ["key"]),
+
+  /** Every crisis-mode change, for the log. */
+  systemModeLog: defineTable({
+    mode: v.union(v.literal("normal"), v.literal("crisis")),
+    reason: v.string(),
+    triggeredByBulletinId: v.optional(v.id("bulletins")),
+    expiresAt: v.optional(v.number()),
+    at: v.number(),
+  }),
 
   // ───────────── [B] Follow-ups (optional) ─────────────
   subscriptions: defineTable({
@@ -293,8 +385,17 @@ export default defineSchema({
   /** Mock HTML pages served at /mock-sites/* when ENABLE_MOCK_SITES=true, so Apify can scrape a real URL. */
   mockSites: defineTable({
     path: v.string(),
+    /** v1 = initial state; v2 = escalated (one zone warning → order, shelter capacity changed). */
+    /** Absent on rows seeded by the skeleton: treated as v1. */
+    variant: v.optional(v.union(v.literal("v1"), v.literal("v2"))),
     contentType: v.string(),
     body: v.string(),
     updatedAt: v.number(),
-  }).index("by_path", ["path"]),
+  }).index("by_path_and_variant", ["path", "variant"]),
+
+  /** Dev-only key/value settings (e.g. the active mock-site variant). */
+  devSettings: defineTable({
+    key: v.string(),
+    value: v.string(),
+  }).index("by_key", ["key"]),
 });
