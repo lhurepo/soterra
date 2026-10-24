@@ -7,12 +7,13 @@ import { DEFAULTS, isSupportedLanguage, supportedLanguage } from "../src/config/
 import { buildCallerContext } from "../src/memory/callerContext";
 import { STALE_SESSION_MS } from "../src/memory/retention";
 import type { AreaCandidate } from "../src/orchestration/area";
-import { inboundGreeting, outboundGreeting } from "../src/orchestration/greeting";
+import { inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
 import type { LlmMessage } from "../src/providers/llm/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { getOrCreateCaller, verifiedAccountForPhone } from "./callers";
+import { addNeed } from "../src/memory/profile";
+import { forgetCallerMemory, getOrCreateCaller, verifiedAccountForPhone } from "./callers";
 import { cancelSubscriptionsForPhone, createSubscriptionForCall } from "./subscriptions";
 import { recordUnansweredForCall } from "./unanswered";
 import { areaRef, citation, endReason, followUpRequest, hazardType, replyKind } from "./validators";
@@ -57,13 +58,18 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
       : null);
   // Outbound callbacks may not carry the dialed number; the notification knows who we called.
   const callerPhone = args.callerPhone ?? (args.direction === "outbound" ? notification?.recipientPhone : undefined);
+  // The callback check: a recent verification notification of ours, answered at the number we dialed. Valid for this call only.
+  const verifiedPhone =
+    args.direction === "outbound" &&
+    notification?.purpose === "verification" &&
+    callerPhone !== undefined &&
+    callerPhone === notification.recipientPhone &&
+    now - notification.createdAt <= DEFAULTS.verificationValidMs;
 
   let caller: Doc<"callers"> | null = null;
-  let returning = false;
   if (callerPhone) {
     const found = await getOrCreateCaller(ctx, callerPhone, now);
     caller = found.caller;
-    returning = !found.created && now - caller.lastCallAt <= DEFAULTS.lastSummaryTtlMs;
   }
   const accountId = callerPhone ? await verifiedAccountForPhone(ctx, callerPhone) : undefined;
   const account = accountId ? await ctx.db.get("accounts", accountId) : null;
@@ -84,6 +90,8 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
     language,
     knownArea: caller?.knownArea,
     accountNeeds: account?.needs,
+    verifiedPhone,
+    profileNeeds: caller?.profileNeeds,
     lastSummary: lastSummary ? { text: lastSummary.summary, createdAt: lastSummary.createdAt } : undefined,
     lastCallAt: caller?.lastCallAt,
     lastIncidentKeys: caller?.lastIncidentKeys,
@@ -95,10 +103,11 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
     })),
     now,
   });
-  const greeting =
-    args.direction === "outbound" && notification
+  const greeting = verifiedPhone
+    ? verificationGreeting(language)
+    : args.direction === "outbound" && notification
       ? outboundGreeting(language, notification.message)
-      : inboundGreeting(language, { returning: returning && args.direction === "inbound" });
+      : inboundGreeting(language);
 
   const callId = await ctx.db.insert("calls", {
     provider: "cartesia",
@@ -112,6 +121,7 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
     language,
     transcriptConsent: "notice_given",
     notificationId: notification?._id,
+    verifiedPhone: verifiedPhone || undefined,
     callerContext,
     greeting,
     startedAt: args.startedAt,
@@ -209,6 +219,8 @@ export type BeginTurnResult =
       recentCallerUtterances: string[];
       hasOpenQuestion: boolean;
       callIncidentKeys: string[];
+      pendingAction?: "forget";
+      verificationsLastHour: number;
     };
 
 /**
@@ -282,10 +294,21 @@ export const beginTurn = internalMutation({
       .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", callId))
       .take(20);
 
+    const verificationsLastHour = call.callerPhone
+      ? (
+          await ctx.db
+            .query("notifications")
+            .withIndex("by_recipientPhone_and_createdAt", (q) => q.eq("recipientPhone", call.callerPhone!).gt("createdAt", now - 3_600_000))
+            .take(20)
+        ).filter((n) => n.purpose === "verification").length
+      : 0;
+
     return {
       status: "new",
       callId,
       turnId,
+      pendingAction: call.pendingAction,
+      verificationsLastHour,
       hasCallerPhone: call.callerPhone !== undefined,
       callArea: call.knownArea,
       context: call.callerContext ?? { identity: "anonymous", language: call.language },
@@ -324,6 +347,11 @@ export const completeTurn = internalMutation({
       cancelSubscriptions: v.optional(v.boolean()),
       setKnownArea: v.optional(areaRef),
       declineTranscript: v.optional(v.boolean()),
+      requestVerification: v.optional(v.boolean()),
+      saveProfileNeed: v.optional(v.string()),
+      forgetCaller: v.optional(v.boolean()),
+      setPendingAction: v.optional(v.literal("forget")),
+      clearPendingAction: v.optional(v.boolean()),
     }),
   },
   returns: v.object({
@@ -359,6 +387,26 @@ export const completeTurn = internalMutation({
     }
 
     const callPatch: Partial<Doc<"calls">> = {};
+    // Personal commands (the pipeline only plans these on a verified call, except the callback request itself).
+    if (effects.requestVerification && call.callerPhone) {
+      await queueVerificationCall(ctx, call.callerPhone, reply.replyLanguage, now);
+    }
+    if (effects.saveProfileNeed && call.callerId) {
+      const caller = await ctx.db.get("callers", call.callerId);
+      const added = caller ? addNeed(caller.profileNeeds, effects.saveProfileNeed) : null;
+      if (caller && added?.status === "ok") await ctx.db.patch("callers", caller._id, { profileNeeds: added.needs, profileUpdatedAt: now });
+    }
+    if (effects.forgetCaller) {
+      if (call.callerPhone) await cancelSubscriptionsForPhone(ctx, call.callerPhone, now);
+      if (call.callerId) {
+        const caller = await ctx.db.get("callers", call.callerId);
+        if (caller) await forgetCallerMemory(ctx, caller);
+      }
+      callPatch.forgotten = true;
+      callPatch.transcriptConsent = "declined";
+    }
+    if (effects.setPendingAction) callPatch.pendingAction = effects.setPendingAction;
+    else if (effects.clearPendingAction || call.pendingAction) callPatch.pendingAction = undefined;
     if (effects.setKnownArea) callPatch.knownArea = effects.setKnownArea;
     if (effects.declineTranscript) callPatch.transcriptConsent = "declined";
     if (reply.kind === "safety") callPatch.safetyFlag = true;
@@ -380,6 +428,36 @@ export const completeTurn = internalMutation({
     return { unansweredQuestionId, subscriptionId, subscriptionsCancelled };
   },
 });
+
+/**
+ * Queues the callback check: a phone notification to the caller's own number, delivered after a short pause so
+ * they can hang up first. Rate limited per number; dedupe per minute. The call it creates is verified, once.
+ */
+async function queueVerificationCall(ctx: MutationCtx, phone: string, language: string, now: number): Promise<void> {
+  const recent = await ctx.db
+    .query("notifications")
+    .withIndex("by_recipientPhone_and_createdAt", (q) => q.eq("recipientPhone", phone).gt("createdAt", now - 3_600_000))
+    .take(20);
+  if (recent.filter((n) => n.purpose === "verification").length >= DEFAULTS.verificationsPerHour) return;
+  const dedupeKey = `verify:${phone}:${Math.floor(now / 60_000)}`;
+  const dup = await ctx.db
+    .query("notifications")
+    .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", dedupeKey))
+    .first();
+  if (dup) return;
+  const notificationId = await ctx.db.insert("notifications", {
+    recipientPhone: phone,
+    channel: "phone_call",
+    language,
+    message: "Soterra verification callback",
+    bulletinRefs: [],
+    dedupeKey,
+    purpose: "verification",
+    status: "queued",
+    createdAt: now,
+  });
+  await ctx.scheduler.runAfter(DEFAULTS.verificationDelayMs, internal.notifications.deliver, { notificationId });
+}
 
 async function endCall(ctx: MutationCtx, call: Doc<"calls">, endedAt: number, reason: NonNullable<Doc<"calls">["endReason"]>) {
   if (call.status === "active") {

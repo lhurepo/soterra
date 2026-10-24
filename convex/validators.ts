@@ -107,7 +107,7 @@ export const notificationStatus = v.union(
 export const callerContext = v.object({
   callerId: v.optional(v.string()),
   accountId: v.optional(v.string()),
-  identity: v.union(v.literal("anonymous"), v.literal("caller_id"), v.literal("verified_account")),
+  identity: v.union(v.literal("anonymous"), v.literal("caller_id"), v.literal("verified_phone"), v.literal("verified_account")),
   language: v.string(),
   knownArea: v.optional(areaRef),
   needs: v.optional(v.array(v.string())),

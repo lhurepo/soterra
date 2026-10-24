@@ -22,10 +22,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "en": "This is Soterra, the disaster information line. If you are in immediate danger, hang up and dial 911. This call is transcribed. What would you like to know?",
         "es": "Habla Soterra, la línea de información sobre desastres. Si está en peligro inmediato, cuelgue y marque 911. Esta llamada se transcribe. ¿Qué le gustaría saber?",
     },
-    # Spoken once per turn when the backend has not answered within FILLER_AFTER_S.
+    # Spoken once per turn when the backend has not answered within FILLER_AFTER_S. Neutral on purpose: it plays
+    # whatever was asked (a news question, a question about the caller's own saved details, small talk).
     "filler": {
-        "en": "One moment, I'm checking the latest official updates.",
-        "es": "Un momento, estoy revisando las actualizaciones oficiales más recientes.",
+        "en": "One moment.",
+        "es": "Un momento.",
     },
     # Optional (OFFER_SPANISH_DTMF=true), after the greeting. Always said in Spanish.
     "spanish_offer": {
@@ -50,6 +51,18 @@ def _lang(language: str) -> str:
 
 def phrase(key: str, language: str) -> str:
     return PHRASES[key][_lang(language)]
+
+
+# Used in turn, so back-to-back waits do not sound identical. The first one is PHRASES["filler"].
+FILLER_VARIANTS: dict[str, tuple[str, ...]] = {
+    "en": ("One moment.", "Let me check on that.", "Okay, one second.", "Give me just a moment."),
+    "es": ("Un momento.", "Déjeme revisar eso.", "Un segundo, por favor.", "Permítame un momento."),
+}
+
+
+def filler(language: str, used_before: int) -> str:
+    variants = FILLER_VARIANTS[_lang(language)]
+    return variants[used_before % len(variants)]
 
 
 def fallback(language: str) -> str:

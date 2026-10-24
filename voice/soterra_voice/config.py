@@ -77,7 +77,7 @@ class Settings:
     voice_api_secret: Optional[str] = field(default=None, repr=False)
     default_language: str = "en"
     turn_timeout_s: float = 8.0
-    filler_after_s: float = 1.2
+    filler_after_s: float = 1.6
     end_session_timeout_s: float = 2.0
     max_consecutive_failures: int = 3
     voice_ids: dict[str, str] = field(default_factory=lambda: {"en": DEFAULT_VOICE_ID, "es": DEFAULT_VOICE_ID})
@@ -120,7 +120,7 @@ class Settings:
             voice_api_secret=secret,
             default_language=default_language,
             turn_timeout_s=_float(env, "TURN_TIMEOUT_S", 8.0),
-            filler_after_s=_float(env, "FILLER_AFTER_S", 1.2),
+            filler_after_s=_float(env, "FILLER_AFTER_S", 1.6),
             end_session_timeout_s=_float(env, "END_SESSION_TIMEOUT_S", 2.0),
             max_consecutive_failures=int(max_failures),
             voice_ids={"en": voice_en, "es": voice_es},

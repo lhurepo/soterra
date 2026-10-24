@@ -13,7 +13,8 @@ import type { RetrievalRequest, RetrievalResult } from "../retrieval/retriever";
 import { resolveArea, type AreaCandidate, type AreaSource } from "./area";
 import { dangerLanguage } from "./danger";
 import { enforceGrounding } from "./grounding";
-import { asksToStopUpdates, declinesTranscript } from "./intents";
+import { addNeed } from "../memory/profile";
+import { asksToStopUpdates, declinesTranscript, isConfirmation, isRefusal, profileCommand } from "./intents";
 import { buildTurnRequest, parseDraft } from "./prompt";
 
 export type TurnInput = {
@@ -38,6 +39,10 @@ export type TurnState = {
   hasOpenQuestion: boolean;
   /** Incident keys cited earlier in this call, most recent first ("call me if it changes" refers to them). */
   callIncidentKeys?: string[];
+  /** A destructive command from the previous turn waiting for "yes" (anything else cancels it). */
+  pendingAction?: "forget";
+  /** Verification callbacks already requested for this number in the last hour (rate limit). */
+  verificationsLastHour?: number;
 };
 
 export type TurnDeps = {
@@ -55,6 +60,12 @@ export type TurnEffects = {
   cancelSubscriptions?: true;
   setKnownArea?: AreaRef;
   declineTranscript?: true;
+  /** Personal commands (verified calls only, except requestVerification which starts the check). */
+  requestVerification?: true;
+  saveProfileNeed?: string;
+  forgetCaller?: true;
+  setPendingAction?: "forget";
+  clearPendingAction?: true;
 };
 
 export type TurnOutcome = {
@@ -132,6 +143,13 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   if (inDangerIn) return { ...simple("safety", t("safety", inDangerIn)), language: inDangerIn };
 
   // 2. Deterministic intents that must not depend on the model.
+  // 2a. A destructive command from the previous turn is waiting for "yes"; anything else cancels it.
+  const verified = state.context.identity === "verified_phone" || state.context.identity === "verified_account";
+  const clearPending = state.pendingAction !== undefined;
+  if (state.pendingAction === "forget") {
+    if (verified && isConfirmation(input.utterance)) return simple("smalltalk", t("forgetDone", language), { forgetCaller: true, clearPendingAction: true });
+    if (isRefusal(input.utterance)) return simple("smalltalk", t("forgetCancelled", language), { clearPendingAction: true });
+  }
   if (asksToStopUpdates(input.utterance)) {
     return state.hasCallerPhone
       ? simple("followup", t("updatesStopped", language), { cancelSubscriptions: true })
@@ -139,8 +157,40 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   }
   if (declinesTranscript(input.utterance)) return simple("smalltalk", t("consentDeclined", language), { declineTranscript: true });
 
+  // 2b. Personal commands. Whoever says "I'm the owner" is just talking: access comes only from the identity
+  // level of the call, which is "verified_phone" only on a callback we placed to the caller's own number.
+  const command = profileCommand(input.utterance);
+  if (command) {
+    if (!verified) {
+      if (!state.hasCallerPhone) return simple("smalltalk", t("verifyHidden", language));
+      if ((state.verificationsLastHour ?? 0) >= DEFAULTS.verificationsPerHour) return simple("smalltalk", t("verifyLimited", language));
+      // The caller hangs up, then we ring their number; the agent ends this call after speaking.
+      return { ...simple("smalltalk", t("verifyAnnounce", language), { requestVerification: true, clearPendingAction: clearPending || undefined }), endCall: true };
+    }
+    const keep = clearPending ? { clearPendingAction: true as const } : {};
+    switch (command.kind) {
+      case "remember": {
+        const added = addNeed(state.context.needs, command.text);
+        if (added.status === "ok") return simple("smalltalk", tf("profileSaved", language, { need: added.need }), { saveProfileNeed: added.need, ...keep });
+        if (added.status === "full") return simple("smalltalk", t("profileFull", language), keep);
+        return simple("smalltalk", t("profileRejected", language), keep);
+      }
+      case "recall": {
+        const needs = state.context.needs;
+        return simple("smalltalk", needs?.length ? tf("profileRecall", language, { needs: needs.join("; ") }) : t("profileEmpty", language), keep);
+      }
+      case "recap": {
+        const summary = state.context.lastCallSummary;
+        return simple("smalltalk", summary ? tf("recapSummary", language, { summary }) : t("recapNone", language), keep);
+      }
+      case "forget":
+        return simple("smalltalk", t("forgetAsk", language), { setPendingAction: "forget" });
+    }
+  }
+
   // 3. Area for this turn.
   const effects: TurnEffects = {};
+  if (clearPending) effects.clearPendingAction = true; // a pending "forget" is cancelled by anything but "yes"
   const resolved = resolveArea({
     utterance: input.utterance,
     candidates: state.areaCandidates,
