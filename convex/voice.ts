@@ -18,6 +18,7 @@ import { t } from "../src/config/strings";
 import { normalizeE164 } from "../src/memory/phone";
 import { runTurn, type TurnOutcome } from "../src/orchestration/pipeline";
 import { selectLlm } from "../src/providers/llm";
+import { withTimeout } from "../src/providers/llm/errors";
 import { createMossRetriever } from "../src/providers/moss";
 import { createConvexRetriever, withFallback, type RetrievalRequest, type Retriever } from "../src/retrieval/retriever";
 import { internal } from "./_generated/api";
@@ -76,7 +77,8 @@ function retrieverFor(ctx: ActionCtx, cfg: Config): Retriever {
   const convex = createConvexRetriever((q) => ctx.runQuery(internal.retrieval.search, searchArgs(q)));
   if (cfg.RETRIEVER !== "moss") return convex;
   const moss = createMossRetriever({
-    query: async (text, topK) => (await ctx.runAction(internal.mossNode.query, { text, topK })).hits,
+    query: async (text, topK) =>
+      (await withTimeout(ctx.runAction(internal.mossNode.query, { text, topK }), DEFAULTS.mossTimeoutMs, "Moss query")).hits,
     hydrate: (chunkIds, q) => ctx.runQuery(internal.retrieval.hydrateChunks, { chunkIds, ...searchArgs(q) }),
   });
   return withFallback(moss, convex);
