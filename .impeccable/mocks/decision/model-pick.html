@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--abyss:#041421;--slate:#4C7273;--mist:#D0D6D6;--ink:#0E2228;--sev:#E8833A;--red:#E5484D}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:390px;height:844px;overflow:hidden;background:#fff;color:var(--ink);font:400 15px/1.35 Inter,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.band{background:var(--abyss);color:var(--mist);padding:0 16px 16px}
+.sb{height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 12px 6px;font-weight:600}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.pill{background:var(--red);color:#fff;font-weight:700;padding:7px 14px;border-radius:999px}
+.band h1{font:600 40px/1 Outfit,sans-serif;letter-spacing:-.03em;margin-top:18px}
+.band p{color:#9fb5b5;margin-top:6px}
+.grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #c5cccc}
+.cell{padding:14px 16px;border-right:1px solid #c5cccc}.cell:last-child{border-right:0}
+.full{grid-column:1/-1;border-right:0;border-bottom:1px solid #c5cccc}
+.sev{display:inline-block;background:var(--sev);color:#1d0e02;font-weight:700;font-size:13px;padding:3px 9px;border-radius:4px}
+h2{font:600 22px/1.15 Outfit,sans-serif;margin:8px 0 4px}
+.meta{font-size:12px;color:#4a5f63;margin-top:8px}
+.lbl{font-size:12px;font-weight:600;color:var(--slate);text-transform:uppercase;letter-spacing:.05em}
+.big{font:600 17px/1.2 Inter,sans-serif;margin-top:6px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.btn{height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.p{background:var(--abyss);color:#fff}.s{box-shadow:inset 0 0 0 1.5px var(--abyss)}
+.list .r{display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e1e5e5}
+.tabs{position:absolute;bottom:0;left:0;right:0;height:83px;border-top:1px solid #d6dbdb;display:grid;grid-template-columns:repeat(5,1fr);padding-top:8px;text-align:center;font-size:10px;color:#6b7c7f;background:#fafbfb}
+.tabs i{display:block;width:24px;height:24px;margin:0 auto 3px;border-radius:6px;background:currentColor;opacity:.7}.on{color:var(--abyss)}
+</style></head><body>
+<header class="band">
+  <div class="sb"><span>2:22</span><span>41%</span></div>
+  <div class="nav"><span>Sonoma County, CA ▾</span><span class="pill">911</span></div>
+  <h1>Ridgeview Fire</h1>
+  <p>Active emergency in your area</p>
+</header>
+<div class="grid">
+  <div class="cell full"><span class="sev">Severe · Warning</span>
+    <h2>Evacuation Warning for zones SON-3A and SON-3B</h2>
+    <p>East of Santa Rosa. Be ready to leave.</p>
+    <p class="meta">Sonoma County Emergency Management (Demo) · updated 2:10 PM</p>
+    <div class="btns"><span class="btn p">View details</span><span class="btn s">Ask Soterra</span></div>
+  </div>
+  <div class="cell"><span class="lbl">Next step</span><p class="big">Find a shelter</p><p class="meta">2 open · 2:30 PM</p></div>
+  <div class="cell"><span class="lbl">Household</span><p class="big">3 of 4 safe</p><p class="meta">Leo · 45 min ago</p></div>
+  <div class="cell full"><span class="lbl">Talk to Soterra</span><p class="big">+1 712 600 3362</p><p class="meta">English · Español · 24/7</p>
+    <div class="btns"><span class="btn p">Call</span><span class="btn s">Ask in app</span></div></div>
+</div>
+<div class="list"><div class="r"><span>Following · Ridgeview evacuations</span><b>2 new</b></div></div>
+<nav class="tabs"><span class="on"><i></i>Home</span><span><i></i>Alerts</span><span><i></i>Map</span><span><i></i>Household</span><span><i></i>More</span></nav>
+</body></html>

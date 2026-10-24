@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--deep:#042630;--mist:#D0D6D6;--amber:#F2C14E;--red:#E5484D;--mut:#7f9a9b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:390px;height:844px;overflow:hidden;background:#031a22;color:var(--mist);font:400 15px/1.3 Inter,sans-serif;font-variant-numeric:tabular-nums}
+.sb{height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font-weight:600}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:8px 16px}
+.pill{background:var(--red);color:#fff;font-weight:700;padding:7px 14px;border-radius:999px}
+h1{font:700 30px/1.1 Inter,sans-serif;padding:4px 16px 10px;letter-spacing:-.02em}
+.hd{display:grid;grid-template-columns:62px 1fr 74px;padding:6px 16px;font-size:11px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #194049}
+.r{display:grid;grid-template-columns:62px 1fr 74px;padding:12px 16px;border-bottom:1px solid #12343d;align-items:start}
+.r b{font-weight:600}.r small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
+.lit{background:#3a2f0e;box-shadow:inset 0 0 0 2px var(--amber)}
+.st{font-size:12px;font-weight:700;text-align:right}
+.ord{color:var(--amber)}.sv{color:#E8833A}.md{color:#d7c46a}
+.pass{margin:14px 16px;background:var(--mist);color:#041421;border-radius:12px;display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+.pass div{padding:12px}.pass div+div{border-left:1px dashed #7a8c8c}
+.pass small{display:block;font-size:11px;color:#3c5557;text-transform:uppercase;letter-spacing:.05em}
+.pass b{font-size:17px}
+.call{position:absolute;bottom:83px;left:0;right:0;padding:10px 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--deep)}
+.btn{height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.a{background:#86B9B0;color:#041421}.b{box-shadow:inset 0 0 0 1.5px #86B9B0;color:#86B9B0}
+.tabs{position:absolute;bottom:0;left:0;right:0;height:83px;background:#021219;display:grid;grid-template-columns:repeat(5,1fr);padding-top:8px;text-align:center;font-size:10px;color:var(--mut)}
+.tabs i{display:block;width:24px;height:24px;margin:0 auto 3px;border-radius:6px;background:currentColor;opacity:.7}.on{color:#86B9B0}
+</style></head><body>
+<div class="sb"><span>2:22</span><span>41%</span></div>
+<div class="nav"><span>Sonoma County, CA ▾</span><span class="pill">911</span></div>
+<h1>Near you now</h1>
+<div class="hd"><span>Time</span><span>Alert</span><span style="text-align:right">Status</span></div>
+<div class="r lit"><span>2:31 PM</span><span><b>Evacuation Order · SON-3A</b><small>Changed from Warning · Sonoma County EM (Demo)</small></span><span class="st ord">ORDER ▲</span></div>
+<div class="r"><span>1:40 PM</span><span><b>Evacuation Warning · SON-3B</b><small>Sonoma County EM (Demo)</small></span><span class="st sv">SEVERE</span></div>
+<div class="r"><span>2:10 PM</span><span><b>Ridgeview Fire · 1,200 ac</b><small>10% contained · Fire Information (Demo)</small></span><span class="st sv">SEVERE</span></div>
+<div class="r"><span>12:05 PM</span><span><b>Ridgeview Rd closed</b><small>Caltrans District 4 (Demo)</small></span><span class="st md">MODERATE</span></div>
+<div class="pass"><div><small>Your next step</small><b>Leave now via Hwy 12</b></div><div><small>Shelter</small><b>Ridgeview CC</b></div></div>
+<div class="call"><span class="btn a">Call Soterra</span><span class="btn b">Ask Soterra</span></div>
+<nav class="tabs"><span class="on"><i></i>Home</span><span><i></i>Alerts</span><span><i></i>Map</span><span><i></i>Household</span><span><i></i>More</span></nav>
+</body></html>
