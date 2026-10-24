@@ -31,6 +31,12 @@ export default defineSchema({
     /** Public incident keys cited on the last call (safe to use on caller ID alone). */
     lastIncidentKeys: v.optional(v.array(v.string())),
     lastCallAt: v.number(),
+    /**
+     * Things the caller asked us to remember by voice ("I use a wheelchair"). Written and read only on a call that passed
+     * the callback check (identity verified_phone or verified_account); at most 5, each clipped. Deleted by "forget me".
+     */
+    profileNeeds: v.optional(v.array(v.string())),
+    profileUpdatedAt: v.optional(v.number()),
     /** Anonymous memory expiry (ANON_MEMORY_TTL_DAYS after the last call); unset while linked to a verified account. */
     expiresAt: v.optional(v.number()),
   })
@@ -68,6 +74,12 @@ export default defineSchema({
     transcriptConsent: v.union(v.literal("notice_given"), v.literal("declined")),
     knownArea: v.optional(areaRef),
     notificationId: v.optional(v.id("notifications")),
+    /** True only for an outbound verification callback answered at the number we called: valid for this call alone. */
+    verifiedPhone: v.optional(v.boolean()),
+    /** A destructive command waiting for a "yes" on the next turn (cleared by any next turn). */
+    pendingAction: v.optional(v.literal("forget")),
+    /** The caller said "forget me" on this call: nothing from it is written to memory or summarized. */
+    forgotten: v.optional(v.boolean()),
     /** Caller context built once at session start (src/memory/callerContext.ts). */
     callerContext: v.optional(callerContext),
     /** Active bulletin area labels for place-name matching, refreshed every few minutes. */
@@ -418,6 +430,8 @@ export default defineSchema({
     message: v.string(),
     bulletinRefs: v.array(v.id("bulletins")),
     dedupeKey: v.string(),
+    /** "verification" = the callback check that proves a caller holds the phone; otherwise an update callback. */
+    purpose: v.optional(v.union(v.literal("update"), v.literal("verification"))),
     status: notificationStatus,
     providerRef: v.optional(v.string()),
     error: v.optional(v.string()),
@@ -426,7 +440,8 @@ export default defineSchema({
   })
     .index("by_dedupeKey", ["dedupeKey"])
     .index("by_subscriptionId_and_createdAt", ["subscriptionId", "createdAt"])
-    .index("by_providerRef", ["providerRef"]),
+    .index("by_providerRef", ["providerRef"])
+    .index("by_recipientPhone_and_createdAt", ["recipientPhone", "createdAt"]),
 
   // ───────────── [S] Dev only ─────────────
   /** Mock HTML pages served at /mock-sites/* when ENABLE_MOCK_SITES=true, so Apify can scrape a real URL. */

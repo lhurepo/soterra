@@ -25,7 +25,6 @@ describe("caller memory", () => {
     const t = newTest();
     await seedBulletins(t);
     const first = await start(t, { callerPhone: "(707) 555-0123" }); // normalized to E.164
-    expect(first.greeting).not.toContain(str("returningOffer", "en"));
     await say(t, first.sessionId, 0, "What's going on with the Ridgeview Fire?");
     await say(t, first.sessionId, 1, "I'm in Santa Rosa, any shelters that take pets?");
     await end(t, first.sessionId);
@@ -39,7 +38,7 @@ describe("caller memory", () => {
 
     vi.advanceTimersByTime(DAY);
     const second = await start(t);
-    expect(second.greeting).toContain(str("returningOffer", "en"));
+    expect(second.greeting).toBe(first.greeting); // memory is never volunteered
     const call = await getCall(t, second.sessionId);
     expect(call?.callerContext).toMatchObject({ identity: "caller_id", lastCallSummary: expect.stringContaining("Ridgeview"), recentIncidentKeys: ["ridgeview-fire-demo"] });
     expect(call?.callerContext?.knownArea?.label).toBe("Santa Rosa");

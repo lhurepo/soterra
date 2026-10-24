@@ -2,7 +2,8 @@
 // - buildCallerContext assembles what the backend knows (cached on the call at session start).
 // - toLlmContext is the policy filter: on caller ID alone the model sees language, a county-level area,
 //   public incidents asked about recently and active update topics. Stored needs and past-summary text
-//   reach the model only for a call linked to a verified account. Nothing here is ever read back.
+//   reach the model only for a call that is verified: linked to an account, or a callback we placed to the
+//   caller's own number (verified_phone, that call only). Nothing here is ever read back.
 import type { AreaRef, CallerContext } from "../contracts";
 import { DEFAULTS } from "../config/defaults";
 
@@ -13,6 +14,10 @@ export type CallerContextSources = {
   knownArea?: AreaRef;
   /** Needs come only from a verified account's profile, never from caller memory. */
   accountNeeds?: string[];
+  /** This call is our own callback to the caller's number: they hold the phone. */
+  verifiedPhone?: boolean;
+  /** Things the caller asked us to remember by voice; used only when verifiedPhone. */
+  profileNeeds?: string[];
   lastSummary?: { text: string; createdAt: number };
   lastCallAt?: number;
   lastIncidentKeys?: string[];
@@ -29,7 +34,19 @@ export function subscriptionTopic(s: NonNullable<CallerContextSources["activeSub
 
 /** ≈ 300 tokens at most: the summary, needs and lists are clipped. */
 export function buildCallerContext(src: CallerContextSources): CallerContext {
-  const identity: CallerContext["identity"] = src.accountId ? "verified_account" : src.callerId ? "caller_id" : "anonymous";
+  const phoneVerified = !src.accountId && src.verifiedPhone === true && src.callerId !== undefined;
+  const identity: CallerContext["identity"] = src.accountId
+    ? "verified_account"
+    : phoneVerified
+      ? "verified_phone"
+      : src.callerId
+        ? "caller_id"
+        : "anonymous";
+  const needs = src.accountId
+    ? [...new Set([...(src.accountNeeds ?? []), ...(src.profileNeeds ?? [])])]
+    : phoneVerified
+      ? src.profileNeeds
+      : undefined;
   const recent = (at: number | undefined) => at !== undefined && src.now - at <= DEFAULTS.lastSummaryTtlMs;
   const context: CallerContext = {
     callerId: src.callerId,
@@ -37,7 +54,7 @@ export function buildCallerContext(src: CallerContextSources): CallerContext {
     identity,
     language: src.language,
     knownArea: src.knownArea,
-    needs: src.accountId && src.accountNeeds?.length ? src.accountNeeds.slice(0, 5).map((n) => clip(n, 40)) : undefined,
+    needs: needs?.length ? needs.slice(0, 5).map((n) => clip(n, 80)) : undefined,
     lastCallSummary: src.lastSummary && recent(src.lastSummary.createdAt) ? clip(src.lastSummary.text, 600) : undefined,
     activeSubscriptions: src.activeSubscriptions?.length ? src.activeSubscriptions.slice(0, 3).map((s) => clip(subscriptionTopic(s), 80)) : undefined,
     recentIncidentKeys: recent(src.lastCallAt) && src.lastIncidentKeys?.length ? src.lastIncidentKeys.slice(0, 3) : undefined,
@@ -53,7 +70,7 @@ export function approxTokens(context: CallerContext): number {
 
 /** What the model may see. */
 export function toLlmContext(context: CallerContext): CallerContext {
-  if (context.identity === "verified_account") return context;
+  if (context.identity === "verified_account" || context.identity === "verified_phone") return context;
   const area = context.knownArea;
   return {
     callerId: context.callerId,

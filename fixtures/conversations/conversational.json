@@ -1,0 +1,15 @@
+{
+  "name": "conversational",
+  "description": "Everyday conversation that is not a disaster-data question: greetings, what Soterra can do, feelings, thanks.",
+  "requiresFixtures": ["ridgeview-initial"],
+  "session": { "direction": "inbound", "languageHint": "en" },
+  "turns": [
+    { "utterance": "Hi there", "expectKind": "smalltalk" },
+    { "utterance": "How are you?", "expectKind": "smalltalk" },
+    { "utterance": "What can you help me with?", "expectKind": "smalltalk" },
+    { "utterance": "I'm really scared right now", "expectKind": "smalltalk" },
+    { "utterance": "Do you remember if I used a wheelchair?", "expectKind": "smalltalk" },
+    { "utterance": "Are you a real person?", "expectKind": "smalltalk" },
+    { "utterance": "Thank you so much, that was helpful", "expectKind": "smalltalk" }
+  ]
+}

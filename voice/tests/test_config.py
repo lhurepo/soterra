@@ -14,7 +14,7 @@ def test_http_mode_requires_url_and_secret():
 
 def test_mock_mode_needs_nothing_and_defaults_are_sane():
     s = Settings.from_env({"BACKEND_MODE": "mock"})
-    assert (s.default_language, s.turn_timeout_s, s.filler_after_s, s.max_consecutive_failures) == ("en", 8.0, 1.2, 3)
+    assert (s.default_language, s.turn_timeout_s, s.filler_after_s, s.max_consecutive_failures) == ("en", 8.0, 1.6, 3)
     assert s.voice_for("es") == DEFAULT_VOICE_ID
     assert "secret" not in repr(Settings.from_env({"BACKEND_MODE": "http", "SOTERRA_BACKEND_URL": "https://x.convex.site", "VOICE_API_SECRET": "secret"}))
 

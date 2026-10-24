@@ -1,0 +1,29 @@
+{
+  "name": "weather-check",
+  "description": "Broad or location-less weather questions get a general answer first (not 'which city?'); phrasings taken from real calls.",
+  "requiresFixtures": [
+    "ridgeview-initial"
+  ],
+  "session": {
+    "direction": "inbound",
+    "languageHint": "en"
+  },
+  "turns": [
+    {
+      "utterance": "Can you tell me about any weather um issues around California?",
+      "expectKind": "answer"
+    },
+    {
+      "utterance": "Can you um I guess look for the weather forecast around uh around me?",
+      "expectKind": "answer"
+    },
+    {
+      "utterance": "Is a flood warning near me?",
+      "expectKind": "answer"
+    },
+    {
+      "utterance": "Anything near me? Anything in general? in California?",
+      "expectKind": "answer"
+    }
+  ]
+}
