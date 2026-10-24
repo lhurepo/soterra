@@ -657,6 +657,30 @@ export const expireBulletins = internalMutation({
   },
 });
 
+/**
+ * One-off cleanup after an adapter starts setting expiresAt or filtering records: active live bulletins of the
+ * source that still have no expiry were not refreshed by the new rules, so retire them (no event).
+ *   npx convex run ingestion:retireUnexpiring '{"sourceId":"nifc_wfigs"}'   (run the source once first)
+ */
+export const retireUnexpiring = internalMutation({
+  args: { sourceId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, { sourceId }) => {
+    const rows = await ctx.db
+      .query("bulletins")
+      .withIndex("by_sourceId_and_externalId", (q) => q.eq("sourceId", sourceId))
+      .take(500);
+    let retired = 0;
+    for (const b of rows) {
+      if (!b.isActive || b.isFixture || b.expiresAt !== undefined) continue;
+      await ctx.db.patch("bulletins", b._id, { isActive: false });
+      await deleteDerivedRows(ctx, b._id);
+      retired++;
+    }
+    return retired;
+  },
+});
+
 export const syncMossRemovals = internalAction({
   args: { chunkIds: v.array(v.string()) },
   returns: v.null(),
