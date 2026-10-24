@@ -6,10 +6,12 @@ import { convexRun, printRun, waitForRun } from "./lib/env";
 
 const SOURCES = ["mock_county_emergency", "mock_shelters", "mock_disaster_assistance"];
 convexRun("sources:syncRegistry", {});
-const runs = SOURCES.map((sourceId) => {
+// One at a time: the Apify free plan caps memory across concurrent runs (16 GB).
+const runs: { runId?: string; status: string; error?: string }[] = [];
+for (const sourceId of SOURCES) {
   const r = convexRun("ingestion:runSource", { sourceId, trigger: "manual", modeOverride: "live" }) as { runId?: string; status: string; error?: string };
   console.log(`${sourceId}: ${r.status}${r.error ? ` — ${r.error}` : ""}`);
-  return r;
-});
-for (const r of runs) if (r.runId && r.status === "awaiting_apify") printRun(await waitForRun(r.runId, 5 * 60_000));
+  runs.push(r);
+  if (r.runId && r.status === "awaiting_apify") printRun(await waitForRun(r.runId, 5 * 60_000));
+}
 if (runs.some((r) => r.status === "failed")) process.exit(1);

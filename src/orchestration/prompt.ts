@@ -37,6 +37,7 @@ Hard rules:
 Reply style:
 - Speakable: 1 to 3 short sentences, at most ${DEFAULTS.replyMaxWords} words. No markdown, lists, URLs, emoji or abbreviations a speaker would not say.
 - Say times like "2:10 PM Pacific". If the newest source you use is more than ${DEFAULTS.staleSourceMs / 3_600_000} hours old, say "as of" its time.
+- If a source has timeBasis="observed", its time is when we checked the page: say "as of our last check on <time>", never "issued". If timeBasis="page_updated", say "the page was last updated on <time>".
 - Name the source you used and its time, e.g. "That's from Sonoma County Fire Information, updated October 24 at 2:10 PM Pacific."
 - Reply in the language given in <reply_language> (English "en" or Spanish "es"). When answering in Spanish, translate the source faithfully and keep official names, zone names and place names exactly as written.
 
@@ -106,7 +107,9 @@ export function renderSources(chunks: RetrievedChunk[], language: string): strin
     const updated = c.updatedAt ? ` updated="${formatSpokenTime(c.updatedAt, state, "en")}"` : "";
     const area = c.areas.length ? ` area="${attr(c.areas.map((a) => a.label).join("; "))}"` : "";
     const incident = c.incidentKey ? ` incidentKey="${attr(c.incidentKey)}"` : "";
-    return `<source id="${attr(c.chunkId)}" name="${attr(c.sourceName)}" trust="${c.trustTier}" issued="${issued}"${updated}${area}${incident}>\n${sanitizeForBlock(c.text)}\n</source>`;
+    // Scraped pages: the time is when we checked ("observed") or what the page says ("page_updated"), not an issue time.
+    const basis = c.timeBasis && c.timeBasis !== "issued" ? ` timeBasis="${c.timeBasis}"` : "";
+    return `<source id="${attr(c.chunkId)}" name="${attr(c.sourceName)}" trust="${c.trustTier}" issued="${issued}"${basis}${updated}${area}${incident}>\n${sanitizeForBlock(c.text)}\n</source>`;
   });
   return `<sources language="${supportedLanguage(language) === "es" ? "en (translate for the caller)" : "en"}">\n${blocks.join("\n")}\n</sources>`;
 }

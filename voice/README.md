@@ -79,6 +79,20 @@ cartesia chat 8000                      # terminal 2: talk to it in text
 
 Agent env (set with `cartesia env set --agent-id agent_1iwkwy7nwEfejQJzwM75hm --from <file>`): `BACKEND_MODE=http`, `SOTERRA_BACKEND_URL`, `VOICE_API_SECRET`, `DEFAULT_LANGUAGE=en`, `VOICE_ID_EN`, `TTS_MODEL=sonic-3.6`, `SOTERRA_PHONE_NUMBERS=+17126003362`. Setting env creates a new deployment automatically.
 
+## Handing the agent over (to Leia or anyone else)
+
+The backend does not know or care which Cartesia agent calls it: it only checks `VOICE_API_SECRET`. So moving to another agent changes nothing in `convex/` or `src/`.
+
+1. Create (or reuse) a **code** agent in the new person's Cartesia account (a Playground/managed agent cannot run deployed code).
+2. `npm run setup` once, then `~/.cartesia/bin/cartesia auth login` with that account's API key.
+3. Deploy: `npm run voice:deploy -- agent_xxxxxxxx` (the new agent id).
+4. Set its env (see "Agent env" above): `BACKEND_MODE=http`, `SOTERRA_BACKEND_URL`, `VOICE_API_SECRET` (same value as the Convex deployment), `SOTERRA_PHONE_NUMBERS`, voice ids. Setting env redeploys.
+5. Point the phone number at it: `cartesia phone-numbers assign <phone-number-id> --agent-id agent_xxxxxxxx`.
+6. Update the ids in `voice/.cartesia/config.toml`, `voice/cartesia.toml` link, the table above and `CLAUDE.md` so the next person deploys to the right agent.
+7. Call the number and run the Demo script in `TEAM_PLAN.md`.
+
+Rolling back is the same steps with the old agent id.
+
 ## Redeploy
 
 ```bash

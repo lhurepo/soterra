@@ -1,6 +1,7 @@
 // [S] Orchestration internals shared by backend modules (types locked, logic in src/orchestration).
 import { z } from "zod";
 import { AreaRef, EpochMs, HazardType, Language, Severity, TrustTier } from "./common";
+import { TimeBasis } from "./ingestion";
 import { ReplyKind } from "./voice";
 
 /**
@@ -54,6 +55,8 @@ export const RetrievedChunk = z.object({
   isFixture: z.boolean().optional(),
   /** Position within the bulletin's chunks; lets retrieval add the next chunk of the same bulletin. */
   chunkIndex: z.number().int().nonnegative().optional(),
+  /** What issuedAt/updatedAt mean: "issued" (default), "page_updated" (a scraped page says so) or "observed" (when we checked). */
+  timeBasis: TimeBasis.optional(),
   score: z.number(),
 });
 export type RetrievedChunk = z.infer<typeof RetrievedChunk>;

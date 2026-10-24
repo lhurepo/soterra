@@ -25,6 +25,8 @@ export type StartRunOptions = {
   maxItems: number;
   maxTotalChargeUsd: number;
   timeoutSecs: number;
+  /** Apify memory for the run (MB, power of two). Omitted = the actor default. */
+  memoryMbytes?: number;
 };
 
 export type StartedRun = { runId: string; datasetId?: string };
@@ -68,6 +70,7 @@ export function buildRunActorRequest(
     maxTotalChargeUsd: String(options.maxTotalChargeUsd),
     timeout: String(options.timeoutSecs),
   });
+  if (options.memoryMbytes) query.set("memory", String(options.memoryMbytes));
   return {
     url: `${API}/actors/${encodeURIComponent(actorId)}/runs?${query.toString()}`,
     init: {
