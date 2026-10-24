@@ -1,0 +1,7 @@
+{
+  "targetKind": "incident",
+  "incidentKey": "ridgeview-fire-demo",
+  "trigger": "any_update",
+  "channel": "sms",
+  "intervalMinutes": 120
+}

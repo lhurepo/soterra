@@ -1,0 +1,14 @@
+{
+  "recipient": { "callerId": "jd7demo0caller000000000000000000", "phone": "+17075550123" },
+  "target": { "kind": "incident", "incidentKey": "ridgeview-fire-demo" },
+  "trigger": "any_update",
+  "channels": ["sms"],
+  "language": "en",
+  "status": "active",
+  "consentAt": 1792893650000,
+  "createdVia": "call",
+  "expiresAt": 1792980050000,
+  "mode": "scheduled",
+  "intervalMs": 7200000,
+  "nextRunAt": 1792900850000
+}

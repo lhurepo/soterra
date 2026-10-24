@@ -11,8 +11,19 @@ console.log(JSON.stringify(results, null, 2));
 console.log('\nExpect change "updated" above (a second run is "unchanged" and notifies nobody).');
 
 await new Promise((r) => setTimeout(r, 3_000));
-const recent = convexRun("notifications:recent", { limit: 5 }) as { status: string; recipientPhone: string; message: string; createdAt: number; error?: string }[];
+const recent = convexRun("notifications:recent", { limit: 5 }) as {
+  status: string;
+  channel: string;
+  purpose: string;
+  outcome?: string;
+  recipientPhone: string;
+  message: string;
+  createdAt: number;
+  error?: string;
+}[];
 console.log(`\nMost recent notifications (${recent.length}):`);
 for (const n of recent) {
-  console.log(`- ${new Date(n.createdAt).toISOString()} ${n.status}${n.error ? ` (${n.error})` : ""} → ${n.recipientPhone}: ${n.message}`);
+  const what = `${n.channel === "sms" ? "text" : "call"} ${n.purpose}${n.outcome ? ` [${n.outcome}]` : ""}`;
+  console.log(`- ${new Date(n.createdAt).toISOString()} ${what} ${n.status}${n.error ? ` (${n.error})` : ""} → ${n.recipientPhone}: ${n.message}`);
 }
+console.log("\nA missed update call is texted about 100 s after it is placed; run notifications:recent again to see it.");
