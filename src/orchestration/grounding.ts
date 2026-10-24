@@ -8,9 +8,9 @@
 import { ANSWERABLE_TRUST_TIERS, type AnswerDraft, type Citation, type ReplyKind, type RetrievedChunk } from "../contracts";
 import { DEFAULTS } from "../config/defaults";
 import { t, tf } from "../config/strings";
-import { asksAboutExactAddress } from "./intents";
+import { asksAboutExactAddress, asksForSource } from "./intents";
 import { normalizeForMatch } from "./text";
-import { formatSpokenTime } from "./time";
+import { formatShortTime } from "./time";
 
 export type GroundingIssue = "uncited_answer" | "unknown_chunk" | "empty_reply" | "address_claim" | "unsupported_shelter_claim";
 
@@ -45,14 +45,27 @@ export function isStale(chunk: RetrievedChunk, now: number): boolean {
   return now - sourceTime(chunk) > DEFAULTS.staleSourceMs;
 }
 
-/** "That's from Sonoma County Fire Information (Demo), updated October 24 at 2:10 PM Pacific." */
+const GENERIC_NAME_WORDS = new Set(["emergency", "management", "information", "department", "office", "services", "agency", "bureau"]);
+
+/**
+ * The short spoken name of a source: "Sonoma County Emergency Management (Demo)" becomes "Sonoma County".
+ * Generic trailing words and parentheticals go; at most three words stay. The full name is for "where is that from?".
+ */
+export function spokenSourceName(name: string): string {
+  const words = name.replace(/\s*\([^)]*\)\s*/g, " ").trim().split(/\s+/).filter(Boolean);
+  const kept = words.filter((w, i) => i === 0 || !GENERIC_NAME_WORDS.has(w.toLowerCase()));
+  return kept.slice(0, 3).join(" ") || name;
+}
+
+/** About five words: "Sonoma County, 2:10 PM." (checked / updated / as of when the time means something else). */
 export function attributionSentence(chunk: RetrievedChunk, language: string, now?: number): string {
-  const time = formatSpokenTime(sourceTime(chunk), chunk.areas[0]?.state, language);
-  if (now !== undefined && isStale(chunk, now)) return tf("attributionStale", language, { source: chunk.sourceName, time });
+  const source = spokenSourceName(chunk.sourceName);
+  const time = formatShortTime(sourceTime(chunk), chunk.areas[0]?.state, language, now ?? sourceTime(chunk));
+  if (now !== undefined && isStale(chunk, now)) return tf("attributionStale", language, { source, time });
   // Scraped pages are not "issued" at the time we saw them: say what the time really is.
-  if (chunk.timeBasis === "observed") return tf("attributionObserved", language, { source: chunk.sourceName, time });
-  if (chunk.timeBasis === "page_updated") return tf("attributionPageUpdated", language, { source: chunk.sourceName, time });
-  return tf("attribution", language, { source: chunk.sourceName, verb: t(chunk.updatedAt ? "updated" : "issued", language), time });
+  if (chunk.timeBasis === "observed") return tf("attributionObserved", language, { source, time });
+  if (chunk.timeBasis === "page_updated") return tf("attributionPageUpdated", language, { source, time });
+  return tf("attribution", language, { source, time });
 }
 
 function mentionsSource(reply: string, chunk: RetrievedChunk): boolean {
@@ -60,10 +73,30 @@ function mentionsSource(reply: string, chunk: RetrievedChunk): boolean {
   const full = normalizeForMatch(chunk.sourceName);
   // "(Demo)" suffixes and the like are often dropped when speaking; accept the name without them.
   const bare = normalizeForMatch(chunk.sourceName.replace(/\s*\([^)]*\)\s*$/, ""));
-  return r.includes(full) || (bare.length >= 6 && r.includes(bare));
+  const short = normalizeForMatch(spokenSourceName(chunk.sourceName));
+  return r.includes(full) || (bare.length >= 6 && r.includes(bare)) || (short.length >= 6 && r.includes(short));
 }
 
 const SAYS_AS_OF = /\b(as of|a partir de|informacion del|hasta las)\b/;
+
+const ATTRIBUTION_LEAD = /^(that'?s from|this is from|this comes from|from|source|according to|esto es de|fuente|segun)\b/;
+
+/**
+ * Keeps the closing source line to about five words whatever the model wrote: when the reply ends with a short
+ * sentence that names a cited source ("That's from Sonoma County Emergency Management, updated October 24 at
+ * 2:10 PM Pacific."), it is replaced by the canonical short attribution. Content sentences are never touched.
+ */
+export function shortenAttribution(reply: string, cited: RetrievedChunk[], language: string, now: number): string {
+  const sentences = reply.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if (sentences.length < 2 || cited.length === 0) return reply;
+  const last = sentences[sentences.length - 1];
+  const words = last.trim().split(/\s+/).length;
+  const namesSource = cited.some((c) => mentionsSource(last, c));
+  const isAttribution = namesSource && (words <= 8 || (ATTRIBUTION_LEAD.test(normalizeForMatch(last)) && words <= 20));
+  if (!isAttribution) return reply;
+  const freshest = [...cited].sort((a, b) => sourceTime(b) - sourceTime(a))[0];
+  return [...sentences.slice(0, -1), attributionSentence(freshest, language, now)].join(" ");
+}
 
 /** Appends the attribution unless a cited source is already named (and "as of" is present when stale). */
 export function withAttribution(reply: string, cited: RetrievedChunk[], language: string, now: number): string {
@@ -164,7 +197,8 @@ export function enforceGrounding(args: {
 
   return {
     kind: "answer",
-    reply: withAttribution(reply, cited, language, now),
+    // Full source name and time only when the caller asked where it came from; otherwise the bare minimum.
+    reply: withAttribution(asksForSource(utterance) ? reply : shortenAttribution(reply, cited, language, now), cited, language, now),
     citations: citationsFor(cited),
     citedChunks: cited,
     endCall: draft.endCall,

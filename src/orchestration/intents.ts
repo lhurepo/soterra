@@ -54,3 +54,11 @@ export function isLocationDependent(utterance: string): boolean {
     utterance,
   );
 }
+
+/** "Where did that come from?", "what's your source", "how old is that". Then the full source and time are spoken. */
+export function asksForSource(utterance: string): boolean {
+  return test(
+    /\b(where (did|does|do|is|are|was) (that|this|the|you|it)\b.{0,30}\b(come|from|get|got|info|information|source)|what('?s| is| was) (the|your) source|which source|who (said|says|told|reported)|how (old|recent|current|fresh|up to date)|when was (that|this|it) (updated|issued|posted|published|checked)|source of)\b|\b(de donde (viene|vino|sale|salio|es|saco|sacaste)|cual es (la|su) fuente|que fuente|quien (dijo|dice|informo)|que tan (viejo|reciente|actual)|cuando se actualizo)\b/,
+    utterance,
+  );
+}
