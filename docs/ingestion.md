@@ -30,6 +30,7 @@ All start `enabled: false`, `mode: "fixture"`. Registry: `src/ingestion/sources.
 | `tsunami_ntwc` | `https://www.tsunami.gov/events/xml/PAAQCAP.xml` | direct, CAP XML | official | 5 / 1 | Live-ready (verified one `<alert>`) |
 | `inciweb` | `https://inciweb.wildfire.gov/incidents/rss.xml` | direct, RSS | official | 30 / 10 | Live-ready (verified; state from "State:" line) |
 | `nifc_wfigs` | WFIGS Incident Locations Current FeatureServer `…/query?where=POOState='US-{STATE}'&f=geojson` | direct, GeoJSON | official | 15 / 5 | Live-ready (URL from catalog mirrors; answered live) |
+| `usgs_volcanoes` | USGS HANS: `volcanoes.usgs.gov/vsc/api/volcanoApi/elevated` + `volcanoesUS` (state per volcano) | direct, JSON | official | 15 / 5 | Live-verified 2026-10-24 (4 elevated volcanoes, 0 rejections); expires 8 days after the last notice; hazard type `other` (no `volcano` in the contract enum) |
 | `mock_county_emergency` | `{CONVEX_SITE_URL}/mock-sites/county-emergency.html` | Apify Website Content Crawler → LLM extraction | official (demo) | 30 / 5 | Live = real actor vs Convex-served page |
 | `mock_shelters` | `{CONVEX_SITE_URL}/mock-sites/shelters.html` | Apify Cheerio Scraper → deterministic parser | official (demo) | 30 / 5 | Live = real actor vs Convex-served page |
 | `mock_disaster_assistance` | `{CONVEX_SITE_URL}/mock-sites/disaster-assistance.html` | Apify Website Content Crawler → LLM extraction | official (demo) | 360 / 60 | Live = real actor vs Convex-served page |
