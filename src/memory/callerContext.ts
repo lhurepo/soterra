@@ -14,6 +14,8 @@ export type CallerContextSources = {
   knownArea?: AreaRef;
   /** Needs come only from a verified account's profile, never from caller memory. */
   accountNeeds?: string[];
+  /** Free text from the account profile; like needs, only for a linked account. */
+  accountPersonalContext?: string;
   /** This call is our own callback to the caller's number: they hold the phone. */
   verifiedPhone?: boolean;
   /** Things the caller asked us to remember by voice; used only when verifiedPhone. */
@@ -32,7 +34,7 @@ export function subscriptionTopic(s: NonNullable<CallerContextSources["activeSub
   return `${target} (${s.trigger.replace(/_/g, " ")})`;
 }
 
-/** ≈ 300 tokens at most: the summary, needs and lists are clipped. */
+/** ≈ 300 tokens at most (plus ≈ 250 for a linked account's personal context): the summary, needs and lists are clipped. */
 export function buildCallerContext(src: CallerContextSources): CallerContext {
   const phoneVerified = !src.accountId && src.verifiedPhone === true && src.callerId !== undefined;
   const identity: CallerContext["identity"] = src.accountId
@@ -55,6 +57,7 @@ export function buildCallerContext(src: CallerContextSources): CallerContext {
     language: src.language,
     knownArea: src.knownArea,
     needs: needs?.length ? needs.slice(0, 5).map((n) => clip(n, 80)) : undefined,
+    personalContext: src.accountId && src.accountPersonalContext?.trim() ? clip(src.accountPersonalContext.trim(), 1000) : undefined,
     lastCallSummary: src.lastSummary && recent(src.lastSummary.createdAt) ? clip(src.lastSummary.text, 600) : undefined,
     activeSubscriptions: src.activeSubscriptions?.length ? src.activeSubscriptions.slice(0, 3).map((s) => clip(subscriptionTopic(s), 80)) : undefined,
     recentIncidentKeys: recent(src.lastCallAt) && src.lastIncidentKeys?.length ? src.lastIncidentKeys.slice(0, 3) : undefined,

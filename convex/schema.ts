@@ -43,12 +43,16 @@ export default defineSchema({
     .index("by_phone", ["phone"])
     .index("by_expiresAt", ["expiresAt"]),
 
-  /** Future app users (iOS). Auth is TODO(B). Needs live here, on the account profile, never on callers. */
+  /** App users, linked to calls by phone (phoneLinks). Needs live here, on the account profile, never on callers. */
   accounts: defineTable({
     tokenIdentifier: v.optional(v.string()),
     displayName: v.optional(v.string()),
     preferredLanguage: v.optional(v.string()),
     needs: v.optional(v.array(v.string())),
+    /** Free text from the app: accommodations, history, medical conditions. Reaches the model on linked calls only. */
+    personalContext: v.optional(v.string()),
+    homeZip: v.optional(v.string()),
+    emergencyContact: v.optional(v.object({ name: v.string(), phone: v.string() })),
     createdAt: v.number(),
   }).index("by_tokenIdentifier", ["tokenIdentifier"]),
 
