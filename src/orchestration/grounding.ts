@@ -82,20 +82,23 @@ const SAYS_AS_OF = /\b(as of|a partir de|informacion del|hasta las)\b/;
 const ATTRIBUTION_LEAD = /^(that'?s from|this is from|this comes from|from|source|according to|esto es de|fuente|segun)\b/;
 
 /**
- * Keeps the closing source line to about five words whatever the model wrote: when the reply ends with a short
- * sentence that names a cited source ("That's from Sonoma County Emergency Management, updated October 24 at
- * 2:10 PM Pacific."), it is replaced by the canonical short attribution. Content sentences are never touched.
+ * Keeps every source line to about five words whatever the model wrote: a short sentence that names a cited source
+ * ("That's from Sonoma County Emergency Management, updated October 24 at 2:10 PM Pacific.") is replaced by the
+ * canonical short attribution for that source, wherever it sits in the reply. Content sentences are never touched.
  */
 export function shortenAttribution(reply: string, cited: RetrievedChunk[], language: string, now: number): string {
   const sentences = reply.split(/(?<=[.!?])\s+/).filter(Boolean);
   if (sentences.length < 2 || cited.length === 0) return reply;
-  const last = sentences[sentences.length - 1];
-  const words = last.trim().split(/\s+/).length;
-  const namesSource = cited.some((c) => mentionsSource(last, c));
-  const isAttribution = namesSource && (words <= 8 || (ATTRIBUTION_LEAD.test(normalizeForMatch(last)) && words <= 20));
-  if (!isAttribution) return reply;
-  const freshest = [...cited].sort((a, b) => sourceTime(b) - sourceTime(a))[0];
-  return [...sentences.slice(0, -1), attributionSentence(freshest, language, now)].join(" ");
+  const out: string[] = [];
+  for (const [i, sentence] of sentences.entries()) {
+    const words = sentence.trim().split(/\s+/).length;
+    const source = cited.find((c) => mentionsSource(sentence, c));
+    const leads = ATTRIBUTION_LEAD.test(normalizeForMatch(sentence));
+    // A short sentence naming a source, or a long one that opens like an attribution; never the only sentence.
+    const isAttribution = source !== undefined && (words <= 8 || (leads && words <= 20)) && !(i === 0 && !leads);
+    out.push(isAttribution ? attributionSentence(source, language, now) : sentence);
+  }
+  return out.join(" ");
 }
 
 /** Appends the attribution unless a cited source is already named (and "as of" is present when stale). */

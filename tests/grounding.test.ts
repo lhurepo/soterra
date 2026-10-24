@@ -139,6 +139,11 @@ describe("closing source line", () => {
     expect(shortenAttribution(long, [chunk()], "en", NOW)).toBe("Zones are under a warning. Sonoma County, 1:45 PM.");
   });
 
+  it("shortens a long source sentence in the middle of the reply too", () => {
+    const mid = "Zones are under a warning. That's from Sonoma County Emergency Management (Demo), issued October 24 at 1:45 PM Pacific. Leave if told to.";
+    expect(shortenAttribution(mid, [chunk()], "en", NOW)).toBe("Zones are under a warning. Sonoma County, 1:45 PM. Leave if told to.");
+  });
+
   it("never rewrites a content sentence that happens to name the source", () => {
     const content = "Zones are under a warning. Sonoma County Emergency Management says residents of both zones should leave now and bring pets in crates.";
     expect(shortenAttribution(content, [chunk()], "en", NOW)).toBe(content);
