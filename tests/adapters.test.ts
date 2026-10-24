@@ -286,3 +286,29 @@ describe("data quality filters", () => {
     expect(r.drafts[2].expiresAt).toBe(Date.parse("2026-10-10T00:00:00Z") + 30 * 86_400_000);
   });
 });
+
+describe("X: actor placeholders", () => {
+  it("skips {noResults: true} items instead of quarantining them", async () => {
+    const adapter = APIFY_ADAPTERS.x_posts;
+    const r = await adapter.normalizeItems([{ noResults: true }, { noResults: true }], ctx("x_posts"), deps);
+    expect(r.rejected).toEqual([]);
+    expect(r.skipped).toBe(2);
+  });
+});
+
+describe("X: post expiry", () => {
+  const post = (id: string, createdAt: string) => ({ id, url: `https://x.com/CAL_FIRE/status/${id}`, text: "Evacuation order for the Bear Fire in Sonoma County", createdAt, author: { userName: "CAL_FIRE" } });
+  const allowCtx = { ...ctx("x_posts"), settings: loadIngestionSettings({ X_ALLOWLIST: "CAL_FIRE:CAL FIRE:CA" }) };
+
+  it("serves an allowlisted post for 24 hours after it was posted and skips older ones", async () => {
+    // NOW is 2026-10-25T02:00:00Z
+    const r = await APIFY_ADAPTERS.x_posts.normalizeItems(
+      [post("1", "Sat Oct 24 20:00:00 +0000 2026"), post("2", "Fri Oct 23 20:00:00 +0000 2026")],
+      allowCtx,
+      deps,
+    );
+    expect(r.drafts.map((d) => d.externalId)).toEqual(["1"]);
+    expect(r.drafts[0].expiresAt).toBe(Date.parse("2026-10-25T20:00:00Z"));
+    expect(r.skipped).toBe(1);
+  });
+});

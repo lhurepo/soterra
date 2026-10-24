@@ -53,7 +53,9 @@ const IngestionEnv = z.object({
 export type IngestionSettings = Omit<z.infer<typeof IngestionEnv>, "X_ALLOWLIST"> & { xAllowlist: XAllowlistEntry[] };
 
 export function loadIngestionSettings(env: Record<string, string | undefined>): IngestionSettings {
-  const parsed = IngestionEnv.safeParse(env);
+  // Convex's process.env answers direct reads but not `in` / Object.keys, so zod would see every plain
+  // optional key as missing (X_ALLOWLIST silently fell back to the demo handle). Read each key explicitly.
+  const parsed = IngestionEnv.safeParse(Object.fromEntries(Object.keys(IngestionEnv.shape).map((k) => [k, env[k]])));
   if (!parsed.success) {
     throw new Error(`Invalid ingestion configuration: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
   }

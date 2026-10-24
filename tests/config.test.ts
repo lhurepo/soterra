@@ -4,6 +4,7 @@ import { checkBearer } from "../src/config/auth";
 import { loadConfig } from "../src/config/env";
 import { NotConfiguredError } from "../src/config/errors";
 import { integrationStatus } from "../src/config/health";
+import { loadIngestionSettings } from "../src/ingestion/config";
 import { requireMoss } from "../src/providers/moss";
 import { selectLlm } from "../src/providers/llm";
 
@@ -36,5 +37,25 @@ describe("config", () => {
     expect(checkBearer("Bearer abd", "abc")).toBe(false);
     expect(checkBearer(null, "abc")).toBe(false);
     expect(checkBearer("Bearer abc", undefined)).toBe(false);
+  });
+});
+
+describe("env that only answers direct reads (Convex's process.env)", () => {
+  const values: Record<string, string> = {
+    X_ALLOWLIST: "CAL_FIRE:CAL FIRE:CA,NWSBayArea:NWS Bay Area:CA",
+    APIFY_TOKEN: "tok",
+    INGEST_STATES: "CA,OR",
+  };
+  // `in` and Object.keys see nothing, exactly like the deployed runtime; property reads work.
+  const env = new Proxy({} as Record<string, string | undefined>, { get: (_t, k) => values[String(k)], has: () => false, ownKeys: () => [] });
+
+  it("loadIngestionSettings reads X_ALLOWLIST instead of falling back to the demo handle", () => {
+    expect(loadIngestionSettings(env).xAllowlist.map((e) => e.handle)).toEqual(["cal_fire", "nwsbayarea"]);
+  });
+
+  it("loadConfig still sees every variable", () => {
+    const c = loadConfig(env);
+    expect(c.APIFY_TOKEN).toBe("tok");
+    expect(c.INGEST_STATES).toEqual(["CA", "OR"]);
   });
 });
