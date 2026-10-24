@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from line.events import AgentEndCall, AgentSendText, AgentTurnStarted, AgentUpdateCall, CallEnded, CallStarted, LogMetric, UserTurnStarted
 
+from soterra_voice.speech import speakable
 from soterra_voice import phrases
 from soterra_voice.agent import CallInfo, SoterraAgent, barged_in, call_info_from_request, is_repeat_request, split_greeting
 from soterra_voice.backend_client import Fault, MockBackendClient, MockTurn
@@ -30,7 +31,7 @@ def test_call_started_speaks_the_backend_greeting_with_the_notice_uninterruptibl
     agent, _ = make()
     out = collect(agent, CallStarted())
     texts = [o for o in out if isinstance(o, AgentSendText)]
-    assert " ".join(t.text for t in texts) == MockBackendClient().greeting
+    assert " ".join(t.text for t in texts) == speakable(MockBackendClient().greeting)
     notice = [t for t in texts if "transcribed" in t.text]
     assert len(notice) == 1 and notice[0].interruptible is False
     assert all(t.interruptible for t in texts if t is not notice[0])
@@ -40,7 +41,7 @@ def test_call_started_speaks_the_backend_greeting_with_the_notice_uninterruptibl
 def test_failed_start_speaks_local_greeting_and_first_turn_uses_provider_call_id():
     agent, backend = make(MockBackendClient(start_fault=Fault.HTTP_500))
     greeting = " ".join(said(collect(agent, CallStarted())))
-    assert greeting == phrases.greeting_fallback("en")
+    assert greeting == speakable(phrases.greeting_fallback("en"))
     collect(agent, user("hello"))
     first = turns(backend)[0]
     assert first.session_id is None and first.provider_call_id == "call-1"
@@ -86,7 +87,7 @@ def test_empty_turn_is_skipped():
 def test_degraded_reply_is_spoken_normally():
     agent, _ = make(MockBackendClient(script=[MockTurn(reply="Safe fallback from backend. Dial 911 if in danger.", kind="no_info", degraded=True)]))
     collect(agent, CallStarted())
-    assert said(collect(agent, user("hi"))) == ["Safe fallback from backend. Dial 911 if in danger."]
+    assert said(collect(agent, user("hi"))) == ["Safe fallback from backend. Dial 9 1 1 if in danger."]
     assert agent.consecutive_failures == 0
 
 
@@ -168,10 +169,10 @@ def test_errors_speak_fallback_with_911_and_keep_turn_indexes_consistent():
     collect(agent, CallStarted())
     for _ in range(2):
         out = collect(agent, user("q"))
-        assert said(out) == [phrases.fallback("en")] and "911" in said(out)[0] and not ended(out)
+        assert said(out) == [speakable(phrases.fallback("en"))] and "9 1 1" in said(out)[0] and not ended(out)
     assert said(collect(agent, user("q"))) == ["Back."]
     assert agent.consecutive_failures == 0
-    assert said(collect(agent, user("q"))) == [phrases.fallback("en")]
+    assert said(collect(agent, user("q"))) == [speakable(phrases.fallback("en"))]
     assert [t.turn_index for t in turns(backend)] == [0, 1, 2, 3]
 
 
@@ -179,7 +180,7 @@ def test_turn_timeout_uses_fallback():
     agent, _ = make(MockBackendClient(script=[MockTurn(reply="late", delay_s=1.0)]), filler_after_s=0.05, turn_timeout_s=0.2)
     collect(agent, CallStarted())
     out = said(collect(agent, user("q")))
-    assert out == [phrases.phrase("filler", "en"), phrases.fallback("en")]
+    assert out == [phrases.phrase("filler", "en"), speakable(phrases.fallback("en"))]
 
 
 def test_three_failures_in_a_row_end_the_call_with_reason_error():
@@ -188,7 +189,7 @@ def test_three_failures_in_a_row_end_the_call_with_reason_error():
     collect(agent, user("1"))
     collect(agent, user("2"))
     out = collect(agent, user("3"))
-    assert said(out) == [phrases.phrase("give_up", "en")] and ended(out)
+    assert said(out) == [speakable(phrases.phrase("give_up", "en"))] and ended(out)
     collect(agent, CallEnded())
     assert [e.reason for e in ends(backend)] == ["error"]
 
@@ -238,7 +239,7 @@ def test_language_priority_saved_language_from_backend_wins_over_default():
     update = next(o for o in out if isinstance(o, AgentUpdateCall))
     assert (update.language, agent.language) == ("es", "es")
     agent.backend.script.append(Fault.NETWORK)
-    assert said(collect(agent, user("¿qué pasa?"))) == [phrases.fallback("es")]
+    assert said(collect(agent, user("¿qué pasa?"))) == [speakable(phrases.fallback("es"))]
 
 
 def test_dialed_number_map_sets_the_language_hint():

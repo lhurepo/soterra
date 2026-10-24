@@ -35,6 +35,16 @@ const PATTERNS: Record<"en" | "es", RegExp[]> = {
 };
 
 export function detectDanger(utterance: string): boolean {
+  return dangerLanguage(utterance) !== null;
+}
+
+/**
+ * The language the caller was in danger in: which pattern set matched. When both match, `preferred` wins.
+ * The warning is spoken in that language even if the call started in the other one.
+ */
+export function dangerLanguage(utterance: string, preferred: "en" | "es" = "en"): "en" | "es" | null {
   const text = normalizeForMatch(utterance);
-  return [...PATTERNS.en, ...PATTERNS.es].some((re) => re.test(text));
+  const hits = (["en", "es"] as const).filter((lang) => PATTERNS[lang].some((re) => re.test(text)));
+  if (hits.length === 0) return null;
+  return hits.includes(preferred) ? preferred : hits[0];
 }

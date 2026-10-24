@@ -20,7 +20,6 @@ from typing import Any, AsyncIterator, Optional
 
 from line.events import (
     AgentEndCall,
-    AgentSendText,
     AgentTurnEnded,
     AgentTurnStarted,
     AgentUpdateCall,
@@ -36,6 +35,7 @@ from line.events import (
 from . import phrases
 from .backend_client import Backend, BackendError, now_ms
 from .config import E164, Settings, mask_phone, normalize_language
+from .speech import say
 from .models import SessionEndRequest, SessionStartRequest, TurnRequest, TurnResponse
 
 log = logging.getLogger("soterra.voice")
@@ -207,9 +207,9 @@ class SoterraAgent:
                 yield LogMetric(name="backend_start_failed", value=1)
                 greeting = None
         for text, interruptible in split_greeting(greeting or phrases.greeting_fallback(self.language)):
-            yield AgentSendText(text=text, interruptible=interruptible)
+            yield say(text, interruptible=interruptible)
         if self.settings.offer_spanish_dtmf and self.call.direction == "inbound":
-            yield AgentSendText(text=phrases.phrase("spanish_offer", self.language))
+            yield say(phrases.phrase("spanish_offer", self.language))
 
     def _language_update(self) -> AgentUpdateCall:
         return AgentUpdateCall(language=self.language, voice_id=self.settings.voice_for(self.language))
@@ -226,11 +226,11 @@ class SoterraAgent:
             if switch_to and switch_to != self.language:
                 self.language = switch_to
                 yield self._language_update()
-                yield AgentSendText(text=phrases.phrase("switched", self.language))
+                yield say(phrases.phrase("switched", self.language))
             return
 
         if is_repeat_request(utterance):
-            yield AgentSendText(text=self.last_reply or phrases.phrase("nothing_to_repeat", self.language))
+            yield say(self.last_reply or phrases.phrase("nothing_to_repeat", self.language))
             return
 
         index = self.turn_index
@@ -255,7 +255,7 @@ class SoterraAgent:
         try:
             done, _ = await asyncio.wait({task}, timeout=self.settings.filler_after_s)
             if not done:
-                yield AgentSendText(text=phrases.phrase("filler", self.language))
+                yield say(phrases.phrase("filler", self.language))
                 yield LogMetric(name="filler_used", value=1)
             remaining = max(0.0, self.settings.turn_timeout_s - (loop.time() - t0))
             response = await asyncio.wait_for(task, timeout=remaining)
@@ -284,7 +284,7 @@ class SoterraAgent:
         yield LogMetric(name="backend_turn_ms", value=elapsed_ms)
         log.info("turn %s kind=%s degraded=%s %d ms", index, response.kind, bool(response.degraded), elapsed_ms)
         self.last_reply = response.reply
-        yield AgentSendText(text=response.reply)
+        yield say(response.reply)
         if response.end_call:
             self._agent_ended = True
             await self._end("agent_end")
@@ -295,12 +295,12 @@ class SoterraAgent:
         log.error("turn %s failed after %d ms: %s (%d in a row)", index, elapsed_ms, error, self.consecutive_failures)
         yield LogMetric(name="backend_turn_failed", value=1)
         if self.consecutive_failures >= self.settings.max_consecutive_failures:
-            yield AgentSendText(text=phrases.phrase("give_up", self.language))
+            yield say(phrases.phrase("give_up", self.language))
             self._agent_ended = True
             await self._end("error")
             yield AgentEndCall()
             return
-        yield AgentSendText(text=phrases.fallback(self.language))
+        yield say(phrases.fallback(self.language))
 
     # ───────────────────────── call end ─────────────────────────
 

@@ -20,7 +20,10 @@ describe("danger and deterministic intents", () => {
   });
 
   it("answers Spanish danger in Spanish even in an English session", async () => {
-    expect((await turn("Estoy atrapado, no puedo salir")).reply).toBe(t("safety", "en"));
+    // The warning is spoken in the language the caller used, whatever the session language.
+    const es = await turn("Estoy atrapado, no puedo salir");
+    expect(es).toMatchObject({ kind: "safety", reply: t("safety", "es"), language: "es" });
+    expect(await turn("I'm trapped and the fire is in my house", deps(), state(), "es")).toMatchObject({ reply: t("safety", "en"), language: "en" });
     expect((await turn("Estoy atrapado, no puedo salir", deps(), state(), "es")).reply).toBe(t("safety", "es"));
   });
 
@@ -60,7 +63,7 @@ describe("answers", () => {
     const es = await turn("¿Qué está pasando con el incendio Ridgeview?", deps(), state(), "es");
     expect(es.language).toBe("es");
     expect(es.kind).toBe("answer");
-    expect(es.reply).toMatch(/Fuente: Sonoma County Emergency Management \(Demo\)/);
+    expect(es.reply).toMatch(/Fuente: Sonoma County, /);
     expect(es.citations.length).toBeGreaterThan(0);
     const fr = await turn("Ridgeview Fire evacuation zones?", deps(), state(), "fr");
     expect(fr.language).toBe("en");

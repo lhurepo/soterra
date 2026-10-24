@@ -24,6 +24,8 @@ export const DEFAULTS = {
   staleSessionMs: 15 * MINUTE,
   /** LLM limits for call turns. Temperature is kept for reference only: the API rejects it (see DECISIONS.md). */
   llmTimeoutMs: 6_000,
+  /** Moss query budget; a slower (e.g. cold) Moss falls back to Convex search so the turn is never held up. */
+  mossTimeoutMs: 700,
   turnMaxTokens: 300,
   temperature: 0.2,
   summaryMaxTokens: 600,

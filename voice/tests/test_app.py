@@ -50,7 +50,7 @@ def test_full_call_through_the_sdk_runner():
         # Assumption (unverified with Cartesia): the harness forwards /chats metadata in the start message.
         ws.send_json({"type": "start", "call_id": "cart-1", "from": "+17075550123", "to": "+14155550100", "agent_call_id": "ac-1", "agent": {"id": "agent_test"}, "metadata": body["metadata"]})
         greeting = read_until_response_end(ws)
-        assert "911" in " ".join(spoken(greeting))
+        assert "9 1 1" in " ".join(spoken(greeting))
         assert any(m["type"] == "message" and m["interruptible"] is False for m in greeting)
 
         ws.send_json({"type": "user_state", "value": "speaking"})
