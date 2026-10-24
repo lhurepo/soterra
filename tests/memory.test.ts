@@ -21,8 +21,9 @@ describe("caller context", () => {
     expect(recent.needs).toBeUndefined();
     const old = buildCallerContext({ ...base, lastSummary: { text: "x", createdAt: NOW - DEFAULTS.lastSummaryTtlMs - 1 } });
     expect(old.lastCallSummary).toBeUndefined();
-    const account = buildCallerContext({ ...base, accountId: "a1", accountNeeds: ["oxygen"] });
-    expect(account).toMatchObject({ identity: "verified_account", needs: ["oxygen"] });
+    const account = buildCallerContext({ ...base, accountId: "a1", accountNeeds: ["oxygen"], accountPersonalContext: " Uses a CPAP machine. " });
+    expect(account).toMatchObject({ identity: "verified_account", needs: ["oxygen"], personalContext: "Uses a CPAP machine." });
+    expect(buildCallerContext({ ...base, accountPersonalContext: "Uses a CPAP machine." }).personalContext).toBeUndefined();
     expect(buildCallerContext({ language: "es", now: NOW }).identity).toBe("anonymous");
   });
 

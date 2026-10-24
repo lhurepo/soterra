@@ -111,6 +111,7 @@ export const callerContext = v.object({
   language: v.string(),
   knownArea: v.optional(areaRef),
   needs: v.optional(v.array(v.string())),
+  personalContext: v.optional(v.string()),
   lastCallSummary: v.optional(v.string()),
   activeSubscriptions: v.optional(v.array(v.string())),
   recentIncidentKeys: v.optional(v.array(v.string())),

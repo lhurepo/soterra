@@ -19,6 +19,8 @@ export const CallerContext = z.object({
   language: Language,
   knownArea: AreaRef.optional(),
   needs: z.array(z.string()).optional(),
+  /** Free text from the linked account's profile (accommodations, medical conditions). verified_account only. */
+  personalContext: z.string().optional(),
   lastCallSummary: z.string().optional(),
   activeSubscriptions: z.array(z.string()).optional(),
   /**
