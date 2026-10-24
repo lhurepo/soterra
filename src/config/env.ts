@@ -61,7 +61,8 @@ export type Config = z.infer<typeof EnvSchema>;
 
 /** Unknown vars are ignored. Bad values throw, naming the offending variable. */
 export function loadConfig(env: Record<string, string | undefined>): Config {
-  const parsed = EnvSchema.safeParse(env);
+  // Convex's process.env answers direct reads but not `in` / Object.keys: read each key explicitly.
+  const parsed = EnvSchema.safeParse(Object.fromEntries(Object.keys(EnvSchema.shape).map((k) => [k, env[k]])));
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
     throw new Error(`Invalid Soterra configuration: ${issues.join("; ")}`);

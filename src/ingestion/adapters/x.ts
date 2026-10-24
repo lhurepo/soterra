@@ -9,6 +9,9 @@ import { STATE_NAMES, countiesNamedIn, countyArea, statesNamedIn } from "../geo"
 import { parseTwitterTime } from "../time";
 import { emptyResult, type ApifyAdapter, type NormalizeContext, type NormalizeResult } from "./types";
 
+/** Posts are time-sensitive: an allowlisted post stops being served 24 hours after it was posted. */
+export const X_POST_TTL_MS = 24 * 3_600_000;
+
 export const TweetItem = z.object({
   id: z.string().min(1),
   url: z.string().url(),
@@ -86,6 +89,11 @@ export function normalizeTweets(items: unknown[], ctx: NormalizeContext): Normal
       out.rejected.push({ externalId: t.id, reason: "allowlisted post without a post time", raw });
       continue;
     }
+    const expiresAt = postedAt + X_POST_TTL_MS;
+    if (expiresAt <= ctx.now) {
+      out.skipped++;
+      continue;
+    }
     const areas = areasNamedIn(t.text, entry.states.length > 0 ? entry.states : ctx.ingestStates);
     const draft: NormalizedBulletinDraft = {
       sourceId: ctx.source.sourceId,
@@ -98,6 +106,7 @@ export function normalizeTweets(items: unknown[], ctx: NormalizeContext): Normal
       severity: "unknown",
       status: "actual",
       issuedAt: postedAt,
+      expiresAt,
       areas,
       trustTier: ctx.source.trustTier,
       language: "en",
