@@ -1,5 +1,6 @@
 // [I] Adapter lookup by sourceId.
 import { femaAdapter } from "./fema";
+import { hansAdapter } from "./hans";
 import { inciwebAdapter } from "./inciweb";
 import { nhcAdapter } from "./nhc";
 import { nwsAdapter } from "./nws";
@@ -11,7 +12,7 @@ import { wfigsAdapter } from "./wfigs";
 import { xAdapter } from "./x";
 
 export const DIRECT_ADAPTERS: Record<string, DirectAdapter> = Object.fromEntries(
-  [nwsAdapter, usgsAdapter, femaAdapter, nhcAdapter, tsunamiAdapter, inciwebAdapter, wfigsAdapter].map((a) => [a.sourceId, a]),
+  [nwsAdapter, usgsAdapter, femaAdapter, nhcAdapter, tsunamiAdapter, inciwebAdapter, wfigsAdapter, hansAdapter].map((a) => [a.sourceId, a]),
 );
 
 export const APIFY_ADAPTERS: Record<string, ApifyAdapter> = Object.fromEntries(
