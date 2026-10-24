@@ -3,6 +3,7 @@
 // expiry, raw payload retention, and the handoff to the backend's retrieval.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CRISIS_DURATION_MS } from "../../src/ingestion/crisis";
+import { finalizeBulletin } from "../../src/ingestion/normalize";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { newTest, setupEnv, type TestConvex } from "../test.setup";
@@ -356,5 +357,48 @@ describe("national bulletins", () => {
     const ca = { state: "CA", label: "California" };
     const found = await t.query(internal.retrieval.search, { text: "status of the hurricane", area: ca, topK: 5, now: Date.now(), serveFixtures: true });
     expect(found.some((c) => c.hazardType === "hurricane")).toBe(true);
+  });
+});
+
+describe("corroboration through retrieval", () => {
+  const base = {
+    sourceName: "x",
+    trustTier: "official" as const,
+    status: "actual" as const,
+    severity: "unknown" as const,
+    language: "en",
+    isFixture: false,
+    areas: [{ state: "CA", county: "Los Angeles", countyFips: "06037", label: "Los Angeles County" }],
+    hazardType: "wildfire" as const,
+    issuedAt: Date.parse("2026-10-24T20:00:00Z"),
+    timeBasis: "issued" as const,
+  };
+  const bulletin = (sourceId: string, sourceName: string, title: string, body: string) =>
+    finalizeBulletin({ ...base, sourceId, sourceName, externalId: `${sourceId}-1`, url: `https://example.org/${sourceId}`, title, body } as never);
+
+  it("returns confirmed for two independent sources, single for one source and for a shared upstream", async () => {
+    const t = await setup();
+    await t.mutation(internal.ingestion.upsertBulletins, {
+      items: [
+        bulletin("nifc_wfigs", "National Interagency Fire Center", "Bouquet Fire", "Bouquet Fire, Los Angeles County: about 1200 acres, 10 percent contained."),
+        bulletin("inciweb", "InciWeb", "CAANF Bouquet", "Bouquet incident on the Angeles National Forest, Los Angeles County."),
+        bulletin("sheriff", "Los Angeles County Sheriff", "Bouquet Fire evacuation update", "Deputies continue evacuations for the Bouquet Fire in Los Angeles County."),
+      ],
+    });
+    const found = await t.query(internal.retrieval.search, { text: "bouquet fire", topK: 6, now: Date.parse("2026-10-24T21:00:00Z"), serveFixtures: false });
+    const by = (id: string) => found.find((c) => c.sourceId === id)!;
+    expect(by("nifc_wfigs").corroboration).toEqual({ tier: "confirmed", sources: ["Los Angeles County Sheriff"] });
+    expect(by("sheriff").corroboration?.tier).toBe("confirmed");
+    // WFIGS and InciWeb are one group, so the sheriff is confirmed by one voice, named once.
+    expect(by("sheriff").corroboration?.sources).toEqual(["National Interagency Fire Center"]);
+  });
+
+  it("a lone source stays single", async () => {
+    const t = await setup();
+    await t.mutation(internal.ingestion.upsertBulletins, {
+      items: [bulletin("nifc_wfigs", "National Interagency Fire Center", "Bouquet Fire", "Bouquet Fire, Los Angeles County: about 1200 acres.")],
+    });
+    const found = await t.query(internal.retrieval.search, { text: "bouquet fire", topK: 6, now: Date.parse("2026-10-24T21:00:00Z"), serveFixtures: false });
+    expect(found[0].corroboration).toEqual({ tier: "single", sources: [] });
   });
 });

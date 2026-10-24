@@ -39,6 +39,18 @@ export const RetrievalQuery = z.object({
 });
 export type RetrievalQuery = z.infer<typeof RetrievalQuery>;
 
+/**
+ * How well other independent sources back a retrieved chunk (src/retrieval/corroboration.ts):
+ * "confirmed" = another source from a different independence group reports the same incident,
+ * "differs" = such a source reports different figures, "single" = no other independent source was found.
+ */
+export const Corroboration = z.object({
+  tier: z.enum(["confirmed", "single", "differs"]),
+  /** Full names of the other independent sources that matched (empty for "single"). */
+  sources: z.array(z.string()),
+});
+export type Corroboration = z.infer<typeof Corroboration>;
+
 export const RetrievedChunk = z.object({
   chunkId: z.string(),
   bulletinId: z.string(),
@@ -59,6 +71,8 @@ export const RetrievedChunk = z.object({
   chunkIndex: z.number().int().nonnegative().optional(),
   /** What issuedAt/updatedAt mean: "issued" (default), "page_updated" (a scraped page says so) or "observed" (when we checked). */
   timeBasis: TimeBasis.optional(),
+  /** Set by retrieval when it compared this chunk's incident with other sources. Absent = not compared. */
+  corroboration: Corroboration.optional(),
   score: z.number(),
 });
 export type RetrievedChunk = z.infer<typeof RetrievedChunk>;

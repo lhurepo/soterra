@@ -14,5 +14,6 @@
   "isFixture": true,
   "chunkIndex": 0,
   "timeBasis": "issued",
+  "corroboration": { "tier": "confirmed", "sources": ["Sonoma County Fire Information (Demo)"] },
   "score": 1.43
 }

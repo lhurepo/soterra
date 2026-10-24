@@ -58,6 +58,9 @@ const STRINGS = {
     attributionStale: "{source}, as of {time}.",
     attributionObserved: "{source}, checked {time}.",
     attributionPageUpdated: "{source}, updated {time}.",
+    // Corroboration (src/retrieval/corroboration.ts): spoken only when another independent source matched.
+    corroborated: "Also reported by {sources}.",
+    sourcesDiffer: "Sources differ on the figures.",
     issued: "issued",
     updated: "updated",
     updateMessage: "Update from {source}, {time}: {title}. {detail}",
@@ -110,6 +113,8 @@ const STRINGS = {
     attributionStale: "Fuente: {source}, a partir de {time}.",
     attributionObserved: "Fuente: {source}, revisado {time}.",
     attributionPageUpdated: "Fuente: {source}, actualizado {time}.",
+    corroborated: "También lo informa {sources}.",
+    sourcesDiffer: "Las fuentes difieren en las cifras.",
     issued: "emitido el",
     updated: "actualizado el",
     updateMessage: "Actualización de {source}, {time}: {title}. {detail}",

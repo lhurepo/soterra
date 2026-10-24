@@ -71,6 +71,10 @@ npx convex run signals:recent
 
 Ingestion env vars (all optional): `APIFY_MODE`, `APIFY_MIN_INTERVAL_MIN` (5), `APIFY_MAX_ITEMS` (50), `APIFY_MAX_CHARGE_USD` (0.5), `APIFY_MEMORY_MB` (2048), `USGS_MIN_MAGNITUDE` (3), `X_ALLOWLIST` (`handle:Issuer:CA|OR,…`), `SIGNAL_BURST_THRESHOLD` (3), `SIGNAL_BURST_WINDOW_MIN` (30), `BACKOFF_CAP_MIN` (60), `RAW_PAYLOAD_TTL_HOURS` (24), `EXTRACTION_TIMEOUT_MS` (20000), `EXTRACTION_MAX_CHARS` (12000).
 
+## Independence groups and corroboration
+
+Each source belongs to an independence group (`INDEPENDENCE_GROUPS` in `src/ingestion/sources.ts`; a source without an entry is its own group). Retrieval uses them to tell callers "Also reported by …" only when a *different* group reports the same incident (`src/retrieval/corroboration.ts`). InciWeb and WFIGS are one group (both come from NIFC's IRWIN data); give an X account the same group as its agency's feed with the optional fourth `X_ALLOWLIST` segment, `handle:Issuer Name:CA:group` (e.g. `NWSBayArea:National Weather Service Bay Area:CA:nws`). Add an entry whenever a new source shares an upstream with an existing one.
+
 ## Rules this module enforces
 
 - **No invented facts, times or areas.** Times come from the source; a page's own "last updated"/"checked at" time is `timeBasis: "page_updated"` (parsed only with a full date, clock time and zone); otherwise `issuedAt` is the fetch time with `timeBasis: "observed"`. Areas come from codes or names in the source, or from the source's configured jurisdiction.

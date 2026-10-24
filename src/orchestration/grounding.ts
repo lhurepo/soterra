@@ -112,6 +112,27 @@ export function withAttribution(reply: string, cited: RetrievedChunk[], language
   return `${trimmed} ${attributionSentence(freshest, language, now)}`;
 }
 
+/**
+ * One short sentence about corroboration, from retrieval's code-computed tier (never from the model):
+ * "Sources differ on the figures." if any cited chunk conflicts with another source, otherwise
+ * "Also reported by A and B." naming up to two other independent sources not already cited. Empty when single.
+ */
+export function corroborationSentence(cited: RetrievedChunk[], language: string): string {
+  if (cited.some((c) => c.corroboration?.tier === "differs")) return t("sourcesDiffer", language);
+  // A confirming source whose spoken name equals or contains a cited one ("Sonoma County" after "Sonoma County Fire")
+  // would sound like the source confirming itself, so it is never read out.
+  const citedSpoken = cited.map((c) => normalizeForMatch(spokenSourceName(c.sourceName)));
+  const overlapsCited = (spoken: string) => {
+    const n = normalizeForMatch(spoken);
+    return citedSpoken.some((c) => c.includes(n) || n.includes(c));
+  };
+  const others = [...new Set(cited.flatMap((c) => (c.corroboration?.tier === "confirmed" ? c.corroboration.sources : [])).map(spokenSourceName))]
+    .filter((spoken) => !overlapsCited(spoken))
+    .slice(0, 2);
+  if (others.length === 0) return "";
+  return tf("corroborated", language, { sources: others.join(language.startsWith("es") ? " y " : " and ") });
+}
+
 /** "412 Oak Lane is inside zone SON-3A" — affirmative zone membership for an address. */
 export function claimsAddressInZone(reply: string): boolean {
   const r = normalizeForMatch(reply);
@@ -198,10 +219,12 @@ export function enforceGrounding(args: {
     return noInfoReply(utterance, language, { endCall: draft.endCall, rewritten: true, issue: "unsupported_shelter_claim" });
   }
 
+  const attributed = withAttribution(asksForSource(utterance) ? reply : shortenAttribution(reply, cited, language, now), cited, language, now);
+  const corroboration = corroborationSentence(cited, language);
   return {
     kind: "answer",
     // Full source name and time only when the caller asked where it came from; otherwise the bare minimum.
-    reply: withAttribution(asksForSource(utterance) ? reply : shortenAttribution(reply, cited, language, now), cited, language, now),
+    reply: corroboration ? `${attributed} ${corroboration}` : attributed,
     citations: citationsFor(cited),
     citedChunks: cited,
     endCall: draft.endCall,
