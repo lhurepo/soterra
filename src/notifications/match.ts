@@ -36,7 +36,9 @@ export function eventMatches(sub: MatchableSubscription, event: MatchableEvent, 
     case "severity_change":
       return event.severityBefore !== undefined && SEVERITY_RANK[event.severityAfter] !== SEVERITY_RANK[event.severityBefore];
     case "evacuation_change":
-      return event.hazardType === "evacuation" && event.change !== "created";
+      // A request tied to an incident means "if its evacuation changes" (an existing notice, not the first one).
+      // A request for an area also wants a brand-new Evacuation Order or Warning: that is the change.
+      return event.hazardType === "evacuation" && (event.change !== "created" || sub.target.kind === "area");
     case "answer_available":
       return false;
   }

@@ -54,7 +54,15 @@ describe("caller context", () => {
     expect(visible.lastCallSummary).toBeUndefined();
     expect(visible.knownArea?.zip).toBeUndefined();
     expect(visible.knownArea?.city).toBeUndefined();
-    expect(visible.recentIncidentKeys).toEqual(["ridgeview-fire-demo"]);
+    // History (incidents asked about, update topics) is for verified calls only.
+    expect(visible.recentIncidentKeys).toBeUndefined();
+    expect(toLlmContext({ ...ctx, activeSubscriptions: ["area San Francisco (evacuation change)"] }).activeSubscriptions).toEqual([
+      "1 active update (topics only after a callback check)",
+    ]);
+    expect(toLlmContext({ ...ctx, identity: "verified_phone", recentIncidentKeys: ["k"], activeSubscriptions: ["area X (any update)"] })).toMatchObject({
+      recentIncidentKeys: ["k"],
+      activeSubscriptions: ["area X (any update)"],
+    });
     expect(toLlmContext({ ...ctx, identity: "verified_account" }).needs).toEqual(["oxygen"]);
   });
 });

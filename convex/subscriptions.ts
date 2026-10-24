@@ -89,6 +89,9 @@ export async function cancelSubscriptionsForPhone(ctx: MutationCtx, phone: strin
  * Stores one notification attempt and schedules delivery, unless the dedupe key was already used or
  * the subscription is rate-limited (then the attempt is stored as failed/"rate_limited" and not sent).
  */
+/** Matches of different requests for the same number inside this window collapse into one call. */
+const PHONE_BURST_MS = 2 * 60_000;
+
 export async function queueNotification(
   ctx: MutationCtx,
   sub: Doc<"subscriptions">,
@@ -104,10 +107,19 @@ export async function queueNotification(
     .query("notifications")
     .withIndex("by_subscriptionId_and_createdAt", (q) => q.eq("subscriptionId", sub._id).gt("createdAt", n.now - 3_600_000))
     .take(20);
-  const limited = rateLimited(
-    recent.filter((r) => !r.error?.startsWith(RATE_LIMITED_ERROR)).map((r) => r.createdAt),
-    n.now,
-  );
+  // One phone gets one update call per burst: several requests ("California", "San Francisco") can match the same
+  // alert, and ringing the same number three times at once is a busy signal and a nuisance.
+  const sameNumber = await ctx.db
+    .query("notifications")
+    .withIndex("by_recipientPhone_and_createdAt", (q) => q.eq("recipientPhone", sub.recipient.phone).gt("createdAt", n.now - PHONE_BURST_MS))
+    .take(10);
+  const burst = sameNumber.some((r) => r.purpose !== "verification" && r.status !== "failed");
+  const limited = burst
+    ? ("phone_burst" as const)
+    : rateLimited(
+        recent.filter((r) => !r.error?.startsWith(RATE_LIMITED_ERROR)).map((r) => r.createdAt),
+        n.now,
+      );
   const notificationId = await ctx.db.insert("notifications", {
     subscriptionId: sub._id,
     recipientPhone: sub.recipient.phone,
@@ -133,7 +145,17 @@ export const matchEvents = internalMutation({
   handler: async (ctx, { eventIds }) => {
     const now = Date.now();
     let queued = 0;
-    for (const eventId of eventIds) {
+    // The most important event first: when several land together, a phone gets one call per burst, and it should be
+    // about the evacuation, not a shelter capacity change.
+    const SEVERITY_POINTS: Record<string, number> = { extreme: 4, severe: 3, moderate: 2, minor: 1 };
+    const priority = new Map<Id<"bulletinEvents">, number>();
+    for (const id of eventIds) {
+      const e = await ctx.db.get("bulletinEvents", id);
+      const b = e ? await ctx.db.get("bulletins", e.bulletinId) : null;
+      priority.set(id, (b?.hazardType === "evacuation" ? 10 : 0) + (SEVERITY_POINTS[e?.severityAfter ?? ""] ?? 0));
+    }
+    const ordered = [...eventIds].sort((a, b) => (priority.get(b) ?? 0) - (priority.get(a) ?? 0));
+    for (const eventId of ordered) {
       const event = await ctx.db.get("bulletinEvents", eventId);
       if (!event || event.matchedAt !== undefined) continue;
       const bulletin = await ctx.db.get("bulletins", event.bulletinId);

@@ -65,7 +65,7 @@ export function asksForSource(utterance: string): boolean {
 
 // ── Personal commands (need a verified call; see src/orchestration/pipeline.ts) ──────────────────────────────
 
-export type ProfileCommand = { kind: "remember"; text: string } | { kind: "recall" } | { kind: "recap" } | { kind: "forget" };
+export type ProfileCommand = { kind: "remember"; text: string } | { kind: "recall" } | { kind: "recap" } | { kind: "updates" } | { kind: "forget" };
 
 const flat = (utterance: string) => normalizeForMatch(utterance).replace(/[.?!,;:¿¡]+/g, " ").replace(/\s+/g, " ").trim();
 
@@ -91,6 +91,12 @@ export function profileCommand(utterance: string): ProfileCommand | null {
   ) {
     return { kind: "forget" };
   }
+  // "what updates do I have", "what did I ask you to call me back about", "what are you watching for me".
+  if (
+    /\b(what|which) (updates?|alerts?|notifications?|callbacks?|calls?) (do|did|have|am|are) (i|you|we)\b.{0,40}\b(have|ask(ed)?|set up|request(ed)?|signed up|subscribed|watching|waiting)\b|\bwhat (did|do) i ask you to (call|notify|update|tell)\b|\bwhat (am i|are we) (signed up|subscribed)\b|\bwhat are you (watching|monitoring|tracking) (for|on) me\b|\bwhat (was|were) (it|the thing|the updates?) (that )?i asked (you )?(for|to)\b|\bwhat i asked you to call me back\b|\bwhat i (?:asked|requested)(?: you)?(?: for| about)?(?: earlier| before)?$|\basked you to (?:call|notify|update|tell|text) me(?: back)?\b.{0,30}\b(?:for|about)\b.{0,40}\bwhat\b|\bque (actualizaciones|alertas) tengo\b/.test(text)
+  ) {
+    return { kind: "updates" };
+  }
   const remember = text.match(REMEMBER_VERB);
   if (remember && ABOUT_CALLER.test(remember[1])) return { kind: "remember", text: remember[1] };
   const recuerda = text.match(/^(?:por favor )?(?:recuerda|recuerde|guarda|guarde|anota|anote)(?: que)? (.+)$/);
@@ -110,9 +116,18 @@ export function profileCommand(utterance: string): ProfileCommand | null {
   // "did I miss any alerts" are ordinary questions.
   if (
     /^(?:(?:do|can|could) you (?:remember|recall)|did i (?:tell|say|mention)(?: to)? you|have i (?:told|said|mentioned)(?: to)? you)(?: that| if| whether| about| anything about)? (?:i|my|we|our)\b/.test(text) &&
-    !/\b(should|could|can i|where|when|how|why|evacuate|miss(?:ed)?)\b/.test(text)
+    !/\b(should|could|can i|where|when|how|why|evacuate|miss(?:ed)?)\b/.test(text) &&
+    !/\b(?:last|previous|earlier) (?:call|conversation)\b/.test(text)
   ) {
     return { kind: "recall" };
+  }
+  // "do you remember me", "I called you earlier, do you remember", "remember my last call" ask for history.
+  if (
+    /\b(?:do you|can you|could you) (?:remember|recall) (?:me|that i called|my (?:earlier|last|previous) (?:call|conversation)|what i (?:told|said)|what we (?:talked|spoke) about)\b/.test(text) ||
+    /\bi (?:called|talked to|spoke to|spoke with) you (?:earlier|before|yesterday|today|last time)\b.{0,40}\b(?:remember|recall)\b/.test(text) ||
+    /\b(?:if|whether) you (?:remember|recall) (?:that )?i (?:called|talked to|spoke to|spoke with)\b/.test(text)
+  ) {
+    return { kind: "recap" };
   }
   if (/^(?:do you (?:know|have)|have you (?:got|saved|stored)) (?:anything|something|much|what)? ?(?:about|on) me$|^(?:te acuerdas|recuerdas|sabes)(?: de)?(?: si| que)? (?:uso|tengo|necesito|soy|tomo)\b/.test(text)) {
     return { kind: "recall" };

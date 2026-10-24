@@ -30,6 +30,12 @@ describe("recognizing a command", () => {
     ["No, can you say hello, can you save that data that I use a wheelchair?", { kind: "remember", text: "i use a wheelchair" }],
     ["Okay so keep in mind that my son needs oxygen", { kind: "remember", text: "my son needs oxygen" }],
     ["What info do you have on me?", { kind: "recall" }],
+    ["So I asked for some updates. Um earlier. Can you tell me what I asked for?", { kind: "updates" }],
+    ["No, so there was one thing that I asked you to call me back for. What was that again?", { kind: "updates" }],
+    ["What updates do I have?", { kind: "updates" }],
+    ["What did I ask you to call me back about?", { kind: "updates" }],
+    ["What are you watching for me?", { kind: "updates" }],
+    ["Which updates did I set up?", { kind: "updates" }],
     ["What did we talk about last time?", { kind: "recap" }],
     ["Can I get a summary of my last call", { kind: "recap" }],
     ["Forget me", { kind: "forget" }],
@@ -46,6 +52,8 @@ describe("recognizing a command", () => {
     "Are there shelters that take pets?",
     "Save me, the fire is here",
     "Keep me updated on the fire",
+    "What did the county ask for in the evacuation order?",
+    "I asked you to call me back, will you?",
     "Keep my family safe, where should we go",
     "Note my concern about the evacuation order",
     "Hold on, is the road open?",
@@ -111,6 +119,16 @@ describe("who may use a command", () => {
     expect(await turn("Forget me", verifiedState())).toMatchObject({ reply: t("forgetAsk", "en"), effects: { setPendingAction: "forget" } });
   });
 
+  it("update topics are spoken only on a verified call; a plain call is asked for the callback check", async () => {
+    const subs = ["area San Francisco (evacuation change)", "area Los Angeles (any update)"];
+    const plain = await turn("What updates do I have?", state({ context: { identity: "caller_id", language: "en", callerId: "c1", activeSubscriptions: subs } }));
+    expect(plain.reply).toBe(t("verifyAnnounce", "en"));
+    expect(plain.reply).not.toContain("San Francisco");
+    const verified = await turn("What did I ask you to call me back about?", verifiedState({ activeSubscriptions: subs }));
+    expect(verified.reply).toBe(t("updatesList", "en").replace("{topics}", "San Francisco, evacuation change; Los Angeles, any update"));
+    expect((await turn("What updates do I have?", verifiedState())).reply).toBe(t("updatesNone", "en"));
+  });
+
   it("a pending forget needs a yes on a verified call; a yes from a plain call does nothing", async () => {
     expect(await turn("Yes", verifiedState({}) && { ...verifiedState(), pendingAction: "forget" })).toMatchObject({
       reply: t("forgetDone", "en"),
@@ -161,5 +179,20 @@ describe("model output handling", () => {
   it("gives a broad answer room: the output budget fits six cited ids and a full reply", async () => {
     const { DEFAULTS } = await import("../src/config/defaults");
     expect(DEFAULTS.turnMaxTokens).toBeGreaterThanOrEqual(600);
+  });
+});
+
+describe("asking whether it remembers", () => {
+  it.each([
+    "Do you remember me?",
+    "I'm in a wheelchair. I don't know if you remember that I called you earlier.",
+    "Hey, I called you earlier, do you remember?",
+    "Can you remember my last call",
+  ])("asks for history: %s", (utterance) => expect(profileCommand(utterance)?.kind).toBe("recap"));
+
+  it("does not catch ordinary questions", () => {
+    for (const u of ["Do you remember when the fire started", "Can you recall the evacuation zones", "I called 911 earlier, is that okay"]) {
+      expect(profileCommand(u)).toBeNull();
+    }
   });
 });
