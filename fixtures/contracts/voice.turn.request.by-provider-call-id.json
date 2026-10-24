@@ -1,0 +1,9 @@
+{
+  "contractVersion": "1",
+  "providerCallId": "call_demo_0001",
+  "turnIndex": 1,
+  "utterance": "Are there shelters that take pets?",
+  "language": "en",
+  "interruptedPrevious": true,
+  "receivedAt": 1792893640000
+}

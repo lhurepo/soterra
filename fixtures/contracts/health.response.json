@@ -1,0 +1,16 @@
+{
+  "contractVersion": "1",
+  "ok": true,
+  "integrations": {
+    "voiceAuth": "live",
+    "llm": "mock",
+    "retriever": "live",
+    "mossSync": "unconfigured",
+    "apify": "unconfigured",
+    "nws": "unconfigured",
+    "phoneNotifier": "mock",
+    "sms": "unconfigured"
+  },
+  "flags": { "serveFixtures": true, "mockSites": false },
+  "now": 1792893600000
+}

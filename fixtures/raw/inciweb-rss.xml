@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FICTIONAL DEMO DATA shaped like the InciWeb RSS feed -->
+<rss version="2.0">
+  <channel>
+    <title>InciWeb Incidents (DEMO)</title>
+    <link>https://inciweb.wildfire.gov/</link>
+    <description>Demo incident feed</description>
+    <item>
+      <title>Ridgeview Fire (DEMO)</title>
+      <link>https://inciweb.wildfire.gov/incident-information/demo-ridgeview-fire</link>
+      <description>The Ridgeview Fire is burning about 1,200 acres east of Santa Rosa and is 10 percent contained.</description>
+      <pubDate>Sat, 24 Oct 2026 21:10:00 GMT</pubDate>
+      <guid>demo-ridgeview-fire</guid>
+    </item>
+  </channel>
+</rss>

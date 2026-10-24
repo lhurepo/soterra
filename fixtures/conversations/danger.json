@@ -1,0 +1,10 @@
+{
+  "name": "danger",
+  "description": "Immediate danger in English and Spanish: the first thing said is to hang up and dial 911. No LLM call.",
+  "requiresFixtures": [],
+  "session": { "direction": "inbound", "languageHint": "en" },
+  "turns": [
+    { "utterance": "Help, I'm trapped in my house and the fire is outside", "expectKind": "safety", "expectReplyIncludes": "911" },
+    { "utterance": "Estoy atrapado, no puedo salir", "expectKind": "safety", "expectReplyIncludes": "911" }
+  ]
+}

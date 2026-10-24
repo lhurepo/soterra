@@ -1,0 +1,10 @@
+{
+  "contractVersion": "1",
+  "sessionId": "j97demo0session00000000000000000",
+  "turnIndex": 0,
+  "reply": "Sure.",
+  "language": "en",
+  "kind": "guess",
+  "citations": [],
+  "endCall": false
+}

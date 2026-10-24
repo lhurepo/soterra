@@ -1,0 +1,17 @@
+{
+  "contractVersion": "1",
+  "sessionId": "j97demo0session00000000000000000",
+  "turnIndex": 0,
+  "reply": "An Evacuation Warning is in effect for zones SON-3A and SON-3B near the Ridgeview Fire, east of Santa Rosa. That's from Sonoma County Emergency Management (Demo), issued October 24 at 1:45 PM Pacific.",
+  "language": "en",
+  "kind": "answer",
+  "citations": [
+    {
+      "sourceName": "Sonoma County Emergency Management (Demo)",
+      "url": "https://example.org/soterra-demo/sonoma/evacuations",
+      "issuedAt": 1792874700000
+    }
+  ],
+  "endCall": false,
+  "timingsMs": { "retrieval": 41, "llm": 612, "total": 690 }
+}

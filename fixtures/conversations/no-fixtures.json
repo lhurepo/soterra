@@ -1,0 +1,9 @@
+{
+  "name": "no-fixtures",
+  "description": "A caller asks about the demo fire when SERVE_FIXTURES is off (or nothing is seeded): Soterra says it doesn't know yet.",
+  "requiresFixtures": [],
+  "session": { "direction": "inbound", "languageHint": "en" },
+  "turns": [
+    { "utterance": "Is the Ridgeview Fire near Santa Rosa?", "expectKind": "no_info", "expectUnanswered": true }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "recipientPhone": "+17075550123",
+  "channel": "phone_call",
+  "language": "en",
+  "message": "Update from Sonoma County Emergency Management (Demo), October 24 at 6:20 PM Pacific: Evacuation Order for zone SON-3A, Ridgeview Fire. An Evacuation Order is now in effect for zone SON-3A near the Ridgeview Fire.",
+  "bulletinRefs": ["jh7demo0bulletin0000000000000000"],
+  "dedupeKey": "kn7demo0sub:jh7demo0bulletin:v2",
+  "subscriptionId": "kn7demo0subscription000000000000"
+}

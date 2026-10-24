@@ -1,0 +1,10 @@
+{
+  "contractVersion": "1",
+  "provider": "cartesia",
+  "providerCallId": "call_demo_0001",
+  "direction": "inbound",
+  "callerPhone": "+17075550123",
+  "calledPhone": "+17075550100",
+  "languageHint": "en",
+  "startedAt": 1792893600000
+}

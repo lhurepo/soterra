@@ -1,0 +1,11 @@
+{
+  "contractVersion": "1",
+  "sessionId": "j97demo0session00000000000000000",
+  "turnIndex": 5,
+  "reply": "Thank you for calling Soterra. Stay safe. If you are in immediate danger, dial 911.",
+  "language": "en",
+  "kind": "goodbye",
+  "citations": [],
+  "endCall": true,
+  "someFutureOptionalField": { "note": "additive fields must be ignored by both sides" }
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "sourceId": "demo_county",
+    "sourceName": "Sonoma County Emergency Management (Demo)",
+    "externalId": "demo-evac-ridgeview",
+    "url": "https://example.org/soterra-demo/sonoma/evacuations",
+    "title": "Evacuation Order for zone SON-3A, Ridgeview Fire",
+    "body": "An Evacuation Order is now in effect for zone SON-3A near the Ridgeview Fire. Zone SON-3A covers Ridgeview Road from Highway 12 to Bennett Valley Road. People in zone SON-3A must leave now.\n\nThe Evacuation Warning remains in effect for zone SON-3B, the Matanzas Creek area. Be ready to leave.\n\nTo find your zone, use the county zone lookup at the official county website. This is fictional demo data.",
+    "instructions": "If you are in zone SON-3A, leave now. Go to an open shelter or stay with friends or family outside the area.",
+    "hazardType": "evacuation",
+    "severity": "extreme",
+    "status": "actual",
+    "issuedAt": 1792874700000,
+    "updatedAt": 1792891200000,
+    "areas": [
+      { "state": "CA", "county": "Sonoma", "countyFips": "06097", "city": "Santa Rosa", "label": "Sonoma County zones SON-3A and SON-3B" }
+    ],
+    "incidentKey": "ridgeview-fire-demo",
+    "trustTier": "official",
+    "language": "en",
+    "isFixture": true
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "summary": "The caller asked about the Ridgeview Fire, evacuation zones and pet-friendly shelters, asked whether Hillcrest Elementary is a shelter (unknown), and asked for a callback if evacuations change.",
+  "language": "en",
+  "topics": ["answer", "no_info", "followup"],
+  "areasMentioned": [{ "state": "CA", "county": "Sonoma", "countyFips": "06097", "label": "Sonoma County" }],
+  "hazards": ["evacuation", "shelter", "wildfire"],
+  "unansweredQuestionIds": ["k17demo0question0000000000000000"],
+  "followUpsRequested": ["kn7demo0subscription000000000000"],
+  "safetyFlag": false
+}

@@ -1,0 +1,20 @@
+{
+  // [S] Typechecks src/, scripts/, tests/. convex/ has its own tsconfig (required by Convex).
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": false,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src/**/*", "scripts/**/*", "tests/**/*", "vitest.config.ts"],
+  "exclude": ["node_modules", "convex", "voice"]
+}
