@@ -146,7 +146,8 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
 
   // 2. Deterministic intents that must not depend on the model.
   // 2a. A destructive command from the previous turn is waiting for "yes"; anything else cancels it.
-  const verified = state.context.identity === "verified_phone" || state.context.identity === "verified_account";
+  // Only the callback check counts. A call from a linked number is still just caller ID, which can be spoofed.
+  const verified = state.context.identity === "verified_phone";
   const clearPending = state.pendingAction !== undefined;
   if (state.pendingAction === "forget") {
     if (verified && isConfirmation(input.utterance)) return simple("smalltalk", t("forgetDone", language), { forgetCaller: true, clearPendingAction: true });

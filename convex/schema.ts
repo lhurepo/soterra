@@ -61,7 +61,30 @@ export default defineSchema({
     accountId: v.id("accounts"),
     phone: v.string(),
     verifiedAt: v.optional(v.number()),
+    /** How the link was proven: "app_code" = a code read out by a call to this number (convex/accounts.ts). */
+    verifiedBy: v.optional(v.union(v.literal("app_code"), v.literal("test"))),
   }).index("by_phone", ["phone"]),
+
+  /** A code Soterra reads out by phone so the app can prove the user holds a number. Short-lived, deleted on success. */
+  phoneChallenges: defineTable({
+    phone: v.string(),
+    code: v.string(),
+    expiresAt: v.number(),
+    attempts: v.number(),
+    createdAt: v.number(),
+    notificationId: v.optional(v.id("notifications")),
+  })
+    .index("by_phone_and_createdAt", ["phone", "createdAt"])
+    .index("by_notificationId", ["notificationId"]),
+
+  /** The app's private session after a phone code: every profile call needs this token, never a bare phone number. */
+  appSessions: defineTable({
+    token: v.string(),
+    phone: v.string(),
+    accountId: v.id("accounts"),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  }).index("by_token", ["token"]),
 
   // ───────────── [B] Calls ─────────────
   /** The session. */
@@ -434,8 +457,8 @@ export default defineSchema({
     message: v.string(),
     bulletinRefs: v.array(v.id("bulletins")),
     dedupeKey: v.string(),
-    /** "verification" = the callback check that proves a caller holds the phone; otherwise an update callback. */
-    purpose: v.optional(v.union(v.literal("update"), v.literal("verification"))),
+    /** "verification" = the callback check that proves a caller holds the phone; "app_code" = the call that reads the app a code. */
+    purpose: v.optional(v.union(v.literal("update"), v.literal("verification"), v.literal("app_code"))),
     status: notificationStatus,
     providerRef: v.optional(v.string()),
     error: v.optional(v.string()),

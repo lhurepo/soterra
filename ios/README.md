@@ -28,6 +28,7 @@ Simulator: pick any iPhone simulator and press Run. Tests: **Product → Test** 
 - **911 pill** (every screen): opens the danger sheet. **Demo safety:** "Call 911" opens the dialer with
   **119**, not 911 (`DemoConfig.emergencyDialNumber`). iOS asks before calling. 119 is an emergency number in
   some countries, such as Japan and South Korea.
+- **Profile sign-in** (backend ready, screen not built): ask for the phone number, call `accounts:requestPhoneCode` (Soterra phones it and reads a 6-digit code), let the user type the code into `accounts:verifyPhoneCode`, keep the returned token in the Keychain, and pass it to `accounts:getMyProfile` / `accounts:saveMyProfile`. See docs/backend.md ("App sign-in and profile"). There is no way to read or save a profile with only a phone number.
 - **Call Soterra** really dials the live hotline, +1 712 600 3362.
 - **Ask Soterra:** try "What's going on with the Ridgeview Fire?", "Where are the shelters?",
   "Is Hillcrest Elementary open as a shelter?" (I don't know yet), then "Call me when you know", or

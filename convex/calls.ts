@@ -7,7 +7,7 @@ import { DEFAULTS, isSupportedLanguage, supportedLanguage } from "../src/config/
 import { buildCallerContext } from "../src/memory/callerContext";
 import { STALE_SESSION_MS } from "../src/memory/retention";
 import { stateForZip, type AreaCandidate } from "../src/orchestration/area";
-import { inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
+import { appCodeGreeting, inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
 import type { LlmMessage } from "../src/providers/llm/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -110,11 +110,23 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
     })),
     now,
   });
-  const greeting = verifiedPhone
-    ? verificationGreeting(language)
-    : args.direction === "outbound" && notification
-      ? outboundGreeting(language, notification.message)
-      : inboundGreeting(language);
+  // The call that reads the app its sign-in code: the code comes from the challenge this notification belongs to.
+  let appCode: string | null | undefined;
+  if (args.direction === "outbound" && notification?.purpose === "app_code") {
+    const challenge = await ctx.db
+      .query("phoneChallenges")
+      .withIndex("by_notificationId", (q) => q.eq("notificationId", notification._id))
+      .unique();
+    appCode = challenge && challenge.expiresAt > now ? challenge.code : null;
+  }
+  const greeting =
+    appCode !== undefined
+      ? appCodeGreeting(language, appCode)
+      : verifiedPhone
+        ? verificationGreeting(language)
+        : args.direction === "outbound" && notification
+          ? outboundGreeting(language, notification.message)
+          : inboundGreeting(language);
 
   const callId = await ctx.db.insert("calls", {
     provider: "cartesia",
@@ -319,7 +331,7 @@ export const beginTurn = internalMutation({
     const pinnedChunkIds: string[] = [];
     if (call.direction === "outbound" && call.notificationId && !call.verifiedPhone) {
       const notification = await ctx.db.get("notifications", call.notificationId);
-      if (notification && notification.purpose !== "verification") {
+      if (notification && (notification.purpose === undefined || notification.purpose === "update")) {
         callReason = notification.message;
         for (const bulletinId of notification.bulletinRefs.slice(0, 3)) {
           const chunks = await ctx.db
