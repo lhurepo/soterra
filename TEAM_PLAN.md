@@ -28,7 +28,7 @@ Enforced in code where marked ✅.
 
 | Feature | Priority | Owner | Status |
 | --- | --- | --- | --- |
-| Inbound multi-turn call (voice ⇄ backend contract) | P0 | Leia + Alonso/Hikaru | 🟡 backend ✅, agent ✅ vs mock; no phone number yet |
+| Inbound multi-turn call (voice ⇄ backend contract) | P0 | Leia + Alonso/Hikaru | 🟡 backend ✅; agent ✅ through the real SDK runner against the dev backend (text mode); no phone number yet |
 | Grounded answers with source and time | P0 | Alonso/Hikaru | 🟡 enforcement ✅, real model ⬜ (MockLlm) |
 | "I don't know yet" + unanswered questions | P0 | Alonso/Hikaru | ✅ |
 | Danger path | P0 | Alonso/Hikaru | ✅ (en, es patterns; needs native-speaker review) |
@@ -37,7 +37,7 @@ Enforced in code where marked ✅.
 | Fixtures (Ridgeview demo) | P0 | shared | ✅ |
 | Convex search retrieval | P0 | Alonso/Hikaru | ✅ |
 | Caller memory (last summary, language, area) | P1 | Alonso/Hikaru | 🟡 stored ✅, used only for verified accounts |
-| Spanish | P1 | Leia + Alonso/Hikaru | 🟡 phrases ✅, voice/STT switch untested |
+| Spanish | P1 | Leia + Alonso/Hikaru | 🟡 Spanish number map + keypad switch ✅ in tests and text calls; real-call STT/TTS untested; Spanish voice not chosen |
 | Account association (verified phone link) | P1 | Alonso/Hikaru | 🟡 tables + rule ✅, verification flow ⬜, auth ⬜ |
 | More official sources (USGS, FEMA, NHC, Tsunami, InciWeb, NIFC) | P1 | Dhweya | ✅ adapters + fixtures; live-ready |
 | Crisis mode | P1 | Dhweya | ✅ trigger, extend, auto-revert, mode log |
@@ -76,14 +76,13 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
 ### Leia — voice (`voice/`)
 
 - **Receives:** Cartesia call events. **Returns:** speech. Talks to the backend only through the [live-call contract](docs/contracts/live-call.md).
-- **Can rely on now:** `MockBackendClient` (`BACKEND_MODE=mock`), the real backend in mock mode (`npm run sim:call` proves it), golden fixtures in `fixtures/contracts/`.
-- **First hour:** deploy a hello-world Line agent on a real phone number (`cartesia deploy`; if new hosted deploys are refused, self-host and `cartesia connect`), then make it call `GET /health` and say the result.
-- **To do:**
-  1. Deploy `voice/` with `BACKEND_MODE=http` against the dev deployment; place a real call through the Ridgeview scenario.
-  2. Log `call_request` on real inbound and outbound calls; confirm `from_`, `to`, `metadata` (see DECISIONS "still unverified").
-  3. Measure end-of-speech → first audio; report against the 2.5 s budget.
-  4. Spanish: voice choice, `AgentUpdateCall(language="es", voice_id=...)`, test with a Spanish speaker.
-  5. Outbound callback call with Alonso/Hikaru (review `src/providers/cartesia/outbound.ts`).
+- **Built (branch `voice/agent`, see [voice/README.md](voice/README.md)):** config with fail-fast env; `Backend` protocol (httpx client with typed errors + `MockBackendClient` with delays and faults); pre-call session start and STT/TTS language + voice; greeting with an uninterruptible transcription notice; turns with one filler after 1.2 s; barge-in cancellation and `interruptedPrevious`; fallback with 911, call ends after 3 failures; repeat; keypad language switch; outbound callbacks; masked logs; `scripts/harness_call.py` (whole call through the real SDK app, no Cartesia). Verified in text mode against the dev backend: the demo script, Spanish, the failure cutoff.
+- **Next:**
+  1. `cartesia init` / `env set` / `deploy` (or self-host + `cartesia connect`), provision a number, place a real call through the Ridgeview demo script (README checklist).
+  2. Log the first real `call_request` (masked) on inbound and outbound calls: `from_`, `to`, `metadata`, pre-call metadata pass-through.
+  3. Measure end of speech → first audio against the 2.5 s target; record it in the README.
+  4. Choose and record a Spanish voice (`VOICE_ID_ES`); test with a Spanish speaker; decide on `OFFER_SPANISH_DTMF`.
+  5. Outbound callback with Alonso/Hikaru: confirm whether `notificationId` reaches the agent (Cartesia documents only `dynamic_variables`).
 - **Done when:** a real phone call gets grounded answers from fixtures, a backend outage produces the fallback line, and barge-in works.
 
 ### Alonso and Hikaru — backend (`src/orchestration`, `src/retrieval`, `src/memory`, `src/notifications`, `src/providers/{llm,moss,cartesia}`, `src/config`, `convex/{voice,calls,callers,accounts,memory,retrieval,unanswered,health,subscriptions,notifications}.ts`)
@@ -136,7 +135,7 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
 
 See [DECISIONS.md](docs/DECISIONS.md). Still unverified:
 
-- Does `cartesia deploy` accept new hosted agents before the Dec 1, 2026 shutdown? (Leia)
+- Does `cartesia deploy` accept new hosted agents before the Dec 1, 2026 shutdown? (Leia — not tested yet: no Cartesia credentials in this environment)
 - Do outbound `dynamic_variables` reach `CallRequest.metadata`? What are `from_`/`to` on outbound calls? (Leia)
 - Cartesia outbound auth header (`X-API-Key` in examples vs bearer in the spec). (Alonso/Hikaru)
 - Moss cold-load time in a `"use node"` action. (Alonso/Hikaru)
@@ -164,3 +163,4 @@ Setup: `SERVE_FIXTURES=true`, `npm run seed:fixtures`, call from a phone whose n
 
 - 2026-10-24 — Skeleton created on branch `skeleton/shared-codebase`: contracts v1, schema, mock end-to-end path, voice agent, fixtures, docs, 77 Vitest + 22 pytest tests. (Claude, for Hikaru)
 - 2026-10-24 — Ingestion module on branch `ingestion/pipeline` (Dhweya's scope; Claude). **Additive contract changes:** `NormalizedBulletin.timeBasis?` (`issued` | `page_updated` | `observed`) and `supersedesExternalIds?`; `timeBasis` on `bulletins` and `chunks`; new `Signal` schema and `signals` table; `ExtractionResult` deprecated (unused). New tables: `bulletinAliases`, `ingestionRuns`, `rawPayloads`, `systemModeLog`, `devSettings`; `sources` gains `mode`/run bookkeeping (`lastFetchedAt` replaced by `lastRunAt`); `mockSites` gains `variant`. Chunks now start with a one-sentence header (title — issuer — areas — time with basis). Fixture bulletins trigger crisis mode only when `SERVE_FIXTURES=true`. Mock sites moved to `fixtures/mock-sites/v1|v2`; `/mock-sites/*` handler moved to `convex/mockSites.ts`. **Backend to handle:** (1) speak `timeBasis` ("as of when we checked at 3:05 PM" for `observed`, "the page was last updated at …" for `page_updated`) — `RetrievedChunk` and `convex/retrieval.ts` don't carry it yet and grounding always says "issued"; (2) `/health` can include `internal.ingestionRuns.sourceStatus`; (3) `signals` are operator-only data, never retrieval input.
+- 2026-10-24 — Voice agent on branch `voice/agent` (Leia's scope; Claude). No contract changes. Behaviour the backend team should know: one filler line after 1.2 s of backend silence; 8 s turn budget; 3 consecutive failures end the call with reason `error`; repeat requests are answered locally (no `/voice/turn`, so they are not in the transcript); `languageHint` is sent only for numbers in `LANGUAGE_BY_DIALED_NUMBER`, so the caller's saved language decides otherwise; keypad 2/1 changes the language sent on later turns without a new session start. Cartesia documents outbound `dynamic_variables`, not `metadata`, so `notificationId` reaching the agent is unconfirmed.
