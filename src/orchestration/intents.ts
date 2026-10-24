@@ -21,7 +21,7 @@ export function isGoodbye(utterance: string): boolean {
 /** "Stop updates", "stop calling me", "unsubscribe", "deje de llamarme", "parar actualizaciones". */
 export function asksToStopUpdates(utterance: string): boolean {
   return test(
-    /\b(stop (the |these |my |all )?(updates|calls|calling( me)?|notifications)|no more (updates|calls)|unsubscribe|cancel (the |my )?(updates|callbacks?|notifications)|don'?t call me (again|anymore|back)|deje de llamarme|dejen de llamarme|no me llame mas|parar (las )?actualizaciones|cancelar (las )?(actualizaciones|llamadas)|ya no quiero (actualizaciones|llamadas))\b/,
+    /\b(stop (the |these |my |all )?(updates|calls|calling( me)?|notifications)|no more (updates|calls)|turn (them|the updates|my updates|all (of )?(them|updates)) (all )?off|unsubscribe|cancel (the |my )?(updates|callbacks?|notifications)|don'?t call me (again|anymore|back)|deje de llamarme|dejen de llamarme|no me llame mas|parar (las )?actualizaciones|cancelar (las )?(actualizaciones|llamadas)|ya no quiero (actualizaciones|llamadas))\b/,
     utterance,
   );
 }
@@ -86,23 +86,29 @@ const REMEMBER_VERB = /(?:^|\b)(?:remember|save|store|keep(?: in mind)?|note|hol
  */
 export function profileCommand(utterance: string): ProfileCommand | null {
   const text = spoken(utterance);
+  const aboutDisaster = /\b(evacuat|fire|flood|shelter|warning|order|road|alert|quake|storm)/.test(text);
+  // "delete my stored details", "delete all the data you have about me", "remove everything that's stored", "forget me".
   if (
-    /\b(forget (me|everything|my (info|information|data|details|profile))|delete (all )?(of )?my (info|information|data|details|profile)|delete everything|erase (all )?(of )?my (info|information|data|details|profile)|olvidame|olvida todo|borra (toda )?(mi|mis) (informacion|datos|perfil)|borra todo)\b/.test(text)
+    /\b(forget (me|everything|my (info|information|data|details|profile))|olvidame|olvida todo|borra (toda )?(mi|mis) (informacion|datos|perfil)|borra todo)\b/.test(text) ||
+    (!aboutDisaster &&
+      /\b(?:delete|remove|erase|wipe|clear|purge|get rid of|destroy)\b.{0,40}\b(?:data|info|information|details|profile|history|records?|everything|memory|stored|saved)\b/.test(text) &&
+      /\b(?:my|me|mine|caller id|number|stored|saved|you (?:have|got|know|keep)|that you|all that|everything)\b/.test(text))
   ) {
     return { kind: "forget" };
   }
   // Not about a disaster: "call me back so you can verify me", "am I verified". These never reach the model, which used to
   // read "call me back" as "set up updates". Topic words keep "call me back to confirm the evacuation order" out.
-  const aboutDisaster = /\b(evacuat|fire|flood|shelter|warning|order|road|alert|quake|storm)/.test(text);
   if (
     !aboutDisaster &&
     /\b(?:(?:call|ring|phone|dial) me back\b.{0,40}\b(?:confirm|verify|authenticate|make sure it'?s me)|(?:verify|confirm|authenticate)\b.{0,12}\b(?:me|my identity|that it'?s me|it'?s me|my number|my phone)|confirm with me|i (?:want|need|would like) (?:you )?to (?:verify|confirm)|(?:am i|are we) (?:not )?(?:already )?(?:verified|confirmed))\b/.test(text)
   ) {
     return { kind: "verify" };
   }
+  // "what updates you have about me": the caller's own updates (not "any updates for me near San Francisco").
+  if (!aboutDisaster && /\bupdates?\b.{0,25}\b(?:about|on) me\b/.test(text)) return { kind: "updates" };
   // "what updates do I have", "what did I ask you to call me back about", "what are you watching for me".
   if (
-    /\b(what|which) (updates?|alerts?|notifications?|callbacks?|calls?) (do|did|have|am|are) (i|you|we)\b.{0,40}\b(have|ask(ed)?|set up|request(ed)?|signed up|subscribed|watching|waiting)\b|\bwhat (did|do) i ask you to (call|notify|update|tell)\b|\bwhat (am i|are we) (signed up|subscribed)\b|\bwhat are you (watching|monitoring|tracking) (for|on) me\b|\bwhat (was|were) (it|the thing|the updates?) (that )?i asked (you )?(for|to)\b|\bwhat i asked you to call me back\b|\bwhat i (?:asked|requested)(?: you)?(?: for| about)?(?: earlier| before)?$|\basked you to (?:call|notify|update|tell|text) me(?: back)?\b.{0,30}\b(?:for|about)\b.{0,40}\bwhat\b|\bque (actualizaciones|alertas) tengo\b/.test(text)
+    /\b(?:updates?|alerts?|notifications?|callbacks?)\b.{0,50}\b(?:connected|related|relating|tied|linked|associated|attached)\b.{0,15}\b(?:to |with )?(?:me|my|this)\b|\b(?:set up|setup|signed up|created|made|have|had|got|requested)\b.{0,30}\b(?:updates?|alerts?|notifications?|callbacks?)\b.{0,30}\b(?:previously|before|already|earlier|last time)\b|\b(?:previously|already|earlier)\b.{0,30}\b(?:set up|setup|signed up|requested)\b.{0,30}\b(?:updates?|alerts?|notifications?)\b|\b(what|which) (updates?|alerts?|notifications?|callbacks?|calls?) (do|did|have|am|are) (i|you|we)\b.{0,40}\b(have|ask(ed)?|set up|request(ed)?|signed up|subscribed|watching|waiting)\b|\bwhat (did|do) i ask you to (call|notify|update|tell)\b|\bwhat (am i|are we) (signed up|subscribed)\b|\bwhat are you (watching|monitoring|tracking) (for|on) me\b|\bwhat (was|were) (it|the thing|the updates?) (that )?i asked (you )?(for|to)\b|\bwhat i asked you to call me back\b|\bwhat i (?:asked|requested)(?: you)?(?: for| about)?(?: earlier| before)?$|\basked you to (?:call|notify|update|tell|text) me(?: back)?\b.{0,30}\b(?:for|about)\b.{0,40}\bwhat\b|\bque (actualizaciones|alertas) tengo\b/.test(text)
   ) {
     return { kind: "updates" };
   }
@@ -158,4 +164,15 @@ export function isConfirmation(utterance: string): boolean {
 
 export function isRefusal(utterance: string): boolean {
   return /^(no|nope|cancel|never mind|nevermind|don'?t|stop|cancela|cancelar|no gracias)\b/.test(flat(utterance));
+}
+
+/**
+ * Did the caller actually ask to be called or told? A follow-up (an update subscription) is only created when they did:
+ * "do you have updates connected to my phone" and a bare "yes" are not requests, and the model used to create one anyway.
+ */
+export function explicitFollowUpRequest(utterance: string): boolean {
+  return test(
+    /\b(call me|ring me|phone me|text me|notify me|alert me|remind me|let me know|keep me (updated|posted|informed)|tell me (if|when)|send me|set (up )?(an? )?(update|updates|notification|notifications|alert|alerts|reminder|callback)|sign me up|subscribe|llamame|llameme|avisame|aviseme|mantenme|mantengame|notificame)\b/,
+    utterance,
+  );
 }

@@ -14,7 +14,7 @@ import { resolveArea, type AreaCandidate, type AreaSource } from "./area";
 import { dangerLanguage } from "./danger";
 import { enforceGrounding } from "./grounding";
 import { addNeed } from "../memory/profile";
-import { asksToStopUpdates, declinesTranscript, isConfirmation, isRefusal, profileCommand } from "./intents";
+import { asksToStopUpdates, declinesTranscript, explicitFollowUpRequest, isConfirmation, isRefusal, profileCommand } from "./intents";
 import { buildTurnRequest, parseDraft } from "./prompt";
 
 export type TurnInput = {
@@ -43,6 +43,8 @@ export type TurnState = {
   pendingAction?: "forget";
   /** Verification callbacks already requested for this number in the last hour (rate limit). */
   verificationsLastHour?: number;
+  /** For an update callback: what we phoned about (the update text). */
+  callReason?: string;
 };
 
 export type TurnDeps = {
@@ -257,6 +259,7 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
       context: toLlmContext(state.context),
       area: resolved.area,
       areaFromMemory: resolved.source === "context",
+      callReason: state.callReason,
       history: state.history,
       now: t1,
     },
@@ -295,6 +298,11 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   // 8. Effects.
   if (g.unansweredQuestion !== undefined) effects.recordUnanswered = { text: g.unansweredQuestion, area: resolved.area };
   if (draft.detectedArea && !effects.setKnownArea) effects.setKnownArea = draft.detectedArea;
+  if (kind === "followup" && !explicitFollowUpRequest(input.utterance)) {
+    // The model chose "followup" but the caller never asked to be called or told: do not create an update.
+    kind = "clarify";
+    reply = t("followupUnclear", language);
+  }
   if (kind === "followup") {
     if (!state.hasCallerPhone) {
       reply = t("callbackDeclined", language);

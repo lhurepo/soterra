@@ -221,6 +221,10 @@ export type BeginTurnResult =
       callIncidentKeys: string[];
       pendingAction?: "forget";
       verificationsLastHour: number;
+      /** For an update callback: the update we phoned about, so the model knows why it called. */
+      callReason?: string;
+      /** Chunks of the bulletin(s) behind that update; always included in the sources for this call. */
+      pinnedChunkIds?: string[];
     };
 
 /**
@@ -303,10 +307,29 @@ export const beginTurn = internalMutation({
         ).filter((n) => n.purpose === "verification").length
       : 0;
 
+    // An update callback: remember what we called about, and keep that bulletin in the sources so the caller can ask about it.
+    let callReason: string | undefined;
+    const pinnedChunkIds: string[] = [];
+    if (call.direction === "outbound" && call.notificationId && !call.verifiedPhone) {
+      const notification = await ctx.db.get("notifications", call.notificationId);
+      if (notification && notification.purpose !== "verification") {
+        callReason = notification.message;
+        for (const bulletinId of notification.bulletinRefs.slice(0, 3)) {
+          const chunks = await ctx.db
+            .query("chunks")
+            .withIndex("by_bulletinId", (q) => q.eq("bulletinId", bulletinId))
+            .take(3);
+          pinnedChunkIds.push(...chunks.map((c) => c._id as string));
+        }
+      }
+    }
+
     return {
       status: "new",
       callId,
       turnId,
+      callReason,
+      pinnedChunkIds: pinnedChunkIds.length > 0 ? pinnedChunkIds : undefined,
       pendingAction: call.pendingAction,
       verificationsLastHour,
       hasCallerPhone: call.callerPhone !== undefined,
