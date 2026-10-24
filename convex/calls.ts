@@ -6,7 +6,7 @@ import type { AreaRef, CallerContext } from "../src/contracts";
 import { DEFAULTS, isSupportedLanguage, supportedLanguage } from "../src/config/defaults";
 import { buildCallerContext } from "../src/memory/callerContext";
 import { STALE_SESSION_MS } from "../src/memory/retention";
-import type { AreaCandidate } from "../src/orchestration/area";
+import { stateForZip, type AreaCandidate } from "../src/orchestration/area";
 import { inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
 import type { LlmMessage } from "../src/providers/llm/types";
 import { internal } from "./_generated/api";
@@ -34,6 +34,12 @@ async function callByProviderId(ctx: QueryCtx, providerCallId: string): Promise<
     .query("calls")
     .withIndex("by_providerCallId", (q) => q.eq("providerCallId", providerCallId))
     .unique();
+}
+
+/** The account's home ZIP as an area, used when the caller has no remembered area. */
+function homeArea(zip: string | undefined): AreaRef | undefined {
+  const state = zip ? stateForZip(zip) : undefined;
+  return zip && state ? { state, zip, label: `ZIP code ${zip}` } : undefined;
 }
 
 function firstSupported(...candidates: (string | undefined)[]): string {
@@ -88,8 +94,9 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
     callerId: caller?._id,
     accountId: account?._id,
     language,
-    knownArea: caller?.knownArea,
+    knownArea: caller?.knownArea ?? homeArea(account?.homeZip),
     accountNeeds: account?.needs,
+    accountPersonalContext: account?.personalContext,
     verifiedPhone,
     profileNeeds: caller?.profileNeeds,
     lastSummary: lastSummary ? { text: lastSummary.summary, createdAt: lastSummary.createdAt } : undefined,
