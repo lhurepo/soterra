@@ -175,9 +175,17 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
         if (added.status === "full") return simple("smalltalk", t("profileFull", language), keep);
         return simple("smalltalk", t("profileRejected", language), keep);
       }
+      case "verify":
+        return simple("smalltalk", t("verifiedAlready", language), keep);
       case "recall": {
+        // Everything saved about this number: the saved needs and the last call's summary.
         const needs = state.context.needs;
-        return simple("smalltalk", needs?.length ? tf("profileRecall", language, { needs: needs.join("; ") }) : t("profileEmpty", language), keep);
+        const summary = state.context.lastCallSummary;
+        const parts = [
+          summary ? tf("recapSummary", language, { summary }) : undefined,
+          needs?.length ? tf("profileRecall", language, { needs: needs.join("; ") }) : undefined,
+        ].filter((p): p is string => p !== undefined);
+        return simple("smalltalk", parts.length ? parts.join(" ") : t("profileEmpty", language), keep);
       }
       case "updates": {
         // "area San Francisco (evacuation change)" → "San Francisco, evacuation change"

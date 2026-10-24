@@ -76,7 +76,9 @@ describe("callback check", () => {
     expect(saved.reply).toBe(str("profileSaved", "en").replace("{need}", "I use a wheelchair"));
     expect((await callerFor(t, PHONE))?.profileNeeds).toEqual(["I use a wheelchair"]);
     expect((await say(t, cb.sessionId, 1, "Remember my address is 412 Oak Lane")).reply).toBe(str("profileRejected", "en"));
-    expect((await say(t, cb.sessionId, 2, "What do you know about me?")).reply).toContain("I use a wheelchair");
+    const known = (await say(t, cb.sessionId, 2, "What do you know about me?")).reply;
+    expect(known).toContain(str("profileRecall", "en").replace("{needs}", "I use a wheelchair"));
+    expect(known).not.toContain(str("profileEmpty", "en"));
     expect((await say(t, cb.sessionId, 3, "What did we talk about last time?")).reply).toContain("Ridgeview");
     await end(t, cb.sessionId);
     await settle(t);
@@ -161,6 +163,10 @@ describe("forget me", () => {
     expect(caller?.lastCallSummaryId).toBeUndefined();
     expect(caller?.knownArea).toBeUndefined();
     expect(await getCall(t, cb.sessionId)).toMatchObject({ forgotten: true, transcriptConsent: "declined" });
+    // The rest of this call cannot read back what was just deleted.
+    expect((await getCall(t, cb.sessionId))?.callerContext?.needs).toBeUndefined();
+    expect((await getCall(t, cb.sessionId))?.callerContext?.lastCallSummary).toBeUndefined();
+    expect((await say(t, cb.sessionId, 3, "What do you know about me?")).reply).toBe(str("profileEmpty", "en"));
     await end(t, cb.sessionId);
     await settle(t);
     const summaries = await t.run(async (ctx) => await ctx.db.query("callSummaries").collect());

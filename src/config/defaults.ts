@@ -17,7 +17,7 @@ export const DEFAULTS = {
   /** Callback checks per number per hour: a spoofed caller ID must not make us ring someone repeatedly. */
   verificationsPerHour: 3,
   /** Pause between "please hang up" and the callback, so the caller's line is free. */
-  verificationDelayMs: 20_000,
+  verificationDelayMs: 8_000,
   /** A verification callback must connect within this long of being requested to count. */
   verificationValidMs: 10 * 60_000,
   subscriptionMaxTtlMs: 72 * HOUR,

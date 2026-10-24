@@ -65,7 +65,7 @@ export function asksForSource(utterance: string): boolean {
 
 // ── Personal commands (need a verified call; see src/orchestration/pipeline.ts) ──────────────────────────────
 
-export type ProfileCommand = { kind: "remember"; text: string } | { kind: "recall" } | { kind: "recap" } | { kind: "updates" } | { kind: "forget" };
+export type ProfileCommand = { kind: "remember"; text: string } | { kind: "recall" } | { kind: "recap" } | { kind: "updates" } | { kind: "verify" } | { kind: "forget" };
 
 const flat = (utterance: string) => normalizeForMatch(utterance).replace(/[.?!,;:¿¡]+/g, " ").replace(/\s+/g, " ").trim();
 
@@ -90,6 +90,15 @@ export function profileCommand(utterance: string): ProfileCommand | null {
     /\b(forget (me|everything|my (info|information|data|details|profile))|delete (all )?(of )?my (info|information|data|details|profile)|delete everything|erase (all )?(of )?my (info|information|data|details|profile)|olvidame|olvida todo|borra (toda )?(mi|mis) (informacion|datos|perfil)|borra todo)\b/.test(text)
   ) {
     return { kind: "forget" };
+  }
+  // Not about a disaster: "call me back so you can verify me", "am I verified". These never reach the model, which used to
+  // read "call me back" as "set up updates". Topic words keep "call me back to confirm the evacuation order" out.
+  const aboutDisaster = /\b(evacuat|fire|flood|shelter|warning|order|road|alert|quake|storm)/.test(text);
+  if (
+    !aboutDisaster &&
+    /\b(?:(?:call|ring|phone|dial) me back\b.{0,40}\b(?:confirm|verify|authenticate|make sure it'?s me)|(?:verify|confirm|authenticate)\b.{0,12}\b(?:me|my identity|that it'?s me|it'?s me|my number|my phone)|confirm with me|i (?:want|need|would like) (?:you )?to (?:verify|confirm)|(?:am i|are we) (?:not )?(?:already )?(?:verified|confirmed))\b/.test(text)
+  ) {
+    return { kind: "verify" };
   }
   // "what updates do I have", "what did I ask you to call me back about", "what are you watching for me".
   if (
@@ -118,6 +127,14 @@ export function profileCommand(utterance: string): ProfileCommand | null {
     /^(?:(?:do|can|could) you (?:remember|recall)|did i (?:tell|say|mention)(?: to)? you|have i (?:told|said|mentioned)(?: to)? you)(?: that| if| whether| about| anything about)? (?:i|my|we|our)\b/.test(text) &&
     !/\b(should|could|can i|where|when|how|why|evacuate|miss(?:ed)?)\b/.test(text) &&
     !/\b(?:last|previous|earlier) (?:call|conversation)\b/.test(text)
+  ) {
+    return { kind: "recall" };
+  }
+  // "the information you have about me", "do we have any previous conversations", "let me know about my previous calls".
+  if (
+    /\b(?:you|that you) (?:have|know|saved|stored|remember|keep|got)\b.{0,15}\b(?:about|on) me\b/.test(text) ||
+    (/\b(?:previous|past|earlier|prior) (?:calls?|conversations?|chats?|history)\b/.test(text) && /\b(?:me|my|our|we|us|i)\b/.test(text) && !aboutDisaster) ||
+    /\b(?:have|did) (?:we|i) (?:talked?|spoken|spoke|called) (?:to each other |with you |to you )?before\b/.test(text)
   ) {
     return { kind: "recall" };
   }
