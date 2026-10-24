@@ -107,7 +107,7 @@ describe("messages", () => {
 describe("notifiers", () => {
   const request = { recipientPhone: "+17075550123", channel: "phone_call" as const, language: "en", message: "m", bulletinRefs: [], dedupeKey: "k", notificationId: "n1" };
 
-  it("selects mock by default, Cartesia only when asked, SMS always unconfigured", async () => {
+  it("selects mock by default, Cartesia only when asked; the unconfigured SMS notifier sends nothing", async () => {
     expect(selectNotifier(loadConfig({}), "phone_call", fetch)).toBeInstanceOf(MockPhoneNotifier);
     expect(selectNotifier(loadConfig({ PHONE_NOTIFIER: "cartesia" }), "phone_call", fetch)).toBeInstanceOf(CartesiaOutboundCallNotifier);
     expect(await new UnconfiguredSmsNotifier().send()).toEqual({ status: "unconfigured", error: "No SMS provider is configured" });
