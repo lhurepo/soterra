@@ -1,0 +1,646 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		047A09E584FF70F7486C435B = {isa = PBXBuildFile; fileRef = D4154E502D5E7082CEED7377 /* SoterraApp.swift */; };
+		0B9382E905966EAA2E8283C2 = {isa = PBXBuildFile; fileRef = 7871098247D7110E5A11CF28 /* AlertsView.swift */; };
+		1D3145050D2C6F582A9BB675 = {isa = PBXBuildFile; fileRef = FE92C2A14A4F849A95FFF8DB /* SeverityStyle.swift */; };
+		22AC4B2B49E4F71E802412BF = {isa = PBXBuildFile; fileRef = 989D2F4B11DEFCA44371559F /* HouseholdView.swift */; };
+		30C242914CE0AFA468ED1818 = {isa = PBXBuildFile; fileRef = 5E9DCFDA34393CCD5D5121AA /* Buttons.swift */; };
+		32CCB4FE1B6606B37A89A3D8 = {isa = PBXBuildFile; fileRef = 9CC5DE654293F0E5DDC60732 /* DemoConfig.swift */; };
+		332C2CF777B47E2A40DCCA1C = {isa = PBXBuildFile; fileRef = B53EEED5D14E2B9543E30F72 /* DemoData.swift */; };
+		4543D699F1490F0186B2D06C = {isa = PBXBuildFile; fileRef = 8D021A34B7FD2B667497E674 /* Palette.swift */; };
+		48124CD49534AFE79B59906A = {isa = PBXBuildFile; fileRef = F3A77C08C6AC79CB012B34B3 /* MapScreen.swift */; };
+		4CD291699CAF780D5ED78143 = {isa = PBXBuildFile; fileRef = EACB71B89F71FDFC85E536C0 /* MoreDetailViews.swift */; };
+		5F389CD2F7127EDDE7933E55 = {isa = PBXBuildFile; fileRef = 547A45F0405612235B87E78A /* AssistantView.swift */; };
+		80D25216A1B61BEC9AE1ED8D = {isa = PBXBuildFile; fileRef = 76BF10C9E778F7D1A30C2665 /* AppModel.swift */; };
+		8A1295D22FEA7B7A9B9B6E30 = {isa = PBXBuildFile; fileRef = C9B2EAB8A0C23A2CAAF704B4 /* AlertDetailView.swift */; };
+		8C9A0D77FA6382A641B5A6C9 = {isa = PBXBuildFile; fileRef = CF401E918324C74F54583643 /* DemoAssistant.swift */; };
+		8E4BBF4A85F2946694907DBF = {isa = PBXBuildFile; fileRef = 948AE2568A18CA1F0EECF71B /* RootView.swift */; };
+		92E0D4F50C28F4F059C49F8B = {isa = PBXBuildFile; fileRef = 73661683B95B1100658759E8 /* DangerSheet.swift */; };
+		A38B53C0486A18E933FDFAD5 = {isa = PBXBuildFile; fileRef = 95EA1204454E21935FE0236C /* Typography.swift */; };
+		AA140505D918A4A8DCB8F3A0 = {isa = PBXBuildFile; fileRef = 464C36FD41B69400630031CC /* Assets.xcassets */; };
+		B4F683040094739F0ED94E85 = {isa = PBXBuildFile; fileRef = 0F68A5D7188BCA4ABAF55AB1 /* AppModelTests.swift */; };
+		BA81EC6428D0AE19369AE459 = {isa = PBXBuildFile; fileRef = FECFD9BB402419BC6F252C49 /* DemoAssistantTests.swift */; };
+		BF80B4252795F24D053089FA = {isa = PBXBuildFile; fileRef = 49F3DF8D78CEBA8B2FDD5DCC /* Outfit-SemiBold.ttf */; };
+		C223CA60665628C6A48DEE9A = {isa = PBXBuildFile; fileRef = 34CAC7C8C70F6B0C6EE1CB83 /* Models.swift */; };
+		D05DA86A64CE0BF30811E0EF = {isa = PBXBuildFile; fileRef = 0FD2DE29D47A429E515A1FCE /* OFL.txt */; };
+		D4518307D263824B69B45FD5 = {isa = PBXBuildFile; fileRef = 85F3335ABEF256BB16825E3C /* MoreView.swift */; };
+		E31BC0736BF7E23FAC9F760A = {isa = PBXBuildFile; fileRef = B4A5C4557E654E04BBF907F9 /* HomeView.swift */; };
+		E525DB938891BECDB363944B = {isa = PBXBuildFile; fileRef = A4812E4A79E49C1FB99D90FD /* Components.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		431387EB7262E1CFC79B125E = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 90E3C57E29785609EE4533E2;
+			remoteInfo = Soterra;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0F68A5D7188BCA4ABAF55AB1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModelTests.swift"; sourceTree = "<group>"; };
+		0FD2DE29D47A429E515A1FCE = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL.txt"; sourceTree = "<group>"; };
+		34CAC7C8C70F6B0C6EE1CB83 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models.swift"; sourceTree = "<group>"; };
+		464C36FD41B69400630031CC = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
+		49F3DF8D78CEBA8B2FDD5DCC = {isa = PBXFileReference; lastKnownFileType = file; path = "Outfit-SemiBold.ttf"; sourceTree = "<group>"; };
+		547A45F0405612235B87E78A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantView.swift"; sourceTree = "<group>"; };
+		5E9DCFDA34393CCD5D5121AA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Buttons.swift"; sourceTree = "<group>"; };
+		6E0CB483A01F056E69D45F1D = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SoterraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		73661683B95B1100658759E8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DangerSheet.swift"; sourceTree = "<group>"; };
+		76BF10C9E778F7D1A30C2665 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel.swift"; sourceTree = "<group>"; };
+		7871098247D7110E5A11CF28 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AlertsView.swift"; sourceTree = "<group>"; };
+		85292763BD1274723AC22AB5 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Soterra.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		85F3335ABEF256BB16825E3C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MoreView.swift"; sourceTree = "<group>"; };
+		8D021A34B7FD2B667497E674 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Palette.swift"; sourceTree = "<group>"; };
+		948AE2568A18CA1F0EECF71B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RootView.swift"; sourceTree = "<group>"; };
+		95EA1204454E21935FE0236C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Typography.swift"; sourceTree = "<group>"; };
+		989D2F4B11DEFCA44371559F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HouseholdView.swift"; sourceTree = "<group>"; };
+		9CC5DE654293F0E5DDC60732 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DemoConfig.swift"; sourceTree = "<group>"; };
+		A4812E4A79E49C1FB99D90FD = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Components.swift"; sourceTree = "<group>"; };
+		B4A5C4557E654E04BBF907F9 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeView.swift"; sourceTree = "<group>"; };
+		B53EEED5D14E2B9543E30F72 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DemoData.swift"; sourceTree = "<group>"; };
+		C9B2EAB8A0C23A2CAAF704B4 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AlertDetailView.swift"; sourceTree = "<group>"; };
+		CF401E918324C74F54583643 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DemoAssistant.swift"; sourceTree = "<group>"; };
+		D4154E502D5E7082CEED7377 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoterraApp.swift"; sourceTree = "<group>"; };
+		EACB71B89F71FDFC85E536C0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MoreDetailViews.swift"; sourceTree = "<group>"; };
+		F3A77C08C6AC79CB012B34B3 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MapScreen.swift"; sourceTree = "<group>"; };
+		FE92C2A14A4F849A95FFF8DB = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SeverityStyle.swift"; sourceTree = "<group>"; };
+		FECFD9BB402419BC6F252C49 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DemoAssistantTests.swift"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		010B52203E771848EE7DE280 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9E808506AA2F5F0A069E244E = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		04CA2517A087841D455C67D2 = {
+			isa = PBXGroup;
+			children = (
+				EACB71B89F71FDFC85E536C0 /* MoreDetailViews.swift */,
+				85F3335ABEF256BB16825E3C /* MoreView.swift */,
+			);
+			path = "More";
+			sourceTree = "<group>";
+		};
+		2AC8BA37DAC32D5437812408 = {
+			isa = PBXGroup;
+			children = (
+				85292763BD1274723AC22AB5 /* Soterra.app */,
+				6E0CB483A01F056E69D45F1D /* SoterraTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		32FF34489A786A7DA0FF7020 = {
+			isa = PBXGroup;
+			children = (
+				43AFA89E1D2C433B4FEC6737 /* App */,
+				D028795627B0A4D52B7C6BB7 /* DesignSystem */,
+				FB2CA10198E3D44BA2D4C17C /* Features */,
+				3DD50876708002CBBF2DB4C0 /* Model */,
+				D8522542B84149769C8A4F47 /* Resources */,
+			);
+			path = "Soterra";
+			sourceTree = "<group>";
+		};
+		3DD50876708002CBBF2DB4C0 = {
+			isa = PBXGroup;
+			children = (
+				CF401E918324C74F54583643 /* DemoAssistant.swift */,
+				9CC5DE654293F0E5DDC60732 /* DemoConfig.swift */,
+				B53EEED5D14E2B9543E30F72 /* DemoData.swift */,
+				34CAC7C8C70F6B0C6EE1CB83 /* Models.swift */,
+			);
+			path = "Model";
+			sourceTree = "<group>";
+		};
+		43AFA89E1D2C433B4FEC6737 = {
+			isa = PBXGroup;
+			children = (
+				76BF10C9E778F7D1A30C2665 /* AppModel.swift */,
+				948AE2568A18CA1F0EECF71B /* RootView.swift */,
+				D4154E502D5E7082CEED7377 /* SoterraApp.swift */,
+			);
+			path = "App";
+			sourceTree = "<group>";
+		};
+		4EAE695AD1F489F78EA3E1C6 = {
+			isa = PBXGroup;
+			children = (
+				32FF34489A786A7DA0FF7020 /* Soterra */,
+				5D2232AE7330A98D8523C60E /* SoterraTests */,
+				2AC8BA37DAC32D5437812408 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5D2232AE7330A98D8523C60E = {
+			isa = PBXGroup;
+			children = (
+				0F68A5D7188BCA4ABAF55AB1 /* AppModelTests.swift */,
+				FECFD9BB402419BC6F252C49 /* DemoAssistantTests.swift */,
+			);
+			path = "SoterraTests";
+			sourceTree = "<group>";
+		};
+		8197D6212221D48332ADAF3D = {
+			isa = PBXGroup;
+			children = (
+				F3A77C08C6AC79CB012B34B3 /* MapScreen.swift */,
+			);
+			path = "Map";
+			sourceTree = "<group>";
+		};
+		B001818E74153F803C46305A = {
+			isa = PBXGroup;
+			children = (
+				989D2F4B11DEFCA44371559F /* HouseholdView.swift */,
+			);
+			path = "Household";
+			sourceTree = "<group>";
+		};
+		C39464AF042B7970864DF7EA = {
+			isa = PBXGroup;
+			children = (
+				C9B2EAB8A0C23A2CAAF704B4 /* AlertDetailView.swift */,
+				7871098247D7110E5A11CF28 /* AlertsView.swift */,
+			);
+			path = "Alerts";
+			sourceTree = "<group>";
+		};
+		CBEBDB221DB0C31C43C71146 = {
+			isa = PBXGroup;
+			children = (
+				73661683B95B1100658759E8 /* DangerSheet.swift */,
+			);
+			path = "Danger";
+			sourceTree = "<group>";
+		};
+		D009308F2482C0373832D93D = {
+			isa = PBXGroup;
+			children = (
+				B4A5C4557E654E04BBF907F9 /* HomeView.swift */,
+			);
+			path = "Home";
+			sourceTree = "<group>";
+		};
+		D028795627B0A4D52B7C6BB7 = {
+			isa = PBXGroup;
+			children = (
+				5E9DCFDA34393CCD5D5121AA /* Buttons.swift */,
+				A4812E4A79E49C1FB99D90FD /* Components.swift */,
+				8D021A34B7FD2B667497E674 /* Palette.swift */,
+				FE92C2A14A4F849A95FFF8DB /* SeverityStyle.swift */,
+				95EA1204454E21935FE0236C /* Typography.swift */,
+			);
+			path = "DesignSystem";
+			sourceTree = "<group>";
+		};
+		D8522542B84149769C8A4F47 = {
+			isa = PBXGroup;
+			children = (
+				EA47576153A64507C682A77B /* Fonts */,
+				464C36FD41B69400630031CC /* Assets.xcassets */,
+			);
+			path = "Resources";
+			sourceTree = "<group>";
+		};
+		E7E2680FE09042F1F2D2F05E = {
+			isa = PBXGroup;
+			children = (
+				547A45F0405612235B87E78A /* AssistantView.swift */,
+			);
+			path = "Assistant";
+			sourceTree = "<group>";
+		};
+		EA47576153A64507C682A77B = {
+			isa = PBXGroup;
+			children = (
+				0FD2DE29D47A429E515A1FCE /* OFL.txt */,
+				49F3DF8D78CEBA8B2FDD5DCC /* Outfit-SemiBold.ttf */,
+			);
+			path = "Fonts";
+			sourceTree = "<group>";
+		};
+		FB2CA10198E3D44BA2D4C17C = {
+			isa = PBXGroup;
+			children = (
+				C39464AF042B7970864DF7EA /* Alerts */,
+				E7E2680FE09042F1F2D2F05E /* Assistant */,
+				CBEBDB221DB0C31C43C71146 /* Danger */,
+				D009308F2482C0373832D93D /* Home */,
+				B001818E74153F803C46305A /* Household */,
+				8197D6212221D48332ADAF3D /* Map */,
+				04CA2517A087841D455C67D2 /* More */,
+			);
+			path = "Features";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		90E3C57E29785609EE4533E2 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1F04FA525F18A8395E87651D;
+			buildPhases = (
+				CA1C8A5139A990B950B56392 /* Sources */,
+				010B52203E771848EE7DE280 /* Frameworks */,
+				4802FEA4662AB55AAC57B2F7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Soterra;
+			productName = Soterra;
+			productReference = 85292763BD1274723AC22AB5 /* Soterra.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B0B87BB3809EEFEA498A5CBF = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 37A173FA24B11C69B4844A06;
+			buildPhases = (
+				29A3711113F6842174BC420C /* Sources */,
+				9E808506AA2F5F0A069E244E /* Frameworks */,
+				9AECCE067DAFC9E805DC9884 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E54DEBD65D8142E7785275AA /* PBXTargetDependency */,
+			);
+			name = SoterraTests;
+			productName = SoterraTests;
+			productReference = 6E0CB483A01F056E69D45F1D /* SoterraTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1520;
+				LastUpgradeCheck = 1520;
+				TargetAttributes = {
+					90E3C57E29785609EE4533E2 = {
+						CreatedOnToolsVersion = 15.2;
+					};
+					B0B87BB3809EEFEA498A5CBF = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = 90E3C57E29785609EE4533E2;
+					};
+				};
+			};
+			buildConfigurationList = A1806D8FE767B99D399E13F3;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4EAE695AD1F489F78EA3E1C6;
+			productRefGroup = 2AC8BA37DAC32D5437812408 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				90E3C57E29785609EE4533E2 /* Soterra */,
+				B0B87BB3809EEFEA498A5CBF /* SoterraTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4802FEA4662AB55AAC57B2F7 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D05DA86A64CE0BF30811E0EF /* OFL.txt in Resources */,
+				BF80B4252795F24D053089FA /* Outfit-SemiBold.ttf in Resources */,
+				AA140505D918A4A8DCB8F3A0 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9AECCE067DAFC9E805DC9884 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		29A3711113F6842174BC420C = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4F683040094739F0ED94E85 /* AppModelTests.swift in Sources */,
+				BA81EC6428D0AE19369AE459 /* DemoAssistantTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CA1C8A5139A990B950B56392 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80D25216A1B61BEC9AE1ED8D /* AppModel.swift in Sources */,
+				8E4BBF4A85F2946694907DBF /* RootView.swift in Sources */,
+				047A09E584FF70F7486C435B /* SoterraApp.swift in Sources */,
+				30C242914CE0AFA468ED1818 /* Buttons.swift in Sources */,
+				E525DB938891BECDB363944B /* Components.swift in Sources */,
+				4543D699F1490F0186B2D06C /* Palette.swift in Sources */,
+				1D3145050D2C6F582A9BB675 /* SeverityStyle.swift in Sources */,
+				A38B53C0486A18E933FDFAD5 /* Typography.swift in Sources */,
+				8A1295D22FEA7B7A9B9B6E30 /* AlertDetailView.swift in Sources */,
+				0B9382E905966EAA2E8283C2 /* AlertsView.swift in Sources */,
+				5F389CD2F7127EDDE7933E55 /* AssistantView.swift in Sources */,
+				92E0D4F50C28F4F059C49F8B /* DangerSheet.swift in Sources */,
+				E31BC0736BF7E23FAC9F760A /* HomeView.swift in Sources */,
+				22AC4B2B49E4F71E802412BF /* HouseholdView.swift in Sources */,
+				48124CD49534AFE79B59906A /* MapScreen.swift in Sources */,
+				4CD291699CAF780D5ED78143 /* MoreDetailViews.swift in Sources */,
+				D4518307D263824B69B45FD5 /* MoreView.swift in Sources */,
+				8C9A0D77FA6382A641B5A6C9 /* DemoAssistant.swift in Sources */,
+				32CCB4FE1B6606B37A89A3D8 /* DemoConfig.swift in Sources */,
+				332C2CF777B47E2A40DCCA1C /* DemoData.swift in Sources */,
+				C223CA60665628C6A48DEE9A /* Models.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E54DEBD65D8142E7785275AA = {
+			isa = PBXTargetDependency;
+			target = 90E3C57E29785609EE4533E2 /* Soterra */;
+			targetProxy = 431387EB7262E1CFC79B125E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		348B83AC72385D5DD42BD036 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = "1";
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = "YES";
+				MARKETING_VERSION = "0.1";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.lhurepo.soterra.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = "NO";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Soterra.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Soterra";
+			};
+			name = Debug;
+		};
+		52866476112F9526468F1656 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "AccentColor";
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = "1";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = "YES";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "Soterra";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = "YES";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = "YES";
+				INFOPLIST_KEY_UILaunchScreen_Generation = "YES";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = "0.1";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.lhurepo.soterra";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = "YES";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Debug;
+		};
+		68A18CF560D3731DEFD65322 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = "1";
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = "YES";
+				MARKETING_VERSION = "0.1";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.lhurepo.soterra.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = "NO";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Soterra.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Soterra";
+			};
+			name = Release;
+		};
+		6AFE22E70BE079CBB63426F8 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CLANG_ANALYZER_NONNULL = "YES";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = "YES";
+				CLANG_ENABLE_OBJC_ARC = "YES";
+				CLANG_ENABLE_OBJC_WEAK = "YES";
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = "YES";
+				CLANG_WARN_BOOL_CONVERSION = "YES";
+				CLANG_WARN_COMMA = "YES";
+				CLANG_WARN_CONSTANT_CONVERSION = "YES";
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = "YES";
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = "YES_ERROR";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = "YES";
+				CLANG_WARN_EMPTY_BODY = "YES";
+				CLANG_WARN_ENUM_CONVERSION = "YES";
+				CLANG_WARN_INFINITE_RECURSION = "YES";
+				CLANG_WARN_INT_CONVERSION = "YES";
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = "YES";
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = "YES";
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = "YES";
+				CLANG_WARN_OBJC_ROOT_CLASS = "YES_ERROR";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = "YES";
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = "YES";
+				CLANG_WARN_STRICT_PROTOTYPES = "YES";
+				CLANG_WARN_SUSPICIOUS_MOVE = "YES";
+				CLANG_WARN_UNGUARDED_AVAILABILITY = "YES_AGGRESSIVE";
+				CLANG_WARN_UNREACHABLE_CODE = "YES";
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = "YES";
+				COPY_PHASE_STRIP = "NO";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = "NO";
+				ENABLE_STRICT_OBJC_MSGSEND = "YES";
+				ENABLE_USER_SCRIPT_SANDBOXING = "YES";
+				GCC_C_LANGUAGE_STANDARD = "gnu17";
+				GCC_NO_COMMON_BLOCKS = "YES";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = "YES";
+				GCC_WARN_ABOUT_RETURN_TYPE = "YES_ERROR";
+				GCC_WARN_UNDECLARED_SELECTOR = "YES";
+				GCC_WARN_UNINITIALIZED_AUTOS = "YES_AGGRESSIVE";
+				GCC_WARN_UNUSED_FUNCTION = "YES";
+				GCC_WARN_UNUSED_VARIABLE = "YES";
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				LOCALIZATION_PREFERS_STRING_CATALOGS = "YES";
+				MTL_ENABLE_DEBUG_INFO = "NO";
+				MTL_FAST_MATH = "YES";
+				SDKROOT = "iphoneos";
+				SWIFT_COMPILATION_MODE = "wholemodule";
+				VALIDATE_PRODUCT = "YES";
+			};
+			name = Release;
+		};
+		913790F459E6D83839C4166D = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "AccentColor";
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = "1";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = "YES";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "Soterra";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = "YES";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = "YES";
+				INFOPLIST_KEY_UILaunchScreen_Generation = "YES";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = "0.1";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.lhurepo.soterra";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = "YES";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Release;
+		};
+		D48F58F8CA231B2301441318 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CLANG_ANALYZER_NONNULL = "YES";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = "YES";
+				CLANG_ENABLE_OBJC_ARC = "YES";
+				CLANG_ENABLE_OBJC_WEAK = "YES";
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = "YES";
+				CLANG_WARN_BOOL_CONVERSION = "YES";
+				CLANG_WARN_COMMA = "YES";
+				CLANG_WARN_CONSTANT_CONVERSION = "YES";
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = "YES";
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = "YES_ERROR";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = "YES";
+				CLANG_WARN_EMPTY_BODY = "YES";
+				CLANG_WARN_ENUM_CONVERSION = "YES";
+				CLANG_WARN_INFINITE_RECURSION = "YES";
+				CLANG_WARN_INT_CONVERSION = "YES";
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = "YES";
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = "YES";
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = "YES";
+				CLANG_WARN_OBJC_ROOT_CLASS = "YES_ERROR";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = "YES";
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = "YES";
+				CLANG_WARN_STRICT_PROTOTYPES = "YES";
+				CLANG_WARN_SUSPICIOUS_MOVE = "YES";
+				CLANG_WARN_UNGUARDED_AVAILABILITY = "YES_AGGRESSIVE";
+				CLANG_WARN_UNREACHABLE_CODE = "YES";
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = "YES";
+				COPY_PHASE_STRIP = "NO";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				ENABLE_STRICT_OBJC_MSGSEND = "YES";
+				ENABLE_TESTABILITY = "YES";
+				ENABLE_USER_SCRIPT_SANDBOXING = "YES";
+				GCC_C_LANGUAGE_STANDARD = "gnu17";
+				GCC_DYNAMIC_NO_PIC = "NO";
+				GCC_NO_COMMON_BLOCKS = "YES";
+				GCC_OPTIMIZATION_LEVEL = "0";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = "YES";
+				GCC_WARN_ABOUT_RETURN_TYPE = "YES_ERROR";
+				GCC_WARN_UNDECLARED_SELECTOR = "YES";
+				GCC_WARN_UNINITIALIZED_AUTOS = "YES_AGGRESSIVE";
+				GCC_WARN_UNUSED_FUNCTION = "YES";
+				GCC_WARN_UNUSED_VARIABLE = "YES";
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				LOCALIZATION_PREFERS_STRING_CATALOGS = "YES";
+				MTL_ENABLE_DEBUG_INFO = "INCLUDE_SOURCE";
+				MTL_FAST_MATH = "YES";
+				ONLY_ACTIVE_ARCH = "YES";
+				SDKROOT = "iphoneos";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1F04FA525F18A8395E87651D = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				52866476112F9526468F1656 /* Debug */,
+				913790F459E6D83839C4166D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		37A173FA24B11C69B4844A06 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				348B83AC72385D5DD42BD036 /* Debug */,
+				68A18CF560D3731DEFD65322 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1806D8FE767B99D399E13F3 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D48F58F8CA231B2301441318 /* Debug */,
+				6AFE22E70BE079CBB63426F8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}
