@@ -246,3 +246,43 @@ describe("USGS volcanoes (HANS)", () => {
     expect(noList.rejected[0].reason).toContain("no US state");
   });
 });
+
+describe("data quality filters", () => {
+  const wf = (name: string, over: Record<string, unknown> = {}) => ({
+    geometry: null,
+    properties: { IncidentName: name, POOState: "US-CA", POOCounty: "Sonoma", UniqueFireIdentifier: `2026-CA-${name}`, IncidentTypeCategory: "WF", IncidentSize: 120, PercentContained: 10, FireDiscoveryDateTime: NOW - 86_400_000, ModifiedOnDateTime_dt: NOW - 3_600_000, ...over },
+  });
+  const run = (features: unknown[]) =>
+    DIRECT_ADAPTERS.nifc_wfigs.normalize([{ kind: "json", url: "x", fetchedAt: NOW, body: { features } }], ctx("nifc_wfigs"));
+
+  it("WFIGS skips ID-only names, drills, tiny fires and stale records; titles never double 'Fire'", () => {
+    const r = run([
+      wf("Bear Creek"),
+      wf("Timber Fire"),
+      wf("LAC-384174"),
+      wf("WILDFIRE TRAINING"),
+      wf("Tiny", { IncidentSize: 0.01 }),
+      wf("Old", { ModifiedOnDateTime_dt: NOW - 30 * 86_400_000, FireDiscoveryDateTime: NOW - 40 * 86_400_000 }),
+    ]);
+    expect(r.drafts.map((d) => d.title)).toEqual(["Bear Creek Fire", "Timber Fire"]);
+    expect(r.skipped).toBe(4);
+    expect(r.drafts[0].expiresAt).toBe(NOW - 3_600_000 + 7 * 86_400_000);
+  });
+
+  it("FEMA declarations expire: 30 days after the incident ends, else a type-based window", () => {
+    const row = (type: string, number: number, decl: string, end?: string) => ({
+      femaDeclarationString: `${type}-${number}-CA`, disasterNumber: number, state: "CA", declarationType: type, declarationDate: decl,
+      incidentType: "Fire", declarationTitle: "FIRE", incidentBeginDate: decl, incidentEndDate: end ?? null, fipsStateCode: "06", fipsCountyCode: "097", designatedArea: "Sonoma (County)",
+    });
+    const rows = [
+      row("FM", 1, "2026-10-20T00:00:00.000Z"),
+      row("FM", 2, "2025-01-08T00:00:00.000Z"),
+      row("DR", 3, "2026-01-08T00:00:00.000Z"),
+      row("DR", 4, "2026-10-01T00:00:00.000Z", "2026-10-10T00:00:00.000Z"),
+    ];
+    const r = DIRECT_ADAPTERS.openfema_declarations.normalize([{ kind: "json", url: "x", fetchedAt: NOW, body: { DisasterDeclarationsSummaries: rows } }], ctx("openfema_declarations"));
+    expect(r.drafts.map((d) => d.externalId)).toEqual(["FM-1-CA", "DR-3-CA", "DR-4-CA"]);
+    expect(r.drafts[0].expiresAt).toBe(Date.parse("2026-10-20T00:00:00Z") + 60 * 86_400_000);
+    expect(r.drafts[2].expiresAt).toBe(Date.parse("2026-10-10T00:00:00Z") + 30 * 86_400_000);
+  });
+});

@@ -348,3 +348,13 @@ describe("handoff to the backend's retrieval", () => {
     expect(hidden).toEqual([]);
   });
 });
+
+describe("national bulletins", () => {
+  it("a caller with a state still retrieves a bulletin that has no US area (an NHC storm)", async () => {
+    const t = await setup();
+    await run(t, "nhc_storms");
+    const ca = { state: "CA", label: "California" };
+    const found = await t.query(internal.retrieval.search, { text: "status of the hurricane", area: ca, topK: 5, now: Date.now(), serveFixtures: true });
+    expect(found.some((c) => c.hazardType === "hurricane")).toBe(true);
+  });
+});
