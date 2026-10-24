@@ -286,3 +286,12 @@ describe("data quality filters", () => {
     expect(r.drafts[2].expiresAt).toBe(Date.parse("2026-10-10T00:00:00Z") + 30 * 86_400_000);
   });
 });
+
+describe("X: actor placeholders", () => {
+  it("skips {noResults: true} items instead of quarantining them", async () => {
+    const adapter = APIFY_ADAPTERS.x_posts;
+    const r = await adapter.normalizeItems([{ noResults: true }, { noResults: true }], ctx("x_posts"), deps);
+    expect(r.rejected).toEqual([]);
+    expect(r.skipped).toBe(2);
+  });
+});

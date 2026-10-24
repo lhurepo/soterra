@@ -45,6 +45,11 @@ export function normalizeTweets(items: unknown[], ctx: NormalizeContext): Normal
   const out = emptyResult();
   const allow = new Map(ctx.settings.xAllowlist.map((e) => [e.handle, e]));
   for (const raw of items) {
+    // The actor emits {"noResults": true} for a query that found nothing (or was throttled): not a rejection.
+    if (typeof raw === "object" && raw !== null && "noResults" in raw) {
+      out.skipped++;
+      continue;
+    }
     const parsed = TweetItem.safeParse(raw);
     if (!parsed.success) {
       out.rejected.push({ reason: `invalid tweet item: ${parsed.error.issues[0]?.message}`, raw });
