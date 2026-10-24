@@ -139,6 +139,17 @@ describe("failure modes", () => {
     expect(out).toMatchObject({ kind, reply: t("fallback", "en"), degraded: true, errorCode: code });
   });
 
+  it("retries once when the model's output is invalid, then answers normally", async () => {
+    const good = createMockLlm();
+    const bad = createMockLlm({ mode: "invalid_json" });
+    let n = 0;
+    const llm = Object.assign(createMockLlm(), { complete: (req: Parameters<typeof good.complete>[0]) => (n++ === 0 ? bad.complete(req) : good.complete(req)) });
+    const out = await turn("What's going on with the Ridgeview Fire?", deps({ llm }));
+    expect(n).toBe(2);
+    expect(out.kind).toBe("answer");
+    expect(out.degraded).toBeUndefined();
+  });
+
   it.each([
     ["uncited_answer", "uncited_answer"],
     ["unknown_chunk", "unknown_chunk"],

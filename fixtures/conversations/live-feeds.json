@@ -1,0 +1,12 @@
+{
+  "name": "live-feeds",
+  "description": "Real questions answered from live official feeds (NWS, USGS, InciWeb, NIFC); run after npm run go-live.",
+  "requiresFixtures": ["ridgeview-initial"],
+  "session": { "direction": "inbound", "languageHint": "en" },
+  "turns": [
+    { "utterance": "Are there any weather alerts in California right now?", "expectKind": "answer" },
+    { "utterance": "Have there been any earthquakes in California recently?", "expectKind": "answer" },
+    { "utterance": "Are there any active wildfires in California?", "expectKind": "answer" },
+    { "utterance": "Thanks, goodbye.", "expectKind": "goodbye", "expectEndCall": true }
+  ]
+}

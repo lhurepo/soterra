@@ -291,9 +291,18 @@ def test_repeat_replays_the_last_reply_without_a_backend_call():
 
 
 def test_repeat_phrase_list_is_tight():
-    for yes in ("repeat that", "Repeat.", "please repeat", "say it again", "¿Puede repetir?", "repítelo", "repite por favor"):
+    for yes in (
+        "repeat that", "Repeat.", "please repeat", "say it again", "¿Puede repetir?", "repítelo", "repite por favor",
+        "can you repeat the question", "Can you restart?", "could you start over", "can you repeat that please",
+        "okay sorry, can you repeat the answer?", "say that again", "I missed that", "what did you say", "come again",
+        "can you repeat what you just said", "one more time", "again", "empieza de nuevo", "otra vez por favor", "no entendí",
+    ):
         assert is_repeat_request(yes), yes
-    for no in ("repeat the evacuation order for zone 3", "can you say again where the shelter is", "I need to repeat my question about pets"):
+    for no in (
+        "repeat the evacuation order for zone 3", "can you say again where the shelter is", "I need to repeat my question about pets",
+        "is the fire starting over near Santa Rosa", "can you restart the evacuation warning", "what did the county say about zone 3",
+        "again, is Ridgeview Road closed", "pardon the mess but is there a shelter",
+    ):
         assert not is_repeat_request(no), no
 
 

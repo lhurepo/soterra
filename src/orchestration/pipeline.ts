@@ -201,9 +201,19 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   let draft;
   let llmModel: string | undefined = deps.model;
   try {
-    const response = await withTimeout(deps.llm.complete(request), deps.timeoutMs ?? DEFAULTS.llmTimeoutMs);
-    llmModel = response.model;
-    draft = parseDraft(response);
+    const attempt = async () => {
+      const response = await withTimeout(deps.llm.complete(request), deps.timeoutMs ?? DEFAULTS.llmTimeoutMs);
+      llmModel = response.model;
+      return parseDraft(response);
+    };
+    try {
+      draft = await attempt();
+    } catch (err) {
+      // Invalid structured output is usually a one-off and the retry is fast; slow failures are not retried.
+      if (!(isLlmError(err) && err.code === "invalid_output")) throw err;
+      console.warn("[turn] invalid LLM output, retrying once");
+      draft = await attempt();
+    }
   } catch (err) {
     timingsMs.llm = deps.now() - t1;
     const code = isLlmError(err) ? `llm_${err.code}` : "llm_failed";

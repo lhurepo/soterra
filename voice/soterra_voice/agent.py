@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Optional
 
@@ -45,16 +46,37 @@ META_SESSION_ID = "soterra_session_id"
 META_LANGUAGE = "soterra_language"
 META_GREETING = "soterra_greeting"
 
-REPEAT = re.compile(
-    r"^\s*(?:please\s+|can you\s+|could you\s+)?(?:repeat(?: that| it)?|say (?:that|it) again|"
-    r"(?:¿\s*)?(?:me\s+)?(?:lo\s+)?(?:puede|podría)\s+repetir|rep[ií]te(?:lo)?|rep[ií]ta(?:lo)?)"
-    r"(?:\s*,?\s*please)?\s*(?:por favor)?\s*[.?!]*\s*$",
-    re.IGNORECASE,
-)
+# "Say that again" shortcuts. The match is on the whole utterance (after trimming filler and punctuation), so a
+# real question that merely contains "repeat" ("repeat the evacuation order for zone 3") still goes to the backend.
+_OBJECT = r"(?:that|it|this|that part|the question|the answer|the last part|the last thing|what you (?:just )?said|everything|all of that)"
+_TAIL = r"(?: again| one more time| from the (?:start|beginning|top)| please)*"
+_POLITE = r"(?:(?:can|could|would|will) you |please )*(?:please )?"
+_REPEAT_PATTERNS = [
+    # repeat / restart / start over (optionally: that, the question, the answer, ...)
+    rf"{_POLITE}(?:repeat|restart|start over|replay|redo)(?: {_OBJECT})?{_TAIL}",
+    # say that again / tell me that again
+    rf"{_POLITE}(?:say|tell me|go over) {_OBJECT}(?: again| one more time| from the (?:start|beginning))(?: please)?",
+    # short "I missed it" phrases
+    r"(?:come again|one more time|again please|again|what did you (?:just )?say|what was that|say what|pardon(?: me)?|huh|sorry what|"
+    r"i (?:missed|didn't catch|did not catch|couldn't catch|didn't get|did not get) (?:that|it|the (?:last )?(?:part|answer|question)))",
+    # Spanish
+    r"(?:(?:me |lo )*(?:puede|podria|podrias|puedes) )?(?:repetir|repite|repita|repitelo|repitela)(?: (?:eso|esto|la pregunta|la respuesta|lo que dijo|lo que dijiste))?(?: otra vez| de nuevo| por favor)*",
+    r"(?:otra vez|de nuevo|desde el principio|empieza de nuevo|empiece de nuevo|que dijo|que dijiste|no entendi|no escuche|perdon)(?: por favor)?",
+]
+_REPEAT_RE = re.compile(r"^(?:" + "|".join(_REPEAT_PATTERNS) + r")$")
+_LEADING_FILLER = re.compile(r"^(?:(?:ok|okay|sorry|um+|uh+|hey|wait|so|and|yeah|hold on|excuse me)\s+)+")
+
+
+def _normalize_utterance(utterance: str) -> str:
+    text = unicodedata.normalize("NFKD", utterance.lower())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r"[^a-z0-9' ]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return _LEADING_FILLER.sub("", text)
 
 
 def is_repeat_request(utterance: str) -> bool:
-    return bool(REPEAT.match(utterance))
+    return bool(_REPEAT_RE.match(_normalize_utterance(utterance)))
 
 
 @dataclass
