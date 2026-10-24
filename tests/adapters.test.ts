@@ -11,7 +11,7 @@ import { SOURCES, sourceById } from "../src/ingestion/sources";
 
 const NOW = Date.parse("2026-10-25T02:00:00Z");
 const settings = loadIngestionSettings({});
-const ctx = (sourceId: string): NormalizeContext => ({ source: sourceById(sourceId)!, now: NOW, ingestStates: ["CA"], isFixture: true, settings });
+const ctx = (sourceId: string, ingestStates: string[] = ["CA"]): NormalizeContext => ({ source: sourceById(sourceId)!, now: NOW, ingestStates, isFixture: true, settings });
 const deps = { llm: createDeterministicExtractionLlm(), model: "claude-sonnet-5-5" };
 
 describe("registry", () => {
@@ -25,7 +25,7 @@ describe("registry", () => {
 describe("direct adapters on fixtures", () => {
   it.each(Object.keys(DIRECT_ADAPTERS))("%s → valid bulletins", (sourceId) => {
     const adapter = DIRECT_ADAPTERS[sourceId];
-    const result = adapter.normalize(adapter.fixture(), ctx(sourceId));
+    const result = adapter.normalize(adapter.fixture(), ctx(sourceId, ["CA", "AK", "HI"]));
     expect(result.rejected).toEqual([]);
     expect(result.drafts.length).toBeGreaterThan(0);
     for (const d of result.drafts) {
@@ -214,5 +214,35 @@ describe("X routing", () => {
     const injection = r.signals.find((s) => s.authorHandle === "fire_rumors_demo")!;
     expect(injection.text).toMatch(/IGNORE ALL PREVIOUS INSTRUCTIONS/);
     expect(r.drafts.some((d) => d.body.includes("IGNORE ALL PREVIOUS"))).toBe(false);
+  });
+});
+
+describe("USGS volcanoes (HANS)", () => {
+  const hans = DIRECT_ADAPTERS.usgs_volcanoes;
+  const all = hans.normalize(hans.fixture(), ctx("usgs_volcanoes", ["AK", "HI", "MP"]));
+
+  it("maps alert level, color code, times and the state from the volcano list", () => {
+    const k = all.drafts.find((d) => d.externalId === "hans:332010")!;
+    expect(k).toMatchObject({
+      severity: "minor",
+      status: "actual",
+      incidentKey: "volcano:332010",
+      areas: [{ state: "HI", label: "Kilauea, Hawaii" }],
+      issuedAt: Date.parse("2026-10-17T19:59:31Z"),
+      updatedAt: Date.parse("2026-10-23T19:37:45Z"),
+    });
+    expect(k.title).toBe("Kilauea volcano: ADVISORY (YELLOW)");
+    expect(k.body).toContain("HVO alert level ADVISORY, aviation color code YELLOW");
+    expect(k.body).toContain("The previous alert level was WATCH.");
+    expect(all.drafts.find((d) => d.externalId === "hans:311120")!.severity).toBe("moderate");
+  });
+
+  it("only keeps volcanoes in INGEST_STATES and never invents a state", () => {
+    const ak = hans.normalize(hans.fixture(), ctx("usgs_volcanoes", ["AK"]));
+    expect(ak.drafts.every((d) => d.areas[0].state === "AK")).toBe(true);
+    expect(ak.skipped).toBeGreaterThan(0);
+    const noList = hans.normalize(hans.fixture().slice(0, 1), ctx("usgs_volcanoes", ["AK"]));
+    expect(noList.drafts).toEqual([]);
+    expect(noList.rejected[0].reason).toContain("no US state");
   });
 });

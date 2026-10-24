@@ -11,6 +11,7 @@
     "check": "bash scripts/dev-check.sh",
     "voice:deploy": "bash scripts/voice-deploy.sh",
     "typecheck": "tsc -p tsconfig.json && tsc -p convex/tsconfig.json",
+    "go-live": "bash scripts/go-live.sh",
     "seed:fixtures": "tsx scripts/seed-fixtures.ts",
     "sim:call": "tsx scripts/sim-call.ts",
     "inject:update": "tsx scripts/inject-update.ts",
