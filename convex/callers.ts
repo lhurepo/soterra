@@ -51,6 +51,29 @@ export async function forgetCallerRows(ctx: MutationCtx, caller: Doc<"callers">,
   return true;
 }
 
+/**
+ * "Forget me" during a call: deletes the caller's summaries and clears everything remembered on the caller row,
+ * but keeps the row itself so the call in progress still has a caller to point at.
+ */
+export async function forgetCallerMemory(ctx: MutationCtx, caller: Doc<"callers">): Promise<void> {
+  for (;;) {
+    const summaries = await ctx.db
+      .query("callSummaries")
+      .withIndex("by_callerId", (q) => q.eq("callerId", caller._id))
+      .take(100);
+    for (const s of summaries) if (s.accountId === undefined) await ctx.db.delete("callSummaries", s._id);
+    if (summaries.length < 100) break;
+  }
+  await ctx.db.patch("callers", caller._id, {
+    language: undefined,
+    knownArea: undefined,
+    lastCallSummaryId: undefined,
+    lastIncidentKeys: undefined,
+    profileNeeds: undefined,
+    profileUpdatedAt: undefined,
+  });
+}
+
 /** Forgets a caller on request (run from the dashboard): cancels their updates and deletes their memory. */
 export const forgetCaller = internalMutation({
   args: { phone: v.string() },

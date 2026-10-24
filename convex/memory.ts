@@ -11,6 +11,7 @@ import { withTimeout } from "../src/providers/llm/errors";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
+import { isConfirmation, isRefusal, profileCommand } from "../src/orchestration/intents";
 import { forgetCallerRows, hasActiveSubscription, verifiedAccountForPhone } from "./callers";
 import { areaRef, hazardType } from "./validators";
 
@@ -36,6 +37,13 @@ export const finalizeCall = internalMutation({
       transcriptExpiresAt: accountId ? undefined : now + anonTranscriptTtlMs(cfg),
       memoryExpiresAt: accountId ? undefined : now + anonMemoryTtlMs(cfg),
     });
+
+    if (call.forgotten) {
+      // "Forget me" was said on this call: keep nothing from it (no caller memory, no summary) and drop its turns.
+      const { done } = await deleteTurns(ctx, callId, DEFAULTS.purgeBatchSize);
+      if (!done) await ctx.scheduler.runAfter(0, internal.memory.deleteCallTurns, { callId });
+      return null;
+    }
 
     if (call.callerId) {
       const caller = await ctx.db.get("callers", call.callerId);
@@ -64,10 +72,15 @@ export const summaryInput = internalQuery({
   handler: async (ctx, { callId }): Promise<SummaryInput | null> => {
     const call = await ctx.db.get("calls", callId);
     if (!call) return null;
-    const turns = await ctx.db
+    // Personal commands ("remember I use a wheelchair", "forget me") never go into a summary: it is stored and
+    // can be read back, so it must not carry what the caller asked us to keep private. A call that was only
+    // commands gets no summary, so "what did we talk about" points at the last call that was about something.
+    const allTurns = await ctx.db
       .query("callTurns")
       .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", callId))
       .take(200);
+    const turns = allTurns.filter((t) => profileCommand(t.utterance) === null && !isConfirmation(t.utterance) && !isRefusal(t.utterance));
+    if (allTurns.length > 0 && turns.length === 0) return null;
     const unanswered = await ctx.db
       .query("unansweredQuestions")
       .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", callId))

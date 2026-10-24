@@ -102,6 +102,16 @@ def test_slow_backend_gets_exactly_one_filler_then_the_reply():
     assert any(isinstance(o, LogMetric) and o.name == "filler_used" for o in out)
 
 
+def test_fillers_are_neutral_and_vary_between_turns():
+    agent, _ = make(MockBackendClient(script=[MockTurn(reply="A.", delay_s=0.2), MockTurn(reply="B.", delay_s=0.2)]), filler_after_s=0.05)
+    collect(agent, CallStarted())
+    first = said(collect(agent, user("one")))
+    second = said(collect(agent, user("two")))
+    assert first[0] != second[0]
+    for line in (first[0], second[0]):
+        assert "update" not in line.lower() and "official" not in line.lower()
+
+
 def test_fast_backend_gets_no_filler():
     agent, _ = make(filler_after_s=0.5)
     collect(agent, CallStarted())
@@ -295,7 +305,7 @@ def test_repeat_phrase_list_is_tight():
         "repeat that", "Repeat.", "please repeat", "say it again", "¿Puede repetir?", "repítelo", "repite por favor",
         "can you repeat the question", "Can you restart?", "could you start over", "can you repeat that please",
         "okay sorry, can you repeat the answer?", "say that again", "I missed that", "what did you say", "come again",
-        "can you repeat what you just said", "one more time", "again", "empieza de nuevo", "otra vez por favor", "no entendí",
+        "can you repeat what you just said", "Can you repeat yourself?", "repeat yourself please", "say your last answer again", "one more time", "again", "empieza de nuevo", "otra vez por favor", "no entendí",
     ):
         assert is_repeat_request(yes), yes
     for no in (

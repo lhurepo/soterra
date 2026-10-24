@@ -48,7 +48,7 @@ META_GREETING = "soterra_greeting"
 
 # "Say that again" shortcuts. The match is on the whole utterance (after trimming filler and punctuation), so a
 # real question that merely contains "repeat" ("repeat the evacuation order for zone 3") still goes to the backend.
-_OBJECT = r"(?:that|it|this|that part|the question|the answer|the last part|the last thing|what you (?:just )?said|everything|all of that)"
+_OBJECT = r"(?:that|it|this|that part|yourself|the question|the answer|your (?:last )?(?:answer|response|reply)|the last (?:part|thing|answer|response)|what you (?:just )?said|everything|all of that)"
 _TAIL = r"(?: again| one more time| from the (?:start|beginning|top)| please)*"
 _POLITE = r"(?:(?:can|could|would|will) you |please )*(?:please )?"
 _REPEAT_PATTERNS = [
@@ -176,6 +176,7 @@ class SoterraAgent:
         self.turn_index = 0
         self.consecutive_failures = 0
         self.last_reply: Optional[str] = None
+        self._fillers_used = 0
         self._interrupted = False
         self._ended = False
         self._agent_ended = False
@@ -277,7 +278,8 @@ class SoterraAgent:
         try:
             done, _ = await asyncio.wait({task}, timeout=self.settings.filler_after_s)
             if not done:
-                yield say(phrases.phrase("filler", self.language))
+                yield say(phrases.filler(self.language, self._fillers_used))
+                self._fillers_used += 1
                 yield LogMetric(name="filler_used", value=1)
             remaining = max(0.0, self.settings.turn_timeout_s - (loop.time() - t0))
             response = await asyncio.wait_for(task, timeout=remaining)

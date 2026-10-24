@@ -8,7 +8,9 @@ import { ReplyKind } from "./voice";
  * How we know who is calling. Caller ID alone ("caller_id") can be spoofed, so stored personal
  * details are never exposed to the model on that basis (see src/memory/callerContext.ts).
  */
-export const IdentityLevel = z.enum(["anonymous", "caller_id", "verified_account"]);
+// "verified_phone": this call was placed BY us to the caller's number (callback check), so whoever answered holds the phone.
+// Valid for that one call only. "verified_account": the number is linked to an account in the app.
+export const IdentityLevel = z.enum(["anonymous", "caller_id", "verified_phone", "verified_account"]);
 
 export const CallerContext = z.object({
   callerId: z.string().optional(),

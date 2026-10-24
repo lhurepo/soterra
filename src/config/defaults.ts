@@ -14,6 +14,12 @@ export const DEFAULTS = {
   lastSummaryTtlMs: 7 * DAY,
   /** Follow-up subscriptions created on a call expire after this; nothing may last longer than the max. */
   subscriptionTtlMs: 24 * HOUR,
+  /** Callback checks per number per hour: a spoofed caller ID must not make us ring someone repeatedly. */
+  verificationsPerHour: 3,
+  /** Pause between "please hang up" and the callback, so the caller's line is free. */
+  verificationDelayMs: 20_000,
+  /** A verification callback must connect within this long of being requested to count. */
+  verificationValidMs: 10 * 60_000,
   subscriptionMaxTtlMs: 72 * HOUR,
   /** Per subscription: at most one notification per window, and at most `notifyMaxPerHour` per hour. */
   notifyMinIntervalMs: 15 * MINUTE,
@@ -26,7 +32,8 @@ export const DEFAULTS = {
   llmTimeoutMs: 6_000,
   /** Moss query budget; a slower (e.g. cold) Moss falls back to Convex search so the turn is never held up. */
   mossTimeoutMs: 700,
-  turnMaxTokens: 300,
+  // A broad answer cites several sources (each id is ~20 tokens) and 300 cut real replies off ("reply was cut off at max_tokens").
+  turnMaxTokens: 700,
   temperature: 0.2,
   summaryMaxTokens: 600,
   summaryTimeoutMs: 20_000,

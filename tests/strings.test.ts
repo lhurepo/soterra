@@ -49,12 +49,15 @@ describe("canonical strings", () => {
 });
 
 describe("greetings", () => {
-  it("inbound: welcome, 911 line, one-sentence transcription notice, optional returning offer", () => {
+  it("inbound: welcome, 911 line, one-sentence transcription notice, the question; never volunteers memory", () => {
     const g = inboundGreeting("en", { returning: false });
     expect(g).toContain(t("transcriptionNotice", "en"));
     expect(g).toContain(t("emergencyLine", "en"));
-    expect(g).not.toContain(t("returningOffer", "en"));
-    expect(inboundGreeting("es", { returning: true })).toContain(t("returningOffer", "es"));
+    expect(g).toContain(t("askQuestion", "en"));
+    // A returning caller hears exactly the same greeting: history is only given when asked for.
+    expect(inboundGreeting("en", { returning: true })).toBe(g);
+    expect(inboundGreeting("es", { returning: true })).toBe(inboundGreeting("es"));
+    expect(g.toLowerCase()).not.toContain("welcome back");
     expect(t("transcriptionNotice", "en").match(/[.!?](\s|$)/g)).toHaveLength(1);
   });
 

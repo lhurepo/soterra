@@ -2,6 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { buildTurnRequest, parseDraft, sanitizeForBlock, TURN_SYSTEM_PROMPT } from "../src/orchestration/prompt";
+import { DEFAULTS } from "../src/config/defaults";
 import { createAnthropicLlm, requestTuning, toLlmError } from "../src/providers/llm/anthropic";
 import { LlmError, withTimeout } from "../src/providers/llm/errors";
 import { createMockLlm, mockTurn } from "../src/providers/llm/mock";
@@ -58,7 +59,7 @@ describe("prompt", () => {
     expect(content.indexOf("<caller_context>")).toBeLessThan(content.indexOf("<sources"));
     expect(content.indexOf("<sources")).toBeLessThan(content.indexOf("<recent_turns>"));
     expect(content.indexOf("<recent_turns>")).toBeLessThan(content.indexOf("<caller_said>"));
-    expect(req.maxTokens).toBe(300);
+    expect(req.maxTokens).toBe(DEFAULTS.turnMaxTokens);
     expect(req.jsonSchema).toBeDefined();
   });
 
