@@ -394,7 +394,11 @@ export const completeTurn = internalMutation({
     if (effects.saveProfileNeed && call.callerId) {
       const caller = await ctx.db.get("callers", call.callerId);
       const added = caller ? addNeed(caller.profileNeeds, effects.saveProfileNeed) : null;
-      if (caller && added?.status === "ok") await ctx.db.patch("callers", caller._id, { profileNeeds: added.needs, profileUpdatedAt: now });
+      if (caller && added?.status === "ok") {
+        await ctx.db.patch("callers", caller._id, { profileNeeds: added.needs, profileUpdatedAt: now });
+        // The call's cached context was built at its start: keep it current so later turns of this call see the new need.
+        if (call.callerContext) callPatch.callerContext = { ...call.callerContext, needs: added.needs };
+      }
     }
     if (effects.forgetCaller) {
       if (call.callerPhone) await cancelSubscriptionsForPhone(ctx, call.callerPhone, now);
@@ -404,6 +408,11 @@ export const completeTurn = internalMutation({
       }
       callPatch.forgotten = true;
       callPatch.transcriptConsent = "declined";
+      // Nothing deleted may be read back for the rest of this call.
+      if (call.callerContext) {
+        const { needs: _n, lastCallSummary: _s, recentIncidentKeys: _r, activeSubscriptions: _a, knownArea: _k, ...kept } = call.callerContext;
+        callPatch.callerContext = kept;
+      }
     }
     if (effects.setPendingAction) callPatch.pendingAction = effects.setPendingAction;
     else if (effects.clearPendingAction || call.pendingAction) callPatch.pendingAction = undefined;
