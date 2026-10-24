@@ -9,12 +9,13 @@ const num = (fallback: number) =>
     .transform((v) => (v === undefined || v.trim() === "" ? fallback : Number(v)))
     .pipe(z.number().finite().nonnegative());
 
-export type XAllowlistEntry = { handle: string; issuer: string; states: string[] };
+/** `group` = independence group (see src/ingestion/sources.ts): accounts of the same agency share one. */
+export type XAllowlistEntry = { handle: string; issuer: string; states: string[]; group?: string };
 
 /** Demo default: fictional handles used by fixtures/social. Real handles go in X_ALLOWLIST. */
 const DEFAULT_X_ALLOWLIST: XAllowlistEntry[] = [{ handle: "sonomaoes_demo", issuer: "Sonoma County OES (Demo)", states: ["CA"] }];
 
-/** "handle:Issuer Name:CA|OR,handle2:Other Issuer:CA" */
+/** "handle:Issuer Name:CA|OR[:group],handle2:Other Issuer:CA" (group optional, e.g. "nws" for an NWS office account) */
 export function parseXAllowlist(raw: string | undefined): XAllowlistEntry[] {
   if (raw === undefined || raw.trim() === "") return DEFAULT_X_ALLOWLIST;
   return raw
@@ -22,12 +23,13 @@ export function parseXAllowlist(raw: string | undefined): XAllowlistEntry[] {
     .map((entry) => entry.trim())
     .filter(Boolean)
     .map((entry) => {
-      const [handle, issuer, states] = entry.split(":").map((s) => s.trim());
+      const [handle, issuer, states, group] = entry.split(":").map((s) => s.trim());
       if (!handle || !issuer) throw new Error(`X_ALLOWLIST entry "${entry}" must be handle:Issuer Name[:CA|OR]`);
       return {
         handle: handle.replace(/^@/, "").toLowerCase(),
         issuer,
         states: (states ?? "").split("|").map((s) => s.trim().toUpperCase()).filter(Boolean),
+        ...(group ? { group } : {}),
       };
     });
 }
