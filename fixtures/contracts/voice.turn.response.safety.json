@@ -1,0 +1,11 @@
+{
+  "contractVersion": "1",
+  "sessionId": "j97demo0session00000000000000000",
+  "turnIndex": 0,
+  "reply": "If you are in immediate danger, hang up and dial 911 now. I can't send help. Once you are safe, you can call back for information.",
+  "language": "en",
+  "kind": "safety",
+  "citations": [],
+  "endCall": false,
+  "timingsMs": { "total": 1 }
+}

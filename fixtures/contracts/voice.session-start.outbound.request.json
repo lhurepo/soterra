@@ -1,0 +1,9 @@
+{
+  "contractVersion": "1",
+  "provider": "cartesia",
+  "providerCallId": "call_demo_0002",
+  "direction": "outbound",
+  "callerPhone": "+17075550123",
+  "notificationId": "k57demo0notification0000000000000",
+  "startedAt": 1792893700000
+}

@@ -1,0 +1,10 @@
+{
+  "activeStorms": [
+    {
+      "id": "ep992026", "binNumber": "EP5", "name": "Demo", "classification": "TS", "intensity": "45", "pressure": "1000",
+      "latitude": "16.2N", "longitude": "108.4W", "latitudeNumeric": 16.2, "longitudeNumeric": -108.4,
+      "movementDir": 300, "movementSpeed": 9, "lastUpdate": "2026-10-24T21:00:00.000Z",
+      "publicAdvisory": { "advNum": "004", "issuance": "2026-10-24T21:00:00.000Z", "fileUpdateTime": "2026-10-24T20:55:00.000Z", "url": "https://www.nhc.noaa.gov/text/MIATCPEP5.shtml" }
+    }
+  ]
+}

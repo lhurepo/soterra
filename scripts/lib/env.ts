@@ -1,0 +1,32 @@
+// [S] Script helpers: load .env.local (written by `npx convex dev`) and run the Convex CLI.
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+export const ROOT = resolve(import.meta.dirname, "..", "..");
+
+export function loadEnvLocal(): void {
+  try {
+    process.loadEnvFile(resolve(ROOT, ".env.local"));
+  } catch {
+    // No .env.local yet: rely on the shell environment.
+  }
+}
+
+export function readJson<T>(relativePath: string): T {
+  return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf8")) as T;
+}
+
+export function readText(relativePath: string): string {
+  return readFileSync(resolve(ROOT, relativePath), "utf8");
+}
+
+/** Runs `npx convex run <fn> <json>` against the deployment in .env.local and returns parsed output. */
+export function convexRun(fn: string, args: unknown): unknown {
+  const out = execFileSync("npx", ["convex", "run", fn, JSON.stringify(args)], { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  try {
+    return JSON.parse(out);
+  } catch {
+    return out.trim();
+  }
+}

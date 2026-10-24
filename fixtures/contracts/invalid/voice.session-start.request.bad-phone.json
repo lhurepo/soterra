@@ -1,0 +1,8 @@
+{
+  "contractVersion": "1",
+  "provider": "cartesia",
+  "providerCallId": "call_demo_0003",
+  "direction": "inbound",
+  "callerPhone": "707-555-0123",
+  "startedAt": 1792893600000
+}

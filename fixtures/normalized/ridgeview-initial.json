@@ -1,0 +1,103 @@
+[
+  {
+    "sourceId": "demo_nws",
+    "sourceName": "National Weather Service (Demo)",
+    "externalId": "demo-rfw-ridgeview-1",
+    "url": "https://example.org/soterra-demo/nws/red-flag-warning",
+    "title": "Red Flag Warning for Sonoma County",
+    "body": "A Red Flag Warning is in effect for the Sonoma County interior valleys and hills until November 15 at 8 PM Pacific. Gusty northeast winds of 25 to 35 mph and very low humidity will cause any fire to spread quickly.\n\nThis is fictional demo data for the Soterra hackathon project.",
+    "instructions": "Avoid outdoor burning and anything that can spark a fire. Be ready to leave quickly if officials order an evacuation.",
+    "hazardType": "wildfire",
+    "severity": "severe",
+    "status": "actual",
+    "issuedAt": 1792854000000,
+    "effectiveAt": 1792854000000,
+    "expiresAt": 1794801600000,
+    "areas": [
+      { "state": "CA", "county": "Sonoma", "countyFips": "06097", "nwsZone": "CAZ504", "label": "Sonoma County interior valleys" }
+    ],
+    "incidentKey": "ridgeview-fire-demo",
+    "trustTier": "official",
+    "language": "en",
+    "isFixture": true
+  },
+  {
+    "sourceId": "demo_county",
+    "sourceName": "Sonoma County Emergency Management (Demo)",
+    "externalId": "demo-evac-ridgeview",
+    "url": "https://example.org/soterra-demo/sonoma/evacuations",
+    "title": "Evacuation Warning for the Ridgeview Fire",
+    "body": "An Evacuation Warning is in effect for zones SON-3A and SON-3B near the Ridgeview Fire, east of Santa Rosa. Zone SON-3A covers Ridgeview Road from Highway 12 to Bennett Valley Road. Zone SON-3B covers the Matanzas Creek area.\n\nAn Evacuation Warning means people in these zones should be ready to leave. People who need extra time, have pets or livestock, or have no car should leave now.\n\nTo find your zone, use the county zone lookup at the official county website. This is fictional demo data.",
+    "instructions": "Pack medications, documents, phone chargers and water. Leave immediately if an Evacuation Order is issued for your zone.",
+    "hazardType": "evacuation",
+    "severity": "severe",
+    "status": "actual",
+    "issuedAt": 1792874700000,
+    "areas": [
+      { "state": "CA", "county": "Sonoma", "countyFips": "06097", "city": "Santa Rosa", "label": "Sonoma County zones SON-3A and SON-3B" }
+    ],
+    "incidentKey": "ridgeview-fire-demo",
+    "trustTier": "official",
+    "language": "en",
+    "isFixture": true
+  },
+  {
+    "sourceId": "demo_fire",
+    "sourceName": "Sonoma County Fire Information (Demo)",
+    "externalId": "demo-incident-ridgeview",
+    "url": "https://example.org/soterra-demo/fire/ridgeview",
+    "title": "Ridgeview Fire incident update",
+    "body": "The Ridgeview Fire is burning about 1,200 acres east of Santa Rosa and is 10 percent contained. Firefighters are working to stop the fire from spreading west toward Bennett Valley.\n\nThe fire started at about noon on October 24. The cause is under investigation. This is fictional demo data.",
+    "hazardType": "wildfire",
+    "severity": "severe",
+    "status": "actual",
+    "issuedAt": 1792870200000,
+    "updatedAt": 1792876200000,
+    "areas": [
+      { "state": "CA", "county": "Sonoma", "countyFips": "06097", "label": "East of Santa Rosa, Sonoma County" }
+    ],
+    "incidentKey": "ridgeview-fire-demo",
+    "trustTier": "official",
+    "language": "en",
+    "isFixture": true
+  },
+  {
+    "sourceId": "demo_county",
+    "sourceName": "Sonoma County Emergency Management (Demo)",
+    "externalId": "demo-shelters-ridgeview",
+    "url": "https://example.org/soterra-demo/sonoma/shelters",
+    "title": "Evacuation shelters for the Ridgeview Fire",
+    "body": "Two evacuation shelters are open, as checked by county staff at 2:30 PM Pacific on October 24. Ridgeview Community Center at 500 Elm Street has room for 200 people, with 120 spaces available, and accepts pets in crates. Santa Rosa Veterans Building has room for 300 people, with 210 spaces available, and accepts service animals only.\n\nBoth shelters have water, cots and phone charging. This is fictional demo data.",
+    "hazardType": "shelter",
+    "severity": "moderate",
+    "status": "actual",
+    "issuedAt": 1792875600000,
+    "updatedAt": 1792877400000,
+    "areas": [
+      { "state": "CA", "county": "Sonoma", "countyFips": "06097", "city": "Santa Rosa", "label": "Santa Rosa, Sonoma County" }
+    ],
+    "incidentKey": "ridgeview-fire-demo",
+    "trustTier": "official",
+    "language": "en",
+    "isFixture": true
+  },
+  {
+    "sourceId": "demo_caltrans",
+    "sourceName": "Caltrans District 4 (Demo)",
+    "externalId": "demo-road-ridgeview-rd",
+    "url": "https://example.org/soterra-demo/caltrans/ridgeview-road",
+    "title": "Road closure on Ridgeview Road",
+    "body": "Ridgeview Road is closed in both directions between Highway 12 and Bennett Valley Road because of fire activity. Use Highway 12 or Bennett Valley Road instead. This is fictional demo data.",
+    "hazardType": "road_closure",
+    "severity": "moderate",
+    "status": "actual",
+    "issuedAt": 1792872900000,
+    "areas": [
+      { "state": "CA", "county": "Sonoma", "countyFips": "06097", "label": "Ridgeview Road, Sonoma County" }
+    ],
+    "incidentKey": "ridgeview-fire-demo",
+    "trustTier": "official",
+    "language": "en",
+    "isFixture": true
+  }
+]

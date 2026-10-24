@@ -1,0 +1,6 @@
+{
+  "metadata": { "skip": 0, "filter": "state eq 'CA'", "orderby": "declarationDate desc", "top": 1, "format": "json", "entityname": "DisasterDeclarationsSummaries", "version": "v2", "url": "/api/open/v2/DisasterDeclarationsSummaries", "rundate": "2026-10-24T22:00:00.000Z" },
+  "DisasterDeclarationsSummaries": [
+    { "femaDeclarationString": "FM-9999-CA", "disasterNumber": 9999, "state": "CA", "declarationType": "FM", "declarationDate": "2026-10-24T00:00:00.000Z", "fyDeclared": 2027, "incidentType": "Fire", "declarationTitle": "RIDGEVIEW FIRE (DEMO)", "incidentBeginDate": "2026-10-24T00:00:00.000Z", "incidentEndDate": null, "fipsStateCode": "06", "fipsCountyCode": "097", "designatedArea": "Sonoma (County)", "lastRefresh": "2026-10-24T22:00:00.000Z", "id": "00000000-0000-0000-0000-00000000demo" }
+  ]
+}

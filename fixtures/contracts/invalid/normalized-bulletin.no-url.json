@@ -1,0 +1,16 @@
+{
+  "sourceId": "demo_county",
+  "sourceName": "Sonoma County Emergency Management (Demo)",
+  "externalId": "demo-no-url",
+  "title": "Bulletin without a URL",
+  "body": "Validation must reject items without a URL.",
+  "hazardType": "other",
+  "severity": "unknown",
+  "status": "actual",
+  "issuedAt": 1792874700000,
+  "areas": [],
+  "trustTier": "official",
+  "language": "en",
+  "contentHash": "00000000000000",
+  "isFixture": true
+}

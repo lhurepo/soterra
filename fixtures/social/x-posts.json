@@ -1,0 +1,19 @@
+{
+  "$comment": "FICTIONAL demo posts shaped roughly like an Apify X scraper dataset item. Allowlisted accounts become official_social; everything else is unverified and never answerable.",
+  "items": [
+    {
+      "id": "demo-tweet-1",
+      "url": "https://x.com/readysonoma/status/demo-tweet-1",
+      "createdAt": "2026-10-24T20:50:00.000Z",
+      "author": { "userName": "readysonoma", "name": "Ready Sonoma (Demo)", "isVerified": true },
+      "text": "DEMO: Evacuation WARNING for zones SON-3A and SON-3B near the #RidgeviewFire. Be ready to leave. Shelter at Ridgeview Community Center, 500 Elm St (pets in crates OK)."
+    },
+    {
+      "id": "demo-tweet-2",
+      "url": "https://x.com/somebody_local/status/demo-tweet-2",
+      "createdAt": "2026-10-24T21:05:00.000Z",
+      "author": { "userName": "somebody_local", "name": "Local Resident (Demo)", "isVerified": false },
+      "text": "DEMO: heard the fire jumped Bennett Valley Rd and everyone in SON-3B has to leave NOW?? can anyone confirm"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "ridgeview-basic",
+  "description": "Demo call about the fictional Ridgeview Fire: grounded answer, address question refused with the listed zones, shelter question, unknown fact, follow-up request, goodbye.",
+  "requiresFixtures": ["ridgeview-initial"],
+  "session": {
+    "direction": "inbound",
+    "callerPhone": "+17075550123",
+    "languageHint": "en"
+  },
+  "turns": [
+    { "utterance": "What's going on with the Ridgeview Fire?", "expectKind": "answer" },
+    { "utterance": "Is 412 Oak Lane inside the evacuation zone?", "expectKind": "answer", "expectReplyIncludes": "can't confirm" },
+    { "utterance": "Are there shelters that take pets?", "expectKind": "answer", "expectReplyIncludes": "pets" },
+    { "utterance": "Is Hillcrest Elementary open as a shelter?", "expectKind": "no_info", "expectUnanswered": true },
+    { "utterance": "Please call me if the evacuation changes.", "expectKind": "followup", "expectSubscription": true },
+    { "utterance": "Thanks, goodbye.", "expectKind": "goodbye", "expectEndCall": true }
+  ]
+}

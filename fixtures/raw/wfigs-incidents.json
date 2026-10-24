@@ -1,0 +1,11 @@
+{
+  "type": "FeatureCollection",
+  "properties": { "exceededTransferLimit": false },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-122.62, 38.44] },
+      "properties": { "IncidentName": "Ridgeview (DEMO)", "POOState": "US-CA", "POOCounty": "Sonoma", "ModifiedOnDateTime_dt": 1792876200000, "IncidentSize": 1200, "PercentContained": 10, "UniqueFireIdentifier": "2026-CALNU-099999" }
+    }
+  ]
+}

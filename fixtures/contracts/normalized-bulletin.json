@@ -1,0 +1,18 @@
+{
+  "sourceId": "demo_caltrans",
+  "sourceName": "Caltrans District 4 (Demo)",
+  "externalId": "demo-road-ridgeview-rd",
+  "url": "https://example.org/soterra-demo/caltrans/ridgeview-road",
+  "title": "Road closure on Ridgeview Road",
+  "body": "Ridgeview Road is closed in both directions between Highway 12 and Bennett Valley Road because of fire activity.",
+  "hazardType": "road_closure",
+  "severity": "moderate",
+  "status": "actual",
+  "issuedAt": 1792872900000,
+  "areas": [{ "state": "CA", "county": "Sonoma", "countyFips": "06097", "label": "Ridgeview Road, Sonoma County" }],
+  "incidentKey": "ridgeview-fire-demo",
+  "trustTier": "official",
+  "language": "en",
+  "contentHash": "1a2b3c4d5e6f70",
+  "isFixture": true
+}

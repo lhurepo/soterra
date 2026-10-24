@@ -1,0 +1,45 @@
+{
+  "@context": ["https://geojson.org/geojson-ld/geojson-context.jsonld", { "@version": "1.1" }],
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.demo0000000000000000000000000000000000.001.1",
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.demo0000000000000000000000000000000000.001.1",
+        "@type": "wx:Alert",
+        "id": "urn:oid:2.49.0.1.840.0.demo0000000000000000000000000000000000.001.1",
+        "areaDesc": "North Bay Interior Valleys (Demo)",
+        "geocode": { "SAME": ["006097"], "UGC": ["CAZ504"] },
+        "affectedZones": ["https://api.weather.gov/zones/fire/CAZ504"],
+        "references": [],
+        "sent": "2026-10-24T08:00:00-07:00",
+        "effective": "2026-10-24T08:00:00-07:00",
+        "onset": "2026-10-24T11:00:00-07:00",
+        "expires": "2026-10-25T20:00:00-07:00",
+        "ends": "2026-10-25T20:00:00-07:00",
+        "status": "Actual",
+        "messageType": "Alert",
+        "category": "Met",
+        "severity": "Severe",
+        "certainty": "Likely",
+        "urgency": "Expected",
+        "event": "Red Flag Warning",
+        "sender": "w-nws.webmaster@noaa.gov",
+        "senderName": "NWS San Francisco CA",
+        "headline": "Red Flag Warning issued October 24 at 8:00AM PDT until October 25 at 8:00PM PDT by NWS San Francisco CA (DEMO)",
+        "description": "* AFFECTED AREA...North Bay Interior Valleys.\n\n* WIND...Northeast 25 to 35 mph with gusts to 55 mph.\n\n* HUMIDITY...8 to 15 percent.\n\nFICTIONAL DEMO DATA.",
+        "instruction": "A Red Flag Warning means that critical fire weather conditions are either occurring now or will shortly.",
+        "response": "Prepare",
+        "parameters": {
+          "NWSheadline": ["RED FLAG WARNING IN EFFECT UNTIL 8 PM PDT SATURDAY"],
+          "VTEC": ["/O.NEW.KMTR.FW.W.0099.261024T1800Z-261026T0300Z/"],
+          "eventEndingTime": ["2026-10-25T20:00:00-07:00"]
+        }
+      }
+    }
+  ],
+  "title": "Current watches, warnings, and advisories for California (DEMO)",
+  "updated": "2026-10-24T15:10:00+00:00"
+}

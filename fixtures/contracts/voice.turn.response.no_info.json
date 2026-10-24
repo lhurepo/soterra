@@ -1,0 +1,11 @@
+{
+  "contractVersion": "1",
+  "sessionId": "j97demo0session00000000000000000",
+  "turnIndex": 3,
+  "reply": "I don't know yet. I don't have verified official information about that, so I've saved your question. If you are in immediate danger, dial 911.",
+  "language": "en",
+  "kind": "no_info",
+  "citations": [],
+  "endCall": false,
+  "unansweredQuestionId": "k17demo0question0000000000000000"
+}

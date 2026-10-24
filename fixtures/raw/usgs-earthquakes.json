@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "metadata": { "generated": 1792876200000, "url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_hour.geojson", "title": "USGS Magnitude 2.5+ Earthquakes, Past Hour (DEMO)", "status": 200, "api": "1.14.1", "count": 1 },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "mag": 3.1, "place": "6 km NE of Glen Ellen, CA (DEMO)", "time": 1792875000000, "updated": 1792875900000, "tz": null, "url": "https://earthquake.usgs.gov/earthquakes/eventpage/demo0001", "detail": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/demo0001.geojson", "felt": 12, "alert": null, "status": "reviewed", "tsunami": 0, "sig": 150, "net": "nc", "code": "demo0001", "ids": ",ncdemo0001,", "types": ",origin,phase-data,", "magType": "md", "type": "earthquake", "title": "M 3.1 - 6 km NE of Glen Ellen, CA (DEMO)" },
+      "geometry": { "type": "Point", "coordinates": [-122.48, 38.39, 7.2] },
+      "id": "ncdemo0001"
+    }
+  ],
+  "bbox": [-122.48, 38.39, 7.2, -122.48, 38.39, 7.2]
+}
