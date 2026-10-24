@@ -221,6 +221,7 @@ export type BeginTurnResult =
       callIncidentKeys: string[];
       pendingAction?: "forget";
       verificationsLastHour: number;
+      preferredChannel?: "phone_call" | "sms";
     };
 
 /**
@@ -303,10 +304,13 @@ export const beginTurn = internalMutation({
         ).filter((n) => n.purpose === "verification").length
       : 0;
 
+    const caller = call.callerId ? await ctx.db.get("callers", call.callerId) : null;
+
     return {
       status: "new",
       callId,
       turnId,
+      preferredChannel: caller?.preferredChannel,
       pendingAction: call.pendingAction,
       verificationsLastHour,
       hasCallerPhone: call.callerPhone !== undefined,

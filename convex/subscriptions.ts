@@ -3,7 +3,7 @@
 // run asynchronously. Every notification attempt is stored, including rate-limited ones.
 import { v } from "convex/values";
 import type { FollowUpRequest } from "../src/contracts";
-import { subscriptionTtl } from "../src/config/defaults";
+import { clampIntervalMs, subscriptionLifetimeMs } from "../src/notifications/schedule";
 import { RATE_LIMITED_ERROR, dedupeKeyFor, eventMatches, rateLimited } from "../src/notifications/match";
 import { buildUpdateMessage } from "../src/notifications/message";
 import { internal } from "./_generated/api";
@@ -50,28 +50,38 @@ export async function createSubscriptionForCall(
     target = { kind: "area", area };
   }
   const trigger = target.kind === "question" ? "answer_available" : request.trigger === "answer_available" ? "any_update" : request.trigger;
-  const expiresAt = now + subscriptionTtl();
+  const channel = request.channel ?? "phone_call";
+  // Time-based updates ("every 2 hours"); a question is answered once, never on a schedule.
+  const intervalMs = request.intervalMinutes === undefined || target.kind === "question" ? undefined : clampIntervalMs(request.intervalMinutes);
+  const mode = intervalMs === undefined ? "on_change" : "scheduled";
+  const expiresAt = now + subscriptionLifetimeMs(intervalMs);
+  const schedule = intervalMs === undefined ? {} : { intervalMs, nextRunAt: now + intervalMs };
+
+  if (call.callerId) await ctx.db.patch("callers", call.callerId, { preferredChannel: channel });
 
   const mine = await ctx.db
     .query("subscriptions")
     .withIndex("by_recipientPhone_and_status", (q) => q.eq("recipient.phone", phone).eq("status", "active"))
     .take(50);
-  const same = mine.find((s) => sameTarget(s.target, target) && s.trigger === trigger);
+  const same = mine.find((s) => sameTarget(s.target, target) && s.trigger === trigger && (s.mode ?? "on_change") === mode);
   if (same) {
-    await ctx.db.patch("subscriptions", same._id, { expiresAt, consentAt: now, language });
+    // Asking again refreshes it, and the newest request decides the channel and interval.
+    await ctx.db.patch("subscriptions", same._id, { expiresAt, consentAt: now, language, channels: [channel], createdFromCallId: call._id, ...schedule });
     return same._id;
   }
   return await ctx.db.insert("subscriptions", {
     recipient: { callerId: call.callerId, accountId: call.accountId, phone },
     target,
     trigger,
-    channels: ["phone_call"],
+    channels: [channel],
     language,
     status: "active",
     consentAt: now,
     createdVia: "call",
     expiresAt,
     createdFromCallId: call._id,
+    mode,
+    ...schedule,
   });
 }
 

@@ -10,7 +10,7 @@ export type MatchableEvent = Pick<BulletinEvent, "change" | "incidentKey" | "sev
   areas: Pick<AreaRef, "state" | "countyFips" | "nwsZone">[];
 };
 
-export type MatchableSubscription = Pick<Subscription, "target" | "trigger" | "status" | "expiresAt">;
+export type MatchableSubscription = Pick<Subscription, "target" | "trigger" | "status" | "expiresAt" | "mode">;
 
 /** Area overlap: same county when the subscription names one, same NWS zone, otherwise same state. */
 export function areaOverlaps(target: Pick<AreaRef, "state" | "countyFips" | "nwsZone">, areas: MatchableEvent["areas"]): boolean {
@@ -21,6 +21,8 @@ export function areaOverlaps(target: Pick<AreaRef, "state" | "countyFips" | "nws
 
 export function eventMatches(sub: MatchableSubscription, event: MatchableEvent, now: number): boolean {
   if (sub.status !== "active" || sub.expiresAt <= now) return false;
+  // Time-based updates fire on their schedule (subscriptions.runScheduled), never on events.
+  if (sub.mode === "scheduled") return false;
 
   const targetHit =
     sub.target.kind === "incident"

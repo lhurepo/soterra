@@ -26,10 +26,62 @@ export function asksToStopUpdates(utterance: string): boolean {
   );
 }
 
-/** "Call me if…", "keep me updated", "llámame". Checked after asksToStopUpdates. */
+/** "Call me if…", "keep me updated", "text me", "update me every 2 hours", "llámame". Checked after asksToStopUpdates. */
 export function asksForFollowUp(utterance: string): boolean {
   return test(
-    /\b(call me( back)?|keep me (updated|posted|informed)|let me know (if|when)|notify me|text me|llamame|llameme|avisame|aviseme|mantengame informad[oa]|mantenme informad[oa])\b/,
+    /\b(call me( back)?|keep me (updated|posted|informed)|let me know (if|when)|notify me|text me|update me|(send|give) me (an? )?(updates?|texts?|text messages?|sms)|llamame|llameme|avisame|aviseme|mantengame informad[oa]|mantenme informad[oa]|actualizame|(mandame|enviame|mandeme|envieme) (actualizaciones|un (texto|mensaje)|mensajes))\b/,
+    utterance,
+  );
+}
+
+/**
+ * How the caller wants updates: "text me", "send me a text", "by text", "mándame un mensaje" → "sms"; "call me" →
+ * "phone_call"; neither → undefined (their saved preference, else a call). Asking for both means a call: every update
+ * call is followed by a text anyway (a recap, or the update itself if the call is missed).
+ */
+export function requestedChannel(utterance: string): "sms" | "phone_call" | undefined {
+  const s = normalizeForMatch(utterance);
+  const sms =
+    /\b(text(ing)? me|texts?|text messages?|sms|by message|via message|(mandame|enviame|mandeme|envieme|me (manda|mande|envia|envie)) (un )?(texto|mensaje|mensajes|sms)|por (texto|mensaje|sms)|mensajes? de texto)\b/.test(s);
+  const call = /\b(call me|phone me|ring me|give me a call|by (phone|call)|llamame|llameme|me (llama|llame)|por (telefono|llamada))\b/.test(s);
+  if (sms && !call) return "sms";
+  if (call) return "phone_call";
+  return undefined;
+}
+
+const NUMBER_WORDS: Record<string, number> = {
+  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  una: 1, uno: 1, un: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12,
+  couple: 2, "a couple of": 2, "couple of": 2,
+};
+
+/**
+ * Time-based updates: "every 2 hours", "every hour", "hourly", "every 30 minutes", "twice a day", "daily",
+ * "cada hora", "cada 2 horas", "cada media hora", "todos los días". Returns minutes, unclamped; undefined if none.
+ */
+export function requestedIntervalMinutes(utterance: string): number | undefined {
+  const s = normalizeForMatch(utterance);
+  if (/\b(every half (an )?hour|cada media hora)\b/.test(s)) return 30;
+  if (/\b(hourly|every hour|each hour|once an hour|cada hora|una vez por hora)\b/.test(s)) return 60;
+  if (/\b(twice a day|two times a day|dos veces al dia)\b/.test(s)) return 720;
+  if (/\b(daily|every day|once a day|every morning|every evening|every night|each day|todos los dias|cada dia|una vez al dia|diariamente|cada manana|cada noche)\b/.test(s)) return 1440;
+  const m = s.match(/\b(?:every|each|cada)\s+(\d{1,3}|a couple of|couple of|[a-z]+)\s+(minutes?|mins?|hours?|hrs?|days?|minutos?|horas?|dias?)\b/);
+  if (!m) return undefined;
+  const n = /^\d+$/.test(m[1]) ? Number(m[1]) : NUMBER_WORDS[m[1]];
+  if (!n) return undefined;
+  const unit = m[2];
+  if (/^(minutes?|mins?|minutos?)$/.test(unit)) return n;
+  if (/^(hours?|hrs?|horas?)$/.test(unit)) return n * 60;
+  return n * 1440;
+}
+
+/**
+ * An answering machine, not a person: "please leave a message after the tone", "the person you are calling is not
+ * available", "deje su mensaje". An update call that only reached voicemail counts as missed, so the update is texted.
+ */
+export function looksLikeVoicemail(utterance: string): boolean {
+  return test(
+    /\b(leave (me )?(a |your )?(message|name and number)|after the (tone|beep)|at the (tone|beep)|(is )?not available|unavailable|voice ?mail|mailbox|record your message|can'?t (take|come to) (your|the|my) (call|phone)|deje (su|un) mensaje|despues del tono|no (esta|se encuentra) disponible|buzon de voz)\b/,
     utterance,
   );
 }

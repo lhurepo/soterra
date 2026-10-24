@@ -52,7 +52,7 @@ Choosing kind:
 - "answer": you answered from the sources, fully or partly (citedChunkIds must not be empty). When in doubt between a partial answer and "no_info", choose "answer" as long as some source is about the same topic or incident.
 - "no_info": no source is about what was asked at all.
 - "clarify": you need the caller's city, county or ZIP code, or the question is unclear. Ask one short question.
-- "followup": the caller asks to be called back or kept updated. Fill followUpRequest: targetKind "incident" with the incidentKey of the relevant source, or "area" when no incident applies, or "question" when they want to hear back about a question you could not answer. trigger is "evacuation_change" if they mention evacuations, "severity_change" if they mention it getting worse, "answer_available" for a question, otherwise "any_update".
+- "followup": the caller asks to be called back or kept updated. Fill followUpRequest: targetKind "incident" with the incidentKey of the relevant source, or "area" when no incident applies, or "question" when they want to hear back about a question you could not answer. trigger is "evacuation_change" if they mention evacuations, "severity_change" if they mention it getting worse, "answer_available" for a question, otherwise "any_update". channel is "sms" if they ask for texts or messages, "phone_call" if they ask for calls; leave it out otherwise. If they ask for updates on a schedule ("every 2 hours", "daily"), put the interval in intervalMinutes (e.g. 120, 1440); leave it out for "if it changes".
 - "smalltalk": greetings, thanks, how-are-you, questions about Soterra itself or what it can do, and kind words. Answer warmly in one or two short sentences, then invite their question. Do not claim to be human, and state no disaster facts here.
 - "goodbye": the caller says they are finished or says bye. Set endCall to true. A thank-you on its own is NOT goodbye: use "smalltalk", reply warmly, and ask if there is anything else.
 - "safety": the caller may be in immediate danger.
@@ -91,6 +91,8 @@ export const ANSWER_DRAFT_JSON_SCHEMA: Record<string, unknown> = {
         incidentKey: { type: "string" },
         area: AREA_SCHEMA,
         trigger: { type: "string", enum: ["any_update", "severity_change", "evacuation_change", "answer_available"] },
+        channel: { type: "string", enum: ["phone_call", "sms"] },
+        intervalMinutes: { type: "number" },
       },
     },
     unansweredQuestion: { type: "string" },
@@ -184,6 +186,8 @@ export function parseDraft(response: LlmResponse): AnswerDraft {
     if (r.detectedArea !== undefined && !AreaRef.safeParse(r.detectedArea).success) delete r.detectedArea;
     const f = r.followUpRequest as Record<string, unknown> | undefined;
     if (f && typeof f === "object" && f.area !== undefined && !AreaRef.safeParse(f.area).success) delete f.area;
+    if (f && typeof f === "object") for (const key of ["channel", "intervalMinutes", "incidentKey"]) if (f[key] === null) delete f[key];
+    if (f && typeof f === "object" && f.intervalMinutes !== undefined && !(typeof f.intervalMinutes === "number" && f.intervalMinutes > 0)) delete f.intervalMinutes;
   }
   const parsed = AnswerDraft.safeParse(raw);
   if (!parsed.success) throw new LlmError("invalid_output", `model reply does not match AnswerDraft: ${parsed.error.issues[0]?.message ?? ""}`);
