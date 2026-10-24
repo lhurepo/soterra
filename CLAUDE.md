@@ -36,9 +36,9 @@ rolldown binding (Vitest then fails "Cannot find native binding"); fix with
 
 | What | Value |
 | --- | --- |
-| Phone number | **+1 712 600 3362** (Cartesia number id `ap_CWGJppviDa2Ea1jeZEYwBt`) |
-| Voice agent (code, deployed from `voice/`) | `soterra-voice` = `agent_1iwkwy7nwEfejQJzwM75hm` |
-| Playground agent (prompt only, no number, rejects code deploys) | `soterra-agent` = `agent_8eCub89GEcWT6SxFTNGfkB` |
+| Phone number | **+1 804 606 6867** (Cartesia number id `ap_QoAmgCfwRzUyj2yRVLiUk4`) |
+| Voice agent (code, deployed from `voice/`) | `soterra-voice` = `agent_P9jTAaHVA3Lp4QyxqfoUkx` |
+| Playground agent (prompt only, no number, rejects code deploys) | `voice-agent` = `agent_R6EdBEhdQextsnkabGkz7X` |
 | Convex dev deployment | `brazen-perch-21` → `https://brazen-perch-21.convex.site` (`/health`) |
 
 The dev deployment has `PHONE_NOTIFIER=cartesia`, so `npm run inject:update` places **real phone calls**
@@ -52,10 +52,10 @@ Always first: `npm test && npm run typecheck && npm run test:voice`
 | You changed | Then |
 | --- | --- |
 | `convex/` or `src/` (backend) | `npx convex dev --once` (pushes to the dev deployment; read `convex/_generated/ai/guidelines.md` before editing `convex/`) |
-| `voice/` | Redeploy the phone agent: `cd voice && find . -name __pycache__ -prune -exec rm -rf {} + && ~/.cartesia/bin/cartesia deploy --agent-id agent_1iwkwy7nwEfejQJzwM75hm .` then `~/.cartesia/bin/cartesia deployments ls --agent-id agent_1iwkwy7nwEfejQJzwM75hm` until "deployed" |
-| voice env vars | `~/.cartesia/bin/cartesia env set --agent-id agent_1iwkwy7nwEfejQJzwM75hm KEY=value` (redeploys) |
+| `voice/` | Redeploy the phone agent: `cd voice && find . -name __pycache__ -prune -exec rm -rf {} + && ~/.cartesia/bin/cartesia deploy --agent-id agent_P9jTAaHVA3Lp4QyxqfoUkx .` then `~/.cartesia/bin/cartesia deployments ls --agent-id agent_P9jTAaHVA3Lp4QyxqfoUkx` until "deployed" |
+| voice env vars | `~/.cartesia/bin/cartesia env set --agent-id agent_P9jTAaHVA3Lp4QyxqfoUkx KEY=value` (redeploys) |
 | `src/contracts/` | follow "Contract change protocol" in `TEAM_PLAN.md` (zod + fixture + Python mirror) |
-| anything | after deploying, **call +1 712 600 3362** and run the demo script (`TEAM_PLAN.md` → Demo script) |
+| anything | after deploying, **call +1 804 606 6867** and run the demo script (`TEAM_PLAN.md` → Demo script) |
 
 Commit and push only when the user asks.
 
