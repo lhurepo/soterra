@@ -26,7 +26,9 @@ def call_config(settings: Settings, language: str) -> dict[str, Any]:
     return {"tts": tts, "stt": {"language": language}}
 
 
-def build_app(settings: Settings, backend: Optional[Backend] = None) -> VoiceAgentApp:
+def build_handlers(settings: Settings, backend: Optional[Backend] = None):
+    """(get_agent, pre_call_handler) for VoiceAgentApp. main.py constructs VoiceAgentApp itself, because
+    Cartesia's hosted build looks for `VoiceAgentApp` and `app.run()` in main.py."""
     backend = backend or backend_from_settings(settings)
 
     async def pre_call_handler(call_request: Any) -> PreCallResult:
@@ -47,6 +49,7 @@ def build_app(settings: Settings, backend: Optional[Backend] = None) -> VoiceAge
                         called_phone=info.called_phone,
                         language_hint=info.language_hint,
                         notification_id=info.notification_id,
+                        provider_agent_call_id=info.agent_call_id,
                         started_at=now_ms(),
                     )
                 ), timeout=min(settings.turn_timeout_s, PRE_CALL_TIMEOUT_S))
@@ -60,6 +63,18 @@ def build_app(settings: Settings, backend: Optional[Backend] = None) -> VoiceAge
     async def get_agent(env: Any, call_request: Any) -> SoterraAgent:
         # Default filters: run on CallStarted/UserTurnEnded/CallEnded, cancel on UserTurnStarted (barge-in).
         metadata = getattr(call_request, "metadata", None) or {}
-        return SoterraAgent(backend, call_info_from_request(call_request, settings), settings, prestarted=metadata)
+        info = call_info_from_request(call_request, settings)
+        # Masked: enough to confirm on real calls what Cartesia sends (ids, direction, which metadata keys).
+        log.info(
+            "call_request call_id=%s agent_call_id=%s from=%s to=%s direction=%s notification=%s metadata_keys=%s",
+            info.provider_call_id, info.agent_call_id, mask_phone(getattr(call_request, "from_", None)),
+            mask_phone(getattr(call_request, "to", None)), info.direction, info.notification_id, sorted(metadata.keys()),
+        )
+        return SoterraAgent(backend, info, settings, prestarted=metadata)
 
+    return get_agent, pre_call_handler
+
+
+def build_app(settings: Settings, backend: Optional[Backend] = None) -> VoiceAgentApp:
+    get_agent, pre_call_handler = build_handlers(settings, backend)
     return VoiceAgentApp(get_agent=get_agent, pre_call_handler=pre_call_handler)

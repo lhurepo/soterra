@@ -44,6 +44,15 @@ def parse_language_map(raw: str) -> dict[str, str]:
     return result
 
 
+def parse_numbers(raw: str) -> frozenset[str]:
+    """`+17126003362,+14155550100` → frozenset of E.164 numbers."""
+    numbers = [n.strip() for n in raw.split(",") if n.strip()]
+    bad = [n for n in numbers if not E164.match(n)]
+    if bad:
+        raise ConfigError(f"SOTERRA_PHONE_NUMBERS must be E.164 numbers, got {bad[0]!r}")
+    return frozenset(numbers)
+
+
 def _float(env: Mapping[str, str], name: str, default: float) -> float:
     raw = env.get(name, "").strip()
     if not raw:
@@ -75,6 +84,8 @@ class Settings:
     tts_model: str = DEFAULT_TTS_MODEL
     pronunciation_dict_id: Optional[str] = None
     language_by_dialed_number: dict[str, str] = field(default_factory=dict)
+    # Our own Cartesia numbers: a call whose `from` is one of these is an outbound callback.
+    own_numbers: frozenset[str] = frozenset()
     offer_spanish_dtmf: bool = False
     mock_conversation: Optional[str] = None
 
@@ -116,6 +127,7 @@ class Settings:
             tts_model=env.get("TTS_MODEL", "").strip() or DEFAULT_TTS_MODEL,
             pronunciation_dict_id=env.get("PRONUNCIATION_DICT_ID", "").strip() or None,
             language_by_dialed_number=parse_language_map(env.get("LANGUAGE_BY_DIALED_NUMBER", "")),
+            own_numbers=parse_numbers(env.get("SOTERRA_PHONE_NUMBERS", "")),
             offer_spanish_dtmf=_bool(env, "OFFER_SPANISH_DTMF"),
             mock_conversation=env.get("MOCK_CONVERSATION", "").strip() or None,
         )

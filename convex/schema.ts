@@ -425,7 +425,8 @@ export default defineSchema({
     deliveredAt: v.optional(v.number()),
   })
     .index("by_dedupeKey", ["dedupeKey"])
-    .index("by_subscriptionId_and_createdAt", ["subscriptionId", "createdAt"]),
+    .index("by_subscriptionId_and_createdAt", ["subscriptionId", "createdAt"])
+    .index("by_providerRef", ["providerRef"]),
 
   // ───────────── [S] Dev only ─────────────
   /** Mock HTML pages served at /mock-sites/* when ENABLE_MOCK_SITES=true, so Apify can scrape a real URL. */

@@ -111,7 +111,7 @@ describe("notifiers", () => {
     expect(await new MockPhoneNotifier().send(request)).toEqual({ status: "mock", providerRef: "mock:k" });
   });
 
-  it("Cartesia: documented request shape with notification_id in dynamic_variables (not verified live)", async () => {
+  it("Cartesia: request shape verified against the live API, notification_id in dynamic_variables and metadata", async () => {
     const cfg = loadConfig({ PHONE_NOTIFIER: "cartesia", CARTESIA_API_KEY: "test-key", CARTESIA_AGENT_ID: "agent_1", CARTESIA_FROM_NUMBER_ID: "num_1" });
     expect(outboundCallBody(cfg, { toNumber: "+17075550123", notificationId: "n1", language: "es" })).toMatchObject({
       from_number_id: "num_1",

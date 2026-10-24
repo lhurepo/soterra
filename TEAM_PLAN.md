@@ -111,12 +111,32 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
   5. Gazetteers for states beyond CA; a real DisasterAssistance.gov page.
 - **Done when:** live NWS CA alerts are searchable within one tick of publication, updates create versions and events, and nothing unverified is ever retrievable.
 
+## Next steps
+
+Keep this list current: tick items off and add new ones as they come up. (Last updated 2026-10-24.)
+
+1. ⬜ **Merge `cartesia/live`** into `main` (PR on GitHub), then everyone pulls and runs `npm run setup`
+   (see `CLAUDE.md` → "Setup on a new machine").
+2. ⬜ **First real phone call (M1):** set `SERVE_FIXTURES=true` and `npm run seed:fixtures` if not already,
+   call **+1 712 600 3362** and walk the Demo script below. Check: greeting, grounded answers with source and
+   time, the danger line, barge-in (talk over it), keypad 2 for Spanish, hang-up. Afterwards pull the logs:
+   `~/.cartesia/bin/cartesia calls ls --agent-id agent_1iwkwy7nwEfejQJzwM75hm` and the Convex dashboard logs.
+   Record end-of-speech → first-audio latency in `voice/README.md` (target ≈ 2.5 s).
+3. ⬜ **Real callback (M4):** on a call from a teammate's phone, say "Please call me if the evacuation changes",
+   hang up, run `npm run inject:update`, and answer the callback. Confirm the greeting carries the update and
+   that the `call_request` log's `agent_call_id` equals the notification's `providerRef` (or that
+   `notificationId` arrived in metadata). Only use phones whose owners agreed.
+4. ⬜ When 2 and 3 pass: set `cartesiaVerifiedLive` to true, move M1/M4 to ✅, and record what was verified in
+   `docs/DECISIONS.md` (outbound `from_`/`to`, whether metadata arrives, real latency).
+5. ⬜ Spanish on the phone: pick a Spanish-native voice, set `VOICE_ID_ES` with `cartesia env set`, test keypad 2.
+6. ⬜ Then M2 (live NWS + crisis mode), M3 (memory + Spanish), M5 (Apify, X, Moss).
+
 ## Integration milestones
 
 | | Milestone | Status |
 | --- | --- | --- |
 | M0 | Skeleton green in mock mode (`npm test`, `npm run test:voice`, `sim:call` against the dev deployment) | ✅ backend pushed to dev; `sim:call --all` green |
-| M1 | **A real phone call reaches the backend and gets grounded answers from fixtures** (riskiest: do first) | ⬜ |
+| M1 | **A real phone call reaches the backend and gets grounded answers from fixtures** (riskiest: do first) | 🟡 number live and deployed; real call not yet made |
 | M2 | Live NWS data + crisis mode | ⬜ |
 | M3 | Memory + Spanish | ⬜ |
 | M4 | Subscriptions + an outbound callback | ⬜ |
@@ -134,9 +154,9 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
 
 See [DECISIONS.md](docs/DECISIONS.md). Still unverified:
 
-- Does `cartesia deploy` accept new hosted agents before the Dec 1, 2026 shutdown? (Leia — not tested yet: no Cartesia credentials in this environment)
+- ~~Does `cartesia deploy` accept new hosted agents?~~ Answered 2026-10-24: yes, `soterra-voice` is deployed (hosting ends Dec 1, 2026).
 - Do outbound `dynamic_variables` reach `CallRequest.metadata`? What are `from_`/`to` on outbound calls? (Leia)
-- Cartesia outbound auth header (`X-API-Key` in examples vs bearer in the spec). (Alonso/Hikaru)
+- ~~Cartesia outbound auth header~~ Answered 2026-10-24: `X-API-Key` works (bearer too).
 - Moss inside Convex: answered — the SDK's native binding does not load in a `"use node"` action, and queries return 503/401 for this project (DECISIONS.md). (Alonso/Hikaru)
 - A live Apify run against the mock sites (key names verified 2026-10-24). (Dhweya)
 - Anthropic latency with Haiku 5.5: ~1.0–2.0 s per turn on dev via `sim:call`; still to measure on a real phone call. (Alonso/Hikaru)
@@ -164,3 +184,5 @@ Setup: `SERVE_FIXTURES=true`, `npm run seed:fixtures`, call from a phone whose n
 - 2026-10-24 — Backend module built on branch `backend/full-module` (docs/backend.md, docs/backend-report.md). Contract additions, all optional: `CallerContext.recentIncidentKeys?: string[]` and `RetrievedChunk.chunkIndex?: number` (`src/contracts/orchestration.ts`, golden fixtures `caller-context.json`, `retrieved-chunk.json`); `internal.retrieval.search` accepts an optional `contextText`; `/health` gains flags `cartesiaVerifiedLive` and `mockLlmFailureMode`; `timingsMs` now reports `context`, `retrieval`, `preLlm`, `llm`, `total`. No voice contract fields changed (Python mirror untouched). Behaviour changes: canonical wording in `src/config/strings.ts` (fallback line changed: sync `voice/soterra_voice/phrases.py`), subscriptions last 24 h, anonymous transcripts 7 days. (Claude, for Alonso)
 - 2026-10-24 — Ingestion module on branch `ingestion/pipeline` (Dhweya's scope; Claude). **Additive contract changes:** `NormalizedBulletin.timeBasis?` (`issued` | `page_updated` | `observed`) and `supersedesExternalIds?`; `timeBasis` on `bulletins` and `chunks`; new `Signal` schema and `signals` table; `ExtractionResult` deprecated (unused). New tables: `bulletinAliases`, `ingestionRuns`, `rawPayloads`, `systemModeLog`, `devSettings`; `sources` gains `mode`/run bookkeeping (`lastFetchedAt` replaced by `lastRunAt`); `mockSites` gains `variant`. Chunks now start with a one-sentence header (title — issuer — areas — time with basis). Fixture bulletins trigger crisis mode only when `SERVE_FIXTURES=true`. Mock sites moved to `fixtures/mock-sites/v1|v2`; `/mock-sites/*` handler moved to `convex/mockSites.ts`. **Backend to handle:** (1) speak `timeBasis` ("as of when we checked at 3:05 PM" for `observed`, "the page was last updated at …" for `page_updated`) — `RetrievedChunk` and `convex/retrieval.ts` don't carry it yet and grounding always says "issued"; (2) `/health` can include `internal.ingestionRuns.sourceStatus`; (3) `signals` are operator-only data, never retrieval input.
 - 2026-10-24 — Voice agent on branch `voice/agent` (Leia's scope; Claude). No contract changes. Behaviour the backend team should know: one filler line after 1.2 s of backend silence; 8 s turn budget; 3 consecutive failures end the call with reason `error`; repeat requests are answered locally (no `/voice/turn`, so they are not in the transcript); `languageHint` is sent only for numbers in `LANGUAGE_BY_DIALED_NUMBER`, so the caller's saved language decides otherwise; keypad 2/1 changes the language sent on later turns without a new session start. Cartesia documents outbound `dynamic_variables`, not `metadata`, so `notificationId` reaching the agent is unconfirmed.
+- 2026-10-24 — Cartesia live (branch `cartesia/live`; Claude for Hikaru). Code agent `soterra-voice` (`agent_1iwkwy7nwEfejQJzwM75hm`) deployed and live on **+1 712 600 3362**; the Playground agent `soterra-agent` keeps its prompt but no number. Dev deployment: `PHONE_NOTIFIER=cartesia` + `CARTESIA_*` set, so `inject:update` now places **real** callbacks to subscribers. **Additive contract change:** `SessionStartRequest.providerAgentCallId` (zod, golden fixture, Python mirror); backend ties outbound calls to notifications by it (`notifications.by_providerRef`). Voice: outbound detected by `SOTERRA_PHONE_NUMBERS`; masked `call_request` log; `main.py` builds `VoiceAgentApp` (hosted build requirement). Backend pushed to the dev deployment from this branch.
+- 2026-10-24 — Team workflow: `npm run setup` / `npm run check` (`scripts/setup.sh`, `scripts/dev-check.sh`), a Claude Code SessionStart hook that runs the check, `CLAUDE.md` "Soterra — team workflow" (live ids, what to run after changing code), and "Next steps" above. (Claude, for Hikaru)

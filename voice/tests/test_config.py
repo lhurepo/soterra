@@ -58,3 +58,9 @@ def test_mask_phone():
 def test_normalize_language():
     assert normalize_language("es-MX") == "es"
     assert normalize_language("fr") is None
+
+
+def test_own_numbers():
+    assert Settings.from_env({"BACKEND_MODE": "mock", "SOTERRA_PHONE_NUMBERS": "+17126003362, +14155550100"}).own_numbers == {"+17126003362", "+14155550100"}
+    with pytest.raises(ConfigError):
+        Settings.from_env({"BACKEND_MODE": "mock", "SOTERRA_PHONE_NUMBERS": "7126003362"})
