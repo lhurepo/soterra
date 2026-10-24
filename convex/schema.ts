@@ -4,8 +4,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
+  areaCandidate,
   areaRef,
   bulletinStatus,
+  callerContext,
   citation,
   hazardType,
   notificationChannel,
@@ -18,20 +20,27 @@ import {
 
 export default defineSchema({
   // ───────────── [B] Identity and memory ─────────────
-  /** One row per caller phone number (E.164). Minimal memory; never an account. */
+  /** One row per caller phone number (E.164). Minimal memory; never an account and never personal details. */
   callers: defineTable({
     phone: v.string(),
     language: v.optional(v.string()),
     knownArea: v.optional(areaRef),
-    needs: v.optional(v.array(v.string())),
     lastCallSummaryId: v.optional(v.id("callSummaries")),
+    /** Public incident keys cited on the last call (safe to use on caller ID alone). */
+    lastIncidentKeys: v.optional(v.array(v.string())),
     lastCallAt: v.number(),
-  }).index("by_phone", ["phone"]),
+    /** Anonymous memory expiry (ANON_MEMORY_TTL_DAYS after the last call); unset while linked to a verified account. */
+    expiresAt: v.optional(v.number()),
+  })
+    .index("by_phone", ["phone"])
+    .index("by_expiresAt", ["expiresAt"]),
 
-  /** Future app users (iOS). Auth is TODO(B). */
+  /** Future app users (iOS). Auth is TODO(B). Needs live here, on the account profile, never on callers. */
   accounts: defineTable({
     tokenIdentifier: v.optional(v.string()),
     displayName: v.optional(v.string()),
+    preferredLanguage: v.optional(v.string()),
+    needs: v.optional(v.array(v.string())),
     createdAt: v.number(),
   }).index("by_tokenIdentifier", ["tokenIdentifier"]),
 
@@ -57,6 +66,11 @@ export default defineSchema({
     transcriptConsent: v.union(v.literal("notice_given"), v.literal("declined")),
     knownArea: v.optional(areaRef),
     notificationId: v.optional(v.id("notifications")),
+    /** Caller context built once at session start (src/memory/callerContext.ts). */
+    callerContext: v.optional(callerContext),
+    /** Active bulletin area labels for place-name matching, refreshed every few minutes. */
+    areaCandidates: v.optional(v.array(areaCandidate)),
+    areaCandidatesAt: v.optional(v.number()),
     startedAt: v.number(),
     lastActivityAt: v.number(),
     endedAt: v.optional(v.number()),
@@ -64,10 +78,17 @@ export default defineSchema({
       v.union(v.literal("caller_hangup"), v.literal("agent_end"), v.literal("transfer"), v.literal("error"), v.literal("timeout")),
     ),
     finalizedAt: v.optional(v.number()),
+    /** The greeting returned at session start (a repeated start returns the same text). */
+    greeting: v.optional(v.string()),
+    /** Anonymous calls only, set at finalize: when the turns are deleted, and when the call row and summary go. */
+    transcriptExpiresAt: v.optional(v.number()),
+    memoryExpiresAt: v.optional(v.number()),
     safetyFlag: v.optional(v.boolean()),
   })
     .index("by_providerCallId", ["providerCallId"])
     .index("by_status_and_lastActivityAt", ["status", "lastActivityAt"])
+    .index("by_transcriptExpiresAt", ["transcriptExpiresAt"])
+    .index("by_memoryExpiresAt", ["memoryExpiresAt"])
     .index("by_accountId_and_startedAt", ["accountId", "startedAt"])
     .index("by_callerId_and_startedAt", ["callerId", "startedAt"]),
 
@@ -81,18 +102,27 @@ export default defineSchema({
     interruptedPrevious: v.optional(v.boolean()),
     status: v.union(v.literal("pending"), v.literal("complete")),
     reply: v.optional(v.string()),
+    replyLanguage: v.optional(v.string()),
     kind: v.optional(replyKind),
     citations: v.optional(v.array(citation)),
     endCall: v.optional(v.boolean()),
+    /** The caller barged in over this turn's reply (set when the next turn arrives with interruptedPrevious). */
+    interrupted: v.optional(v.boolean()),
     unansweredQuestionId: v.optional(v.id("unansweredQuestions")),
     subscriptionId: v.optional(v.id("subscriptions")),
     degraded: v.optional(v.boolean()),
+    errorCode: v.optional(v.string()),
+    retriever: v.optional(v.string()),
+    retrievedAt: v.optional(v.number()),
+    llmModel: v.optional(v.string()),
+    areaSource: v.optional(v.string()),
     retrievedChunkIds: v.optional(v.array(v.id("chunks"))),
     citedChunkIds: v.optional(v.array(v.id("chunks"))),
+    /** Copied from the cited chunks, which are rewritten when a bulletin updates. */
+    citedIncidentKeys: v.optional(v.array(v.string())),
+    citedHazards: v.optional(v.array(hazardType)),
     timingsMs: v.optional(v.record(v.string(), v.number())),
-  })
-    .index("by_callId_and_turnIndex", ["callId", "turnIndex"])
-    .index("by_receivedAt", ["receivedAt"]),
+  }).index("by_callId_and_turnIndex", ["callId", "turnIndex"]),
 
   callSummaries: defineTable({
     callId: v.id("calls"),
@@ -107,19 +137,26 @@ export default defineSchema({
     followUpsRequested: v.array(v.string()),
     safetyFlag: v.boolean(),
     model: v.string(),
+    /** True when the LLM failed and the deterministic summary was stored instead. */
+    fallback: v.optional(v.boolean()),
     createdAt: v.number(),
-  }).index("by_callId", ["callId"]),
+  })
+    .index("by_callId", ["callId"])
+    .index("by_callerId", ["callerId"]),
 
   unansweredQuestions: defineTable({
     callId: v.id("calls"),
     turnIndex: v.number(),
     callerId: v.optional(v.id("callers")),
-    question: v.string(),
+    text: v.string(),
     language: v.string(),
     area: v.optional(areaRef),
     status: v.union(v.literal("open"), v.literal("answered"), v.literal("dismissed")),
     createdAt: v.number(),
     answeredAt: v.optional(v.number()),
+    answerText: v.optional(v.string()),
+    answerSourceUrl: v.optional(v.string()),
+    answerSourceName: v.optional(v.string()),
     answerBulletinId: v.optional(v.id("bulletins")),
   })
     .index("by_callId_and_turnIndex", ["callId", "turnIndex"])
@@ -269,11 +306,18 @@ export default defineSchema({
     createdVia: v.union(v.literal("call"), v.literal("app")),
     expiresAt: v.number(),
     lastNotifiedAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
     createdFromCallId: v.optional(v.id("calls")),
   })
     .index("by_status_and_targetIncidentKey", ["status", "target.incidentKey"])
+    .index("by_status_and_targetKind", ["status", "target.kind"])
+    .index("by_status_and_expiresAt", ["status", "expiresAt"])
+    .index("by_targetUnansweredQuestionId", ["target.unansweredQuestionId"])
+    .index("by_recipientPhone_and_status", ["recipient.phone", "status"])
+    .index("by_recipientCallerId_and_status", ["recipient.callerId", "status"])
     .index("by_recipientAccountId", ["recipient.accountId"]),
 
+  /** Every notification attempt, including rate-limited ones (status "failed", error "rate_limited"). */
   notifications: defineTable({
     subscriptionId: v.optional(v.id("subscriptions")),
     recipientPhone: v.string(),
@@ -287,7 +331,9 @@ export default defineSchema({
     error: v.optional(v.string()),
     createdAt: v.number(),
     deliveredAt: v.optional(v.number()),
-  }).index("by_dedupeKey", ["dedupeKey"]),
+  })
+    .index("by_dedupeKey", ["dedupeKey"])
+    .index("by_subscriptionId_and_createdAt", ["subscriptionId", "createdAt"]),
 
   // ───────────── [S] Dev only ─────────────
   /** Mock HTML pages served at /mock-sites/* when ENABLE_MOCK_SITES=true, so Apify can scrape a real URL. */

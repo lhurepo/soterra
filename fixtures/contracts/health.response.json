@@ -11,6 +11,6 @@
     "phoneNotifier": "mock",
     "sms": "unconfigured"
   },
-  "flags": { "serveFixtures": true, "mockSites": false },
+  "flags": { "serveFixtures": true, "mockSites": false, "cartesiaVerifiedLive": false, "mockLlmFailureMode": false },
   "now": 1792893600000
 }

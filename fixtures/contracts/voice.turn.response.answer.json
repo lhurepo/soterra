@@ -13,5 +13,5 @@
     }
   ],
   "endCall": false,
-  "timingsMs": { "retrieval": 41, "llm": 612, "total": 690 }
+  "timingsMs": { "context": 35, "retrieval": 73, "preLlm": 110, "llm": 1156, "total": 1270 }
 }

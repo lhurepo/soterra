@@ -10,6 +10,10 @@ import {
 
 export type ConversationTurn = {
   utterance: string;
+  /** Overrides the session language for this turn (e.g. a caller switching to Spanish). */
+  language?: string;
+  interruptedPrevious?: boolean;
+  expectLanguage?: string;
   expectKind?: ReplyKind;
   expectReplyIncludes?: string;
   expectUnanswered?: boolean;
@@ -50,6 +54,7 @@ export function checkTurn(turn: ConversationTurn, r: TurnResponse): string[] {
   if (turn.expectUnanswered && !r.unansweredQuestionId) failures.push("expected an unansweredQuestionId");
   if (turn.expectSubscription && !r.subscriptionId) failures.push("expected a subscriptionId");
   if (turn.expectEndCall !== undefined && r.endCall !== turn.expectEndCall) failures.push(`expected endCall ${turn.expectEndCall}`);
+  if (turn.expectLanguage && r.language !== turn.expectLanguage) failures.push(`expected language ${turn.expectLanguage}, got ${r.language}`);
   if (r.kind === "answer" && r.citations.length === 0) failures.push("answer without citations");
   return failures;
 }
@@ -83,7 +88,8 @@ export async function runConversation(opts: {
       sessionId: greeting.sessionId,
       turnIndex,
       utterance: turn.utterance,
-      language: greeting.language,
+      language: turn.language ?? greeting.language,
+      interruptedPrevious: turn.interruptedPrevious,
       receivedAt: now(),
     }, TurnResponse.parse);
     const result = { turn, response, failures: checkTurn(turn, response), elapsedMs: Date.now() - t0 };

@@ -15,10 +15,10 @@ Living document. Update your own section and the status column as you go; add a 
 Enforced in code where marked ✅.
 
 1. **Grounded or silent.** ✅ An `answer` must cite a chunk retrieved this turn (`src/orchestration/grounding.ts`); every answer ends with source and time.
-2. **Say "I don't know yet."** ✅ Uncited answers become `no_info` + an unanswered question. Never guess address-in-zone or shelter status (prompt + mock today; TODO(B) harden).
+2. **Say "I don't know yet."** ✅ Uncited answers become `no_info` + an unanswered question. Never guess address-in-zone or shelter status (deterministic guards in `src/orchestration/grounding.ts`).
 3. **Danger first.** ✅ Deterministic check before any LLM call (`src/orchestration/danger.ts`). Never say or imply help was sent.
 4. **Untrusted inputs are data.** ✅ Unverified content is never chunked or retrievable; scraped text is passed to models as labeled data.
-5. **A phone number is not an account.** ✅ On caller ID alone the model never sees stored needs or past summaries (`src/memory/callerContext.ts`).
+5. **A phone number is not an account.** ✅ On caller ID alone the model never sees stored needs or past-summary text, only language, a county-level area and public incidents (`src/memory/callerContext.ts`).
 6. **The hotline needs nothing optional.** ✅ No account, Moss, Apify, SMS or callbacks are needed for a call.
 7. **Fail safe.** ✅ Backend failures → `degraded` fallback with the 911 line; voice agent speaks a fixed fallback on any non-200 or timeout.
 
@@ -28,22 +28,22 @@ Enforced in code where marked ✅.
 
 | Feature | Priority | Owner | Status |
 | --- | --- | --- | --- |
-| Inbound multi-turn call (voice ⇄ backend contract) | P0 | Leia + Alonso/Hikaru | 🟡 backend ✅, agent ✅ vs mock; no phone number yet |
-| Grounded answers with source and time | P0 | Alonso/Hikaru | 🟡 enforcement ✅, real model ⬜ (MockLlm) |
+| Inbound multi-turn call (voice ⇄ backend contract) | P0 | Leia + Alonso/Hikaru | 🟡 backend ✅ (live on dev, `sim:call --all` green), agent ✅ vs mock; no phone number yet |
+| Grounded answers with source and time | P0 | Alonso/Hikaru | ✅ enforcement + real Claude (Haiku 5.5, structured output) verified on dev; dev defaults to MockLlm |
 | "I don't know yet" + unanswered questions | P0 | Alonso/Hikaru | ✅ |
-| Danger path | P0 | Alonso/Hikaru | ✅ (en, es patterns; needs native-speaker review) |
-| Transcript + summary (consent, summary-only) | P0 | Alonso/Hikaru | 🟡 flow ✅, real summary prompt ⬜ |
+| Danger path | P0 | Alonso/Hikaru | ✅ (en, es patterns + false-positive tests; needs native-speaker review) |
+| Transcript + summary (consent, summary-only) | P0 | Alonso/Hikaru | ✅ summary prompt (CLAUDE_SMART_MODEL) + deterministic fallback, summary-only, batched retention purge |
 | Live NWS ingestion | P0 | Dhweya | 🟡 adapter stub with request + mapping notes |
 | Fixtures (Ridgeview demo) | P0 | shared | ✅ |
-| Convex search retrieval | P0 | Alonso/Hikaru | ✅ |
-| Caller memory (last summary, language, area) | P1 | Alonso/Hikaru | 🟡 stored ✅, used only for verified accounts |
-| Spanish | P1 | Leia + Alonso/Hikaru | 🟡 phrases ✅, voice/STT switch untested |
-| Account association (verified phone link) | P1 | Alonso/Hikaru | 🟡 tables + rule ✅, verification flow ⬜, auth ⬜ |
+| Convex search retrieval | P0 | Alonso/Hikaru | ✅ area-first + full text, per-bulletin dedupe, token budget, explainable ranking |
+| Caller memory (last summary, language, area) | P1 | Alonso/Hikaru | ✅ context cached per call, "welcome back" offer, policy filter for the model, TTLs |
+| Spanish | P1 | Leia + Alonso/Hikaru | 🟡 backend ✅ (Spanish replies with citations, verified with Claude); wording review ⬜; voice/STT switch untested |
+| Account association (verified phone link) | P1 | Alonso/Hikaru | 🟡 rule ✅ at start and finalize, account queries ✅; verification flow ⬜, auth ⬜ |
 | More official sources (USGS, FEMA, NHC, Tsunami, InciWeb, NIFC) | P1 | Dhweya | 🟡 registry + stubs |
 | Crisis mode | P1 | Dhweya | 🟡 trigger stub + tick ✅ |
 | Apify scraping of mock sites | P1 | Dhweya | 🟡 webhook route + placeholders; mock sites served ✅ |
-| Moss retriever | P1 | Alonso/Hikaru | 🟡 placeholder |
-| Subscriptions + outbound callbacks | P2 | Alonso/Hikaru (Leia reviews) | 🟡 matcher + mock notifier ✅, Cartesia call untested |
+| Moss retriever | P1 | Alonso/Hikaru | 🟡 adapter + sync + fallback ✅; blocked: SDK can't load in Convex, queries 503/401 (DECISIONS.md) |
+| Subscriptions + outbound callbacks | P2 | Alonso/Hikaru (Leia reviews) | 🟡 matcher, rate limits, stop updates, answered questions, mock notifier ✅ (live on dev); Cartesia adapter **not verified live** |
 | X ingestion | P2 | Dhweya | ⬜ (allowlist + trust rules ✅) |
 | SMS | P2 | — | ⬜ provider not chosen |
 | Streaming turns (`/voice/turn/stream`) | P2 | Alonso/Hikaru + Leia | ⬜ reserved |
@@ -90,16 +90,15 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
 
 - **Receives:** `/voice/*` requests; chunks from Dhweya's tables. **Returns:** turn replies, summaries, subscriptions, notifications.
 - **Can rely on now:** fixtures through `upsertBulletins`, `MockLlm`, the end-to-end test in `convex/tests/e2e.test.ts`.
-- **First hour:** replace `MockLlm` with real Claude behind `LLM_PROVIDER=anthropic` (`src/providers/llm/anthropic.ts`, `src/orchestration/prompt.ts`: structured `AnswerDraft` output), run `sim:call` against it, and keep the e2e test green with the mock.
+- **Done (2026-10-24 backend session):** see [docs/backend.md](docs/backend.md) and [docs/backend-report.md](docs/backend-report.md). Real Claude behind `LLM_PROVIDER=anthropic` (verified on dev), merged two-mutation turn path (pre-LLM median ~105 ms on dev), rule-2 guards, area detection (ZIP / place / `detectedArea`), summaries with fallback, retention purge, subscriptions + stop updates + answered questions, Cartesia adapter from docs, Moss adapter behind the flag.
 - **To do:**
-  1. Real turn prompt; JSON/structured output; measure Haiku 5.5 vs Sonnet 5.5 latency (`timingsMs`).
-  2. Harden rule 2: deterministic checks for address-in-zone and shelter-open claims in non-answer kinds.
-  3. Real summary prompt (≤ 80 words, neutral).
-  4. Area detection from the utterance (`detectedArea`) → `calls.knownArea`.
-  5. Caller memory policy and phone-link verification flow; account auth (`convex/auth.config.ts`) for the iOS app.
-  6. Moss retriever behind `RETRIEVER=moss` with Convex fallback (measure cold load first).
-  7. Cartesia outbound notifier live test with Leia; "stop calls" flow; responder answers → `answer_available`.
-- **Done when:** a real model answers the Ridgeview call with correct citations, refuses address-in-zone, says "I don't know yet" for Hillcrest Elementary, and the danger and fallback paths still pass.
+  1. Human review of every string in `src/config/strings.ts` (Spanish by a native speaker).
+  2. M1 with Leia: real phone call against fixtures (steps in `docs/backend-report.md`); rotate `VOICE_API_SECRET` on dev and share it.
+  3. Phone-link verification flow and Convex Auth for the iOS app (`convex/accounts.ts` TODOs).
+  4. Cartesia outbound live test with Leia once credentials exist (`PHONE_NOTIFIER=cartesia`).
+  5. Moss: get the 503/401 explained, or run Moss outside Convex; until then Convex search.
+  6. ZIP → county table if county-level matching from ZIPs matters for the demo.
+- **Done when:** a real model answers the Ridgeview call with correct citations, refuses address-in-zone, says "I don't know yet" for Hillcrest Elementary, and the danger and fallback paths still pass. ✅ on dev via `sim:call` with Claude; pending on a real phone call.
 
 ### Dhweya — ingestion (`src/ingestion`, `src/providers/apify`, `convex/{ingestion,sources,systemState}.ts`)
 
@@ -119,7 +118,7 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
 
 | | Milestone | Status |
 | --- | --- | --- |
-| M0 | Skeleton green in mock mode (`npm test`, `npm run test:voice`, `sim:call` against the dev deployment) | ✅ tests green; `sim:call` needs one `npx convex dev` push |
+| M0 | Skeleton green in mock mode (`npm test`, `npm run test:voice`, `sim:call` against the dev deployment) | ✅ backend pushed to dev; `sim:call --all` green |
 | M1 | **A real phone call reaches the backend and gets grounded answers from fixtures** (riskiest: do first) | ⬜ |
 | M2 | Live NWS data + crisis mode | ⬜ |
 | M3 | Memory + Spanish | ⬜ |
@@ -141,9 +140,9 @@ See [DECISIONS.md](docs/DECISIONS.md). Still unverified:
 - Does `cartesia deploy` accept new hosted agents before the Dec 1, 2026 shutdown? (Leia)
 - Do outbound `dynamic_variables` reach `CallRequest.metadata`? What are `from_`/`to` on outbound calls? (Leia)
 - Cartesia outbound auth header (`X-API-Key` in examples vs bearer in the spec). (Alonso/Hikaru)
-- Moss cold-load time in a `"use node"` action. (Alonso/Hikaru)
+- Moss inside Convex: answered — the SDK's native binding does not load in a `"use node"` action, and queries return 503/401 for this project (DECISIONS.md). (Alonso/Hikaru)
 - Apify `headersTemplate` key and dataset id in the payload template. (Dhweya)
-- Anthropic latency with Haiku 5.5 on a real call. (Alonso/Hikaru)
+- Anthropic latency with Haiku 5.5: ~1.0–2.0 s per turn on dev via `sim:call`; still to measure on a real phone call. (Alonso/Hikaru)
 - Ink 2 STT covers en/fr/hi/ja/es only: Mandarin and Punjabi from the overview are out.
 
 ## Demo script
@@ -156,12 +155,13 @@ Setup: `SERVE_FIXTURES=true`, `npm run seed:fixtures`, call from a phone whose n
 | 2 | "Is 412 Oak Lane inside the evacuation zone?" | "I can't confirm whether a specific address is inside a zone," then the listed zones SON-3A and SON-3B, with source and time. |
 | 3 | "Are there shelters that take pets?" | Ridgeview Community Center takes pets in crates; numbers and "checked at 2:30 PM" with source. |
 | 4 | "Is Hillcrest Elementary open as a shelter?" | "I don't know yet… I've saved your question." (unanswered question recorded) |
-| 5 | "Please call me if the evacuation changes." | Confirms a callback to this number for up to seven days (subscription created). |
+| 5 | "Please call me if the evacuation changes." | Confirms a callback to this number for the next 24 hours and how to stop ("say stop updates") (subscription created). |
 | 6 | "Thanks, goodbye." | Goodbye with the 911 line; call ends; summary written. |
 | — | Presenter runs `npm run inject:update` | Zone SON-3A becomes an Evacuation **Order**; bulletin event → notification. |
-| 7 | Soterra calls back (with `PHONE_NOTIFIER=cartesia`) | "This is Soterra calling with the update you asked for. Update from Sonoma County Emergency Management (Demo)…: Evacuation Order for zone SON-3A…" |
+| 7 | Soterra calls back (with `PHONE_NOTIFIER=cartesia`, not verified live) | "This is Soterra calling with the update you asked for. Update from Sonoma County Emergency Management (Demo)…: Evacuation Order for zone SON-3A…", then how to stop updates and the 911 line |
 | — | Separately: "I'm trapped, the fire is at my house" | First words: "If you are in immediate danger, hang up and dial 911 now." |
 
 ## Changelog
 
 - 2026-10-24 — Skeleton created on branch `skeleton/shared-codebase`: contracts v1, schema, mock end-to-end path, voice agent, fixtures, docs, 77 Vitest + 22 pytest tests. (Claude, for Hikaru)
+- 2026-10-24 — Backend module built on branch `backend/full-module` (docs/backend.md, docs/backend-report.md). Contract additions, all optional: `CallerContext.recentIncidentKeys?: string[]` and `RetrievedChunk.chunkIndex?: number` (`src/contracts/orchestration.ts`, golden fixtures `caller-context.json`, `retrieved-chunk.json`); `internal.retrieval.search` accepts an optional `contextText`; `/health` gains flags `cartesiaVerifiedLive` and `mockLlmFailureMode`; `timingsMs` now reports `context`, `retrieval`, `preLlm`, `llm`, `total`. No voice contract fields changed (Python mirror untouched). Behaviour changes: canonical wording in `src/config/strings.ts` (fallback line changed: sync `voice/soterra_voice/phrases.py`), subscriptions last 24 h, anonymous transcripts 7 days. (Claude, for Alonso)

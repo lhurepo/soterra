@@ -17,7 +17,9 @@
     { "file": "normalized-bulletin.json", "schema": "NormalizedBulletin", "python": false },
     { "file": "subscription.json", "schema": "Subscription", "python": false },
     { "file": "notification-request.json", "schema": "NotificationRequest", "python": false },
-    { "file": "call-summary.json", "schema": "CallSummary", "python": false }
+    { "file": "call-summary.json", "schema": "CallSummary", "python": false },
+    { "file": "caller-context.json", "schema": "CallerContext", "python": false },
+    { "file": "retrieved-chunk.json", "schema": "RetrievedChunk", "python": false }
   ],
   "invalid": [
     { "file": "invalid/voice.turn.request.no-session.json", "schema": "TurnRequest", "python": true },

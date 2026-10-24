@@ -18,6 +18,11 @@ export const CallerContext = z.object({
   needs: z.array(z.string()).optional(),
   lastCallSummary: z.string().optional(),
   activeSubscriptions: z.array(z.string()).optional(),
+  /**
+   * Public incident keys (e.g. "ridgeview-fire-demo") the caller asked about on a recent call. Safe to
+   * use on caller ID alone: they name public incidents, never the caller's address, needs or household.
+   */
+  recentIncidentKeys: z.array(z.string()).optional(),
 });
 export type CallerContext = z.infer<typeof CallerContext>;
 
@@ -47,6 +52,8 @@ export const RetrievedChunk = z.object({
   severity: Severity,
   incidentKey: z.string().optional(),
   isFixture: z.boolean().optional(),
+  /** Position within the bulletin's chunks; lets retrieval add the next chunk of the same bulletin. */
+  chunkIndex: z.number().int().nonnegative().optional(),
   score: z.number(),
 });
 export type RetrievedChunk = z.infer<typeof RetrievedChunk>;

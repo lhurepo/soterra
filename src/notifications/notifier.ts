@@ -1,4 +1,5 @@
-// [B] Notifier interface and implementations: mock, Cartesia phone call (placeholder), SMS (unconfigured).
+// [B] Notifier interface and implementations: mock phone calls (default), Cartesia outbound calls
+// (PHONE_NOTIFIER=cartesia, NOT verified live: no credentials yet), SMS (no provider chosen).
 // Nothing in the hotline's hot path imports this file.
 import type { Config } from "../config/env";
 import type { NotificationRequest, NotificationResult } from "../contracts";
@@ -9,9 +10,9 @@ export interface Notifier {
   send(request: NotificationRequest): Promise<NotificationResult>;
 }
 
-/** Records nothing itself: the caller (convex/notifications.ts) has already stored the row. */
-export class MockNotifier implements Notifier {
-  readonly name = "mock";
+/** Places no call. The caller (convex/notifications.ts) has already stored the row; it records status "mock". */
+export class MockPhoneNotifier implements Notifier {
+  readonly name = "mock_phone";
   readonly sent: NotificationRequest[] = [];
   async send(request: NotificationRequest): Promise<NotificationResult> {
     this.sent.push(request);
@@ -33,9 +34,8 @@ export class CartesiaOutboundCallNotifier implements Notifier {
       notificationId: request.notificationId,
       language: request.language,
     });
-    return "agentCallId" in result
-      ? { status: "queued", providerRef: result.agentCallId }
-      : { status: "failed", error: result.error };
+    // "queued": Cartesia accepted the call; whether it was answered is not reported back (TODO(B) with Leia).
+    return "agentCallId" in result ? { status: "queued", providerRef: result.agentCallId } : { status: "failed", error: result.error };
   }
 }
 
@@ -49,5 +49,5 @@ export class UnconfiguredSmsNotifier implements Notifier {
 
 export function selectNotifier(config: Config, channel: NotificationRequest["channel"], fetchFn: typeof fetch): Notifier {
   if (channel === "sms") return new UnconfiguredSmsNotifier();
-  return config.PHONE_NOTIFIER === "cartesia" ? new CartesiaOutboundCallNotifier(config, fetchFn) : new MockNotifier();
+  return config.PHONE_NOTIFIER === "cartesia" ? new CartesiaOutboundCallNotifier(config, fetchFn) : new MockPhoneNotifier();
 }

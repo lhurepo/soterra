@@ -8,9 +8,11 @@ const crons = cronJobs();
 crons.interval("ingestion tick", { minutes: 1 }, internal.ingestion.tick, {});
 // [I] Flips isActive off for bulletins past expiresAt.
 crons.interval("bulletin expiry", { minutes: 5 }, internal.ingestion.expireBulletins, {});
-// [B] Finalizes calls that never sent /voice/session/end.
+// [B] Finalizes calls silent for 15 minutes that never sent /voice/session/end.
 crons.interval("stale session sweeper", { minutes: 5 }, internal.calls.sweepStaleSessions, {});
-// [B] Retention: deletes anonymous transcripts past ANON_TRANSCRIPT_TTL_HOURS.
+// [B] Marks subscriptions past expiresAt as expired (the matcher already skips them).
+crons.interval("subscription expiry", { minutes: 30 }, internal.subscriptions.expireSubscriptions, {});
+// [B] Retention: anonymous transcripts (7 days) and anonymous caller memory (30 days), in batches.
 crons.cron("retention purge", "0 11 * * *", internal.memory.purgeExpired, {});
 
 export default crons;

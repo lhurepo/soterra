@@ -1,219 +1,373 @@
-// [B] Call sessions and turns: start (idempotent on providerCallId), per-turn persistence
-// (idempotent on (call, turnIndex)), end, and the stale-session sweeper.
+// [B] Call sessions and turns. A turn costs two mutations: beginTurn (resolve or lazily start the session,
+// idempotency check, persist the user turn, mark the previous reply interrupted, return everything the
+// pipeline needs) and completeTurn (apply the pipeline's side effects and store the reply, atomically).
 import { v } from "convex/values";
-import { phrase } from "../src/orchestration/phrases";
+import type { AreaRef, CallerContext } from "../src/contracts";
+import { DEFAULTS, isSupportedLanguage, supportedLanguage } from "../src/config/defaults";
+import { buildCallerContext } from "../src/memory/callerContext";
 import { STALE_SESSION_MS } from "../src/memory/retention";
+import type { AreaCandidate } from "../src/orchestration/area";
+import { inboundGreeting, outboundGreeting } from "../src/orchestration/greeting";
+import type { LlmMessage } from "../src/providers/llm/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { upsertCallerByPhone, verifiedAccountForPhone } from "./callers";
-import { citation, replyKind } from "./validators";
+import { getOrCreateCaller, verifiedAccountForPhone } from "./callers";
+import { cancelSubscriptionsForPhone, createSubscriptionForCall } from "./subscriptions";
+import { recordUnansweredForCall } from "./unanswered";
+import { areaRef, citation, endReason, followUpRequest, hazardType, replyKind } from "./validators";
 
-const SUPPORTED_LANGUAGES = ["en", "es"];
+type StartArgs = {
+  providerCallId: string;
+  direction: "inbound" | "outbound";
+  callerPhone?: string;
+  calledPhone?: string;
+  languageHint?: string;
+  notificationId?: string;
+  startedAt: number;
+};
 
-function pickLanguage(...candidates: (string | undefined)[]): string {
-  for (const c of candidates) {
-    const primary = c?.toLowerCase().split("-")[0];
-    if (primary && SUPPORTED_LANGUAGES.includes(primary)) return primary;
-  }
-  return "en";
+async function callByProviderId(ctx: QueryCtx, providerCallId: string): Promise<Doc<"calls"> | null> {
+  return await ctx.db
+    .query("calls")
+    .withIndex("by_providerCallId", (q) => q.eq("providerCallId", providerCallId))
+    .unique();
 }
 
-async function greetingFor(ctx: QueryCtx, call: Doc<"calls">): Promise<string> {
-  if (call.direction === "outbound" && call.notificationId) {
-    const notification = await ctx.db.get("notifications", call.notificationId);
-    if (notification) {
-      return [phrase("outboundIntro", call.language), notification.message, phrase("outboundOutro", call.language)].join(" ");
-    }
-  }
-  return phrase("greeting", call.language);
+function firstSupported(...candidates: (string | undefined)[]): string {
+  return supportedLanguage(candidates.find((c) => isSupportedLanguage(c)));
 }
+
+/** Idempotent on providerCallId. Builds and caches the caller context and the greeting. */
+async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ call: Doc<"calls">; created: boolean }> {
+  const existing = await callByProviderId(ctx, args.providerCallId);
+  if (existing) return { call: existing, created: false };
+
+  const now = Date.now();
+  const notificationId = args.notificationId ? (ctx.db.normalizeId("notifications", args.notificationId) ?? undefined) : undefined;
+  const notification = notificationId ? await ctx.db.get("notifications", notificationId) : null;
+  // Outbound callbacks may not carry the dialed number; the notification knows who we called.
+  const callerPhone = args.callerPhone ?? (args.direction === "outbound" ? notification?.recipientPhone : undefined);
+
+  let caller: Doc<"callers"> | null = null;
+  let returning = false;
+  if (callerPhone) {
+    const found = await getOrCreateCaller(ctx, callerPhone, now);
+    caller = found.caller;
+    returning = !found.created && now - caller.lastCallAt <= DEFAULTS.lastSummaryTtlMs;
+  }
+  const accountId = callerPhone ? await verifiedAccountForPhone(ctx, callerPhone) : undefined;
+  const account = accountId ? await ctx.db.get("accounts", accountId) : null;
+  const lastSummary = caller?.lastCallSummaryId ? await ctx.db.get("callSummaries", caller.lastCallSummaryId) : null;
+  const activeSubs = callerPhone
+    ? (
+        await ctx.db
+          .query("subscriptions")
+          .withIndex("by_recipientPhone_and_status", (q) => q.eq("recipient.phone", callerPhone).eq("status", "active"))
+          .take(5)
+      ).filter((s) => s.expiresAt > now)
+    : [];
+
+  const language = firstSupported(args.languageHint, account?.preferredLanguage, caller?.language);
+  const callerContext = buildCallerContext({
+    callerId: caller?._id,
+    accountId: account?._id,
+    language,
+    knownArea: caller?.knownArea,
+    accountNeeds: account?.needs,
+    lastSummary: lastSummary ? { text: lastSummary.summary, createdAt: lastSummary.createdAt } : undefined,
+    lastCallAt: caller?.lastCallAt,
+    lastIncidentKeys: caller?.lastIncidentKeys,
+    activeSubscriptions: activeSubs.map((s) => ({
+      kind: s.target.kind,
+      incidentKey: s.target.incidentKey,
+      areaLabel: s.target.area?.label,
+      trigger: s.trigger,
+    })),
+    now,
+  });
+  const greeting =
+    args.direction === "outbound" && notification
+      ? outboundGreeting(language, notification.message)
+      : inboundGreeting(language, { returning: returning && args.direction === "inbound" });
+
+  const callId = await ctx.db.insert("calls", {
+    provider: "cartesia",
+    providerCallId: args.providerCallId,
+    direction: args.direction,
+    status: "active",
+    callerId: caller?._id,
+    callerPhone,
+    calledPhone: args.calledPhone,
+    accountId,
+    language,
+    transcriptConsent: "notice_given",
+    notificationId: notification?._id,
+    callerContext,
+    greeting,
+    startedAt: args.startedAt,
+    lastActivityAt: now,
+  });
+  return { call: (await ctx.db.get("calls", callId))!, created: true };
+}
+
+const startArgs = {
+  providerCallId: v.string(),
+  direction: v.union(v.literal("inbound"), v.literal("outbound")),
+  callerPhone: v.optional(v.string()),
+  calledPhone: v.optional(v.string()),
+  languageHint: v.optional(v.string()),
+  notificationId: v.optional(v.string()),
+  startedAt: v.number(),
+};
 
 export const startSession = internalMutation({
-  args: {
-    providerCallId: v.string(),
-    direction: v.union(v.literal("inbound"), v.literal("outbound")),
-    callerPhone: v.optional(v.string()),
-    calledPhone: v.optional(v.string()),
-    languageHint: v.optional(v.string()),
-    notificationId: v.optional(v.string()),
-    startedAt: v.number(),
-  },
+  args: startArgs,
   returns: v.object({ sessionId: v.id("calls"), language: v.string(), greeting: v.string(), created: v.boolean() }),
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("calls")
-      .withIndex("by_providerCallId", (q) => q.eq("providerCallId", args.providerCallId))
-      .unique();
-    if (existing) {
-      return { sessionId: existing._id, language: existing.language, greeting: await greetingFor(ctx, existing), created: false };
-    }
-
-    const now = Date.now();
-    let callerId: Id<"callers"> | undefined;
-    let accountId: Id<"accounts"> | undefined;
-    let callerLanguage: string | undefined;
-    let knownArea: Doc<"callers">["knownArea"];
-    if (args.callerPhone) {
-      callerId = await upsertCallerByPhone(ctx, args.callerPhone, now);
-      const caller = await ctx.db.get("callers", callerId);
-      callerLanguage = caller?.language;
-      knownArea = caller?.knownArea;
-      accountId = await verifiedAccountForPhone(ctx, args.callerPhone);
-    }
-    const notificationId = args.notificationId ? (ctx.db.normalizeId("notifications", args.notificationId) ?? undefined) : undefined;
-
-    const callId = await ctx.db.insert("calls", {
-      provider: "cartesia",
-      providerCallId: args.providerCallId,
-      direction: args.direction,
-      status: "active",
-      callerId,
-      callerPhone: args.callerPhone,
-      calledPhone: args.calledPhone,
-      accountId,
-      language: pickLanguage(args.languageHint, callerLanguage),
-      transcriptConsent: "notice_given",
-      knownArea,
-      notificationId,
-      startedAt: args.startedAt,
-      lastActivityAt: now,
-    });
-    const call = (await ctx.db.get("calls", callId))!;
-    return { sessionId: callId, language: call.language, greeting: await greetingFor(ctx, call), created: true };
+    const { call, created } = await startSessionImpl(ctx, args);
+    return { sessionId: call._id, language: call.language, greeting: call.greeting ?? inboundGreeting(call.language, { returning: false }), created };
   },
 });
 
-/** Resolves a session from either id. Returns null when unknown (the caller may lazily start one). */
+/** Resolves a session from either id. Returns null when unknown. */
+async function resolveCall(ctx: QueryCtx, ref: { sessionId?: string; providerCallId?: string }): Promise<Doc<"calls"> | null> {
+  if (ref.sessionId) {
+    const id = ctx.db.normalizeId("calls", ref.sessionId);
+    return id ? await ctx.db.get("calls", id) : null;
+  }
+  return ref.providerCallId ? await callByProviderId(ctx, ref.providerCallId) : null;
+}
+
 export const resolveSession = internalQuery({
   args: { sessionId: v.optional(v.string()), providerCallId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    if (args.sessionId) {
-      const id = ctx.db.normalizeId("calls", args.sessionId);
-      return id ? await ctx.db.get("calls", id) : null;
-    }
-    if (args.providerCallId) {
-      const providerCallId = args.providerCallId;
-      return await ctx.db
-        .query("calls")
-        .withIndex("by_providerCallId", (q) => q.eq("providerCallId", providerCallId))
-        .unique();
-    }
-    return null;
-  },
+  handler: async (ctx, args) => await resolveCall(ctx, args),
 });
 
-const storedTurnResponse = v.object({
-  reply: v.string(),
-  kind: replyKind,
-  citations: v.array(citation),
-  endCall: v.boolean(),
-  unansweredQuestionId: v.optional(v.id("unansweredQuestions")),
-  subscriptionId: v.optional(v.id("subscriptions")),
-  degraded: v.optional(v.boolean()),
-  timingsMs: v.optional(v.record(v.string(), v.number())),
-});
+async function loadAreaCandidates(ctx: QueryCtx): Promise<AreaCandidate[]> {
+  const rows = await ctx.db
+    .query("bulletinAreas")
+    .withIndex("by_isActive_and_state", (q) => q.eq("isActive", true))
+    .take(300);
+  const seen = new Map<string, AreaCandidate>();
+  for (const r of rows) {
+    const key = `${r.state}|${r.label}`;
+    if (!seen.has(key)) seen.set(key, { label: r.label, state: r.state, countyFips: r.countyFips, nwsZone: r.nwsZone });
+  }
+  return [...seen.values()].slice(0, 150);
+}
 
-/** Persists the user turn. A replay of a completed turn returns the stored reply instead. */
+type StoredResponse = {
+  reply: string;
+  language: string;
+  kind: NonNullable<Doc<"callTurns">["kind"]>;
+  citations: NonNullable<Doc<"callTurns">["citations"]>;
+  endCall: boolean;
+  unansweredQuestionId?: Id<"unansweredQuestions">;
+  subscriptionId?: Id<"subscriptions">;
+  degraded?: boolean;
+  timingsMs?: Record<string, number>;
+};
+
+function storedResponse(turn: Doc<"callTurns">): StoredResponse | null {
+  if (turn.status !== "complete" || turn.reply === undefined || turn.kind === undefined) return null;
+  return {
+    reply: turn.reply,
+    language: turn.replyLanguage ?? supportedLanguage(turn.language),
+    kind: turn.kind,
+    citations: turn.citations ?? [],
+    endCall: turn.endCall ?? false,
+    unansweredQuestionId: turn.unansweredQuestionId,
+    subscriptionId: turn.subscriptionId,
+    degraded: turn.degraded,
+    timingsMs: turn.timingsMs,
+  };
+}
+
+export type BeginTurnResult =
+  | { status: "not_found" }
+  | { status: "replay"; callId: Id<"calls">; response: StoredResponse }
+  | {
+      status: "new";
+      callId: Id<"calls">;
+      turnId: Id<"callTurns">;
+      hasCallerPhone: boolean;
+      callArea?: AreaRef;
+      context: CallerContext;
+      areaCandidates: AreaCandidate[];
+      history: LlmMessage[];
+      recentCallerUtterances: string[];
+      hasOpenQuestion: boolean;
+      callIncidentKeys: string[];
+    };
+
+/**
+ * Everything before the pipeline in one transaction: resolve (or lazily start) the session, return the
+ * stored reply for a replayed (call, turnIndex), mark the previous reply interrupted, persist the user turn,
+ * and load the cached context, area labels and recent history.
+ */
 export const beginTurn = internalMutation({
   args: {
-    callId: v.id("calls"),
+    sessionId: v.optional(v.string()),
+    providerCallId: v.optional(v.string()),
     turnIndex: v.number(),
     utterance: v.string(),
     language: v.string(),
     receivedAt: v.number(),
     interruptedPrevious: v.optional(v.boolean()),
   },
-  returns: v.union(
-    v.object({ status: v.literal("new"), turnId: v.id("callTurns") }),
-    v.object({ status: v.literal("replay"), turnId: v.id("callTurns"), response: storedTurnResponse }),
-  ),
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<BeginTurnResult> => {
+    let call = await resolveCall(ctx, args);
+    if (!call && !args.sessionId && args.providerCallId) {
+      // A turn for an unknown providerCallId lazily starts an inbound session (the caller spoke before start finished).
+      call = (await startSessionImpl(ctx, { providerCallId: args.providerCallId, direction: "inbound", languageHint: args.language, startedAt: args.receivedAt })).call;
+    }
+    if (!call) return { status: "not_found" };
+    const callId = call._id;
+
     const existing = await ctx.db
       .query("callTurns")
-      .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", args.callId).eq("turnIndex", args.turnIndex))
+      .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", callId).eq("turnIndex", args.turnIndex))
       .unique();
-    await ctx.db.patch("calls", args.callId, { lastActivityAt: Date.now() });
-    if (existing?.status === "complete" && existing.reply && existing.kind) {
-      return {
-        status: "replay" as const,
-        turnId: existing._id,
-        response: {
-          reply: existing.reply,
-          kind: existing.kind,
-          citations: existing.citations ?? [],
-          endCall: existing.endCall ?? false,
-          unansweredQuestionId: existing.unansweredQuestionId,
-          subscriptionId: existing.subscriptionId,
-          degraded: existing.degraded,
-          timingsMs: existing.timingsMs,
-        },
-      };
+    const replay = existing ? storedResponse(existing) : null;
+    if (replay) return { status: "replay", callId, response: replay };
+
+    const now = Date.now();
+    const callPatch: Partial<Doc<"calls">> = { lastActivityAt: now };
+    let areaCandidates = call.areaCandidates;
+    if (!areaCandidates || call.areaCandidatesAt === undefined || now - call.areaCandidatesAt > DEFAULTS.areaLabelCacheMs) {
+      areaCandidates = await loadAreaCandidates(ctx);
+      callPatch.areaCandidates = areaCandidates;
+      callPatch.areaCandidatesAt = now;
     }
-    // A pending replay (the first attempt was cut off) simply runs the pipeline again.
-    if (existing) return { status: "new" as const, turnId: existing._id };
-    const turnId = await ctx.db.insert("callTurns", { ...args, status: "pending" });
-    return { status: "new" as const, turnId };
+    await ctx.db.patch("calls", callId, callPatch);
+
+    // Barge-in: the caller did not hear (all of) the previous reply. Never assume they did.
+    if (args.interruptedPrevious && args.turnIndex > 0) {
+      const previous = await ctx.db
+        .query("callTurns")
+        .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", callId).lt("turnIndex", args.turnIndex))
+        .order("desc")
+        .first();
+      if (previous) await ctx.db.patch("callTurns", previous._id, { interrupted: true });
+    }
+
+    // A pending replay (the first attempt was cut off) runs the pipeline again on the same row.
+    const { sessionId: _s, providerCallId: _p, ...turnFields } = args;
+    const turnId = existing?._id ?? (await ctx.db.insert("callTurns", { ...turnFields, callId, status: "pending" }));
+
+    const prior = await ctx.db
+      .query("callTurns")
+      .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", callId).lt("turnIndex", args.turnIndex))
+      .order("desc")
+      .take(DEFAULTS.historyTurns);
+    const completed = prior.reverse().filter((t) => t.status === "complete" && t.reply !== undefined);
+    const history: LlmMessage[] = completed.flatMap((t) => [
+      { role: "user" as const, content: t.utterance },
+      // A reply the caller barged into is marked so the model does not assume it was heard.
+      { role: "assistant" as const, content: t.interrupted ? `${t.reply!} [the caller interrupted this reply]` : t.reply! },
+    ]);
+    const openQuestion = await ctx.db
+      .query("unansweredQuestions")
+      .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", callId))
+      .take(20);
+
+    return {
+      status: "new",
+      callId,
+      turnId,
+      hasCallerPhone: call.callerPhone !== undefined,
+      callArea: call.knownArea,
+      context: call.callerContext ?? { identity: "anonymous", language: call.language },
+      areaCandidates,
+      history,
+      recentCallerUtterances: completed.map((t) => t.utterance),
+      hasOpenQuestion: openQuestion.some((q) => q.status === "open"),
+      callIncidentKeys: [...new Set([...completed].reverse().flatMap((t) => t.citedIncidentKeys ?? []))],
+    };
   },
 });
 
-/** Persists the assistant reply on the turn row. Ids arrive as strings from the Convex-free pipeline. */
+/** Applies the pipeline's side effects and stores the reply. Idempotent: a completed turn is left as is. */
 export const completeTurn = internalMutation({
   args: {
     turnId: v.id("callTurns"),
-    response: v.object({
-      ...storedTurnResponse.fields,
-      unansweredQuestionId: v.optional(v.string()),
-      subscriptionId: v.optional(v.string()),
-    }),
+    reply: v.string(),
+    replyLanguage: v.string(),
+    kind: replyKind,
+    citations: v.array(citation),
+    endCall: v.boolean(),
+    degraded: v.optional(v.boolean()),
+    errorCode: v.optional(v.string()),
+    retriever: v.optional(v.string()),
+    retrievedAt: v.optional(v.number()),
+    llmModel: v.optional(v.string()),
+    areaSource: v.optional(v.string()),
     retrievedChunkIds: v.array(v.string()),
     citedChunkIds: v.array(v.string()),
+    citedIncidentKeys: v.array(v.string()),
+    citedHazards: v.array(hazardType),
+    timingsMs: v.record(v.string(), v.number()),
+    effects: v.object({
+      recordUnanswered: v.optional(v.object({ text: v.string(), area: v.optional(areaRef) })),
+      createSubscription: v.optional(followUpRequest),
+      cancelSubscriptions: v.optional(v.boolean()),
+      setKnownArea: v.optional(areaRef),
+      declineTranscript: v.optional(v.boolean()),
+    }),
   },
-  returns: v.null(),
-  handler: async (ctx, { turnId, response, retrievedChunkIds, citedChunkIds }) => {
-    const toChunkIds = (ids: string[]) =>
-      ids.map((id) => ctx.db.normalizeId("chunks", id)).filter((id): id is Id<"chunks"> => id !== null);
+  returns: v.object({
+    unansweredQuestionId: v.optional(v.id("unansweredQuestions")),
+    subscriptionId: v.optional(v.id("subscriptions")),
+    subscriptionsCancelled: v.number(),
+  }),
+  handler: async (ctx, { turnId, effects, retrievedChunkIds, citedChunkIds, ...reply }) => {
+    const turn = await ctx.db.get("callTurns", turnId);
+    if (!turn) throw new Error(`turn ${turnId} not found`);
+    if (turn.status === "complete") {
+      return { unansweredQuestionId: turn.unansweredQuestionId, subscriptionId: turn.subscriptionId, subscriptionsCancelled: 0 };
+    }
+    const call = (await ctx.db.get("calls", turn.callId))!;
+    const now = Date.now();
+
+    let unansweredQuestionId: Id<"unansweredQuestions"> | undefined;
+    if (effects.recordUnanswered) {
+      unansweredQuestionId = await recordUnansweredForCall(ctx, call, {
+        turnIndex: turn.turnIndex,
+        text: effects.recordUnanswered.text,
+        language: reply.replyLanguage,
+        area: effects.recordUnanswered.area,
+      });
+    }
+    let subscriptionId: Id<"subscriptions"> | undefined;
+    if (effects.createSubscription && call.callerPhone) {
+      subscriptionId = (await createSubscriptionForCall(ctx, call, effects.createSubscription, reply.replyLanguage, now)) ?? undefined;
+    }
+    let subscriptionsCancelled = 0;
+    if (effects.cancelSubscriptions && call.callerPhone) {
+      subscriptionsCancelled = await cancelSubscriptionsForPhone(ctx, call.callerPhone, now);
+    }
+
+    const callPatch: Partial<Doc<"calls">> = {};
+    if (effects.setKnownArea) callPatch.knownArea = effects.setKnownArea;
+    if (effects.declineTranscript) callPatch.transcriptConsent = "declined";
+    if (reply.kind === "safety") callPatch.safetyFlag = true;
+    // Follow the caller into Spanish (or back to English) for later greetings and summaries.
+    if (isSupportedLanguage(turn.language) && supportedLanguage(turn.language) !== call.language) {
+      callPatch.language = supportedLanguage(turn.language);
+    }
+    if (Object.keys(callPatch).length > 0) await ctx.db.patch("calls", call._id, callPatch);
+
+    const toChunkIds = (ids: string[]) => ids.map((id) => ctx.db.normalizeId("chunks", id)).filter((id): id is Id<"chunks"> => id !== null);
     await ctx.db.patch("callTurns", turnId, {
-      ...response,
-      unansweredQuestionId: response.unansweredQuestionId
-        ? (ctx.db.normalizeId("unansweredQuestions", response.unansweredQuestionId) ?? undefined)
-        : undefined,
-      subscriptionId: response.subscriptionId ? (ctx.db.normalizeId("subscriptions", response.subscriptionId) ?? undefined) : undefined,
+      ...reply,
       status: "complete",
+      unansweredQuestionId,
+      subscriptionId,
       retrievedChunkIds: toChunkIds(retrievedChunkIds),
       citedChunkIds: toChunkIds(citedChunkIds),
     });
-    const turn = await ctx.db.get("callTurns", turnId);
-    if (turn && response.kind === "safety") await ctx.db.patch("calls", turn.callId, { safetyFlag: true });
-    return null;
-  },
-});
-
-/** Last few completed turns as model history (text only, never citations or ids). */
-export const recentHistory = internalQuery({
-  args: { callId: v.id("calls"), beforeTurnIndex: v.number(), limit: v.number() },
-  handler: async (ctx, { callId, beforeTurnIndex, limit }) => {
-    const turns = await ctx.db
-      .query("callTurns")
-      .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", callId).lt("turnIndex", beforeTurnIndex))
-      .order("desc")
-      .take(limit);
-    return turns
-      .reverse()
-      .filter((t) => t.status === "complete" && t.reply)
-      .flatMap((t) => [
-        { role: "user" as const, content: t.utterance },
-        { role: "assistant" as const, content: t.reply! },
-      ]);
-  },
-});
-
-export const declineTranscript = internalMutation({
-  args: { callId: v.id("calls") },
-  returns: v.null(),
-  handler: async (ctx, { callId }) => {
-    await ctx.db.patch("calls", callId, { transcriptConsent: "declined" });
-    return null;
+    return { unansweredQuestionId, subscriptionId, subscriptionsCancelled };
   },
 });
 
@@ -226,20 +380,17 @@ async function endCall(ctx: MutationCtx, call: Doc<"calls">, endedAt: number, re
 }
 
 export const endSession = internalMutation({
-  args: {
-    callId: v.id("calls"),
-    endedAt: v.number(),
-    reason: v.union(v.literal("caller_hangup"), v.literal("agent_end"), v.literal("transfer"), v.literal("error"), v.literal("timeout")),
-  },
-  returns: v.null(),
-  handler: async (ctx, { callId, endedAt, reason }) => {
-    const call = await ctx.db.get("calls", callId);
-    if (call) await endCall(ctx, call, endedAt, reason);
-    return null;
+  args: { sessionId: v.optional(v.string()), providerCallId: v.optional(v.string()), endedAt: v.number(), reason: endReason },
+  returns: v.union(v.id("calls"), v.null()),
+  handler: async (ctx, { endedAt, reason, ...ref }) => {
+    const call = await resolveCall(ctx, ref);
+    if (!call) return null;
+    await endCall(ctx, call, endedAt, reason);
+    return call._id;
   },
 });
 
-/** Cron: finalizes sessions that never sent /voice/session/end. */
+/** Cron: finalizes sessions that never sent /voice/session/end (silent for the sweep window). */
 export const sweepStaleSessions = internalMutation({
   args: {},
   returns: v.number(),
@@ -251,5 +402,52 @@ export const sweepStaleSessions = internalMutation({
       .take(50);
     for (const call of stale) await endCall(ctx, call, now, "timeout");
     return stale.length;
+  },
+});
+
+/**
+ * Demo troubleshooting (dashboard or `npx convex run calls:debugCall '{"callId":"…"}'`): turns with
+ * retrieved and cited chunk ids, kinds, timings and error codes. Internal only.
+ */
+export const debugCall = internalQuery({
+  args: { callId: v.string() },
+  handler: async (ctx, { callId }) => {
+    const call = await resolveCall(ctx, { sessionId: callId }) ?? (await resolveCall(ctx, { providerCallId: callId }));
+    if (!call) return null;
+    const turns = await ctx.db
+      .query("callTurns")
+      .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", call._id))
+      .take(100);
+    const summary = await ctx.db
+      .query("callSummaries")
+      .withIndex("by_callId", (q) => q.eq("callId", call._id))
+      .unique();
+    return {
+      callId: call._id,
+      providerCallId: call.providerCallId,
+      direction: call.direction,
+      status: call.status,
+      language: call.language,
+      identity: call.callerContext?.identity ?? "anonymous",
+      knownArea: call.knownArea?.label,
+      transcriptConsent: call.transcriptConsent,
+      safetyFlag: call.safetyFlag ?? false,
+      summary: summary?.summary,
+      turns: turns.map((t) => ({
+        turnIndex: t.turnIndex,
+        utterance: t.utterance,
+        kind: t.kind,
+        reply: t.reply,
+        degraded: t.degraded ?? false,
+        errorCode: t.errorCode,
+        interrupted: t.interrupted ?? false,
+        retriever: t.retriever,
+        areaSource: t.areaSource,
+        llmModel: t.llmModel,
+        retrievedChunkIds: t.retrievedChunkIds ?? [],
+        citedChunkIds: t.citedChunkIds ?? [],
+        timingsMs: t.timingsMs ?? {},
+      })),
+    };
   },
 });

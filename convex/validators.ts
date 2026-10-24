@@ -96,3 +96,39 @@ export const notificationStatus = v.union(
   v.literal("unconfigured"),
   v.literal("mock"),
 );
+
+// [B] Caller context cached on a call (mirrors CallerContext in src/contracts/orchestration.ts).
+export const callerContext = v.object({
+  callerId: v.optional(v.string()),
+  accountId: v.optional(v.string()),
+  identity: v.union(v.literal("anonymous"), v.literal("caller_id"), v.literal("verified_account")),
+  language: v.string(),
+  knownArea: v.optional(areaRef),
+  needs: v.optional(v.array(v.string())),
+  lastCallSummary: v.optional(v.string()),
+  activeSubscriptions: v.optional(v.array(v.string())),
+  recentIncidentKeys: v.optional(v.array(v.string())),
+});
+
+// [B] An active bulletin area label, cached on a call for place-name matching (src/orchestration/area.ts).
+export const areaCandidate = v.object({
+  label: v.string(),
+  state: v.string(),
+  countyFips: v.optional(v.string()),
+  nwsZone: v.optional(v.string()),
+});
+
+export const endReason = v.union(
+  v.literal("caller_hangup"),
+  v.literal("agent_end"),
+  v.literal("transfer"),
+  v.literal("error"),
+  v.literal("timeout"),
+);
+
+export const followUpRequest = v.object({
+  targetKind: v.union(v.literal("incident"), v.literal("area"), v.literal("question")),
+  incidentKey: v.optional(v.string()),
+  area: v.optional(areaRef),
+  trigger: subscriptionTrigger,
+});
