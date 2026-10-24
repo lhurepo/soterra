@@ -24,6 +24,7 @@ type StartArgs = {
   calledPhone?: string;
   languageHint?: string;
   notificationId?: string;
+  providerAgentCallId?: string;
   startedAt: number;
 };
 
@@ -45,7 +46,15 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
 
   const now = Date.now();
   const notificationId = args.notificationId ? (ctx.db.normalizeId("notifications", args.notificationId) ?? undefined) : undefined;
-  const notification = notificationId ? await ctx.db.get("notifications", notificationId) : null;
+  // Outbound callbacks: Cartesia's agent_call_id is stored as the notification's providerRef when the call is placed.
+  const notification =
+    (notificationId ? await ctx.db.get("notifications", notificationId) : null) ??
+    (args.direction === "outbound" && args.providerAgentCallId
+      ? await ctx.db
+          .query("notifications")
+          .withIndex("by_providerRef", (q) => q.eq("providerRef", args.providerAgentCallId))
+          .first()
+      : null);
   // Outbound callbacks may not carry the dialed number; the notification knows who we called.
   const callerPhone = args.callerPhone ?? (args.direction === "outbound" ? notification?.recipientPhone : undefined);
 
@@ -118,6 +127,7 @@ const startArgs = {
   calledPhone: v.optional(v.string()),
   languageHint: v.optional(v.string()),
   notificationId: v.optional(v.string()),
+  providerAgentCallId: v.optional(v.string()),
   startedAt: v.number(),
 };
 

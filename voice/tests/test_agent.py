@@ -306,3 +306,26 @@ def test_phone_numbers_are_masked_in_logs(caplog):
     collect(agent, user("hi"))
     text = caplog.text
     assert "+17075550123" not in text and "+1707***0123" in text
+
+
+def test_outbound_recognised_by_our_own_number_and_tied_by_agent_call_id():
+    s = settings(own_numbers=frozenset({"+17126003362"}))
+    request = SimpleNamespace(call_id="c-out", agent_call_id="ac_live_1", from_="+17126003362", to="+17075550123", metadata={})
+    info = call_info_from_request(request, s)
+    assert (info.direction, info.caller_phone, info.called_phone, info.notification_id, info.agent_call_id) == (
+        "outbound", "+17075550123", "+17126003362", None, "ac_live_1")
+    backend = MockBackendClient()
+    collect(SoterraAgent(backend, info, s), CallStarted())
+    start = next(r for r in backend.requests if isinstance(r, SessionStartRequest))
+    assert (start.direction, start.provider_agent_call_id, start.caller_phone) == ("outbound", "ac_live_1", "+17075550123")
+
+
+def test_inbound_to_our_number_stays_inbound():
+    s = settings(own_numbers=frozenset({"+17126003362"}))
+    info = call_info_from_request(SimpleNamespace(call_id="c", agent_call_id="ac_2", from_="+17075550123", to="+17126003362", metadata=None), s)
+    assert (info.direction, info.caller_phone) == ("inbound", "+17075550123")
+
+
+def test_notification_id_from_nested_dynamic_variables():
+    request = SimpleNamespace(call_id="c", from_="+17126003362", to="+17075550123", metadata={"dynamic_variables": {"notification_id": "n9"}})
+    assert call_info_from_request(request, settings()).notification_id == "n9"

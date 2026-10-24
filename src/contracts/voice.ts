@@ -28,6 +28,12 @@ export const SessionStartRequest = z.object({
   languageHint: Language.optional(),
   /** Outbound callbacks only: the notification this call delivers. */
   notificationId: z.string().optional(),
+  /**
+   * Additive (2026-10-24): Cartesia's agent_call_id (Line CallRequest.agent_call_id). For outbound callbacks it
+   * equals the id the outbound-call API returned, which the backend stored as the notification's providerRef,
+   * so the call is tied to its notification even if notificationId does not reach the agent.
+   */
+  providerAgentCallId: z.string().optional(),
   startedAt: EpochMs,
 });
 export type SessionStartRequest = z.infer<typeof SessionStartRequest>;

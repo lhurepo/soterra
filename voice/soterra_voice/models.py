@@ -39,6 +39,7 @@ class SessionStartRequest(_Model):
     called_phone: Optional[str] = None
     language_hint: Optional[str] = None
     notification_id: Optional[str] = None
+    provider_agent_call_id: Optional[str] = None
     started_at: int
 
 

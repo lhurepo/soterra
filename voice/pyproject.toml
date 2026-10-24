@@ -12,6 +12,12 @@ dependencies = [
   "pydantic>=2.7",
 ]
 
+# Cartesia's hosted build installs this project; list modules explicitly so setuptools doesn't trip over
+# scripts/ and tests/ (same as Cartesia's own templates).
+[tool.setuptools]
+py-modules = ["main"]
+packages = ["soterra_voice"]
+
 [dependency-groups]
 dev = ["pytest>=8"]
 

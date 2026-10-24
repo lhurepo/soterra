@@ -67,25 +67,40 @@ PORT=8000 uv run python main.py        # terminal 1
 cartesia chat 8000                      # terminal 2: talk to it in text
 ```
 
-## Deploy to a phone number
+## Deployed (2026-10-24)
+
+| What | Value |
+| --- | --- |
+| Code agent (this directory) | `soterra-voice` · `agent_1iwkwy7nwEfejQJzwM75hm` (linked in `cartesia.toml` / `.cartesia/config.toml`) |
+| Phone number | **+1 712 600 3362** · id `ap_CWGJppviDa2Ea1jeZEYwBt`, assigned to `soterra-voice` |
+| Backend | `https://brazen-perch-21.convex.site` (`BACKEND_MODE=http`) |
+| Voice | Sonic 3.6 Skylar `db6b0ed5-d5d3-463d-ae85-518a07d3c2b4` (en; also used for es until `VOICE_ID_ES` is set) |
+| Playground agent | `soterra-agent` · `agent_8eCub89GEcWT6SxFTNGfkB` — a *managed* (Playground-prompt) agent. Managed agents cannot run deployed code, so it no longer has the number; keep it only as the fallback described in `docs/contracts/live-call.md`. |
+
+Agent env (set with `cartesia env set --agent-id agent_1iwkwy7nwEfejQJzwM75hm --from <file>`): `BACKEND_MODE=http`, `SOTERRA_BACKEND_URL`, `VOICE_API_SECRET`, `DEFAULT_LANGUAGE=en`, `VOICE_ID_EN`, `TTS_MODEL=sonic-3.6`, `SOTERRA_PHONE_NUMBERS=+17126003362`. Setting env creates a new deployment automatically.
+
+## Redeploy
 
 ```bash
 cd voice
-cartesia init                                   # link this directory to a Cartesia agent
-cartesia env set --from .env                    # BACKEND_MODE=http, SOTERRA_BACKEND_URL, VOICE_API_SECRET, voices…
-cartesia deploy
-cartesia phone-numbers provision "Soterra" --agent-id <agent-id>
-# or: cartesia phone-numbers assign <phone-number-id> --agent-id <agent-id>
-cartesia status
+find . -name __pycache__ -prune -exec rm -rf {} +         # keep the upload small
+cartesia deploy --agent-id agent_1iwkwy7nwEfejQJzwM75hm .
+cartesia deployments ls --agent-id agent_1iwkwy7nwEfejQJzwM75hm   # wait for "deployed"
 ```
 
-**Hosting ends December 1, 2026** for code-first Line agents (self-hosted agents are unaffected). The docs don't say whether new hosted deployments are still accepted. If `cartesia deploy` refuses, run the same app anywhere with a public HTTPS URL (`uv run python main.py` behind any HTTPS host) and attach it:
+Build facts learned the hard way: the builder runs `uv` with CPython 3.13, and it statically checks `main.py` for a `VoiceAgentApp(...)` and `app.run()` — if `main.py` only imports an app built elsewhere it fails with "Missing uvicorn.run() call", so `main.py` constructs `VoiceAgentApp` itself. Build logs: `GET https://api.cartesia.ai/agents/<agent_id>/deployments` (`build_logs`). A Playground (managed) agent rejects code deploys ("Managed agent not supported"); use a separate code agent.
+
+**Hosting ends December 1, 2026** for code-first Line agents (new hosted deployments were still accepted on 2026-10-24). After that, self-host the same app at a public HTTPS URL and attach it:
 
 ```bash
-cartesia connect --agent-id <agent-id> --url https://<your-host>
+cartesia connect --agent-id agent_1iwkwy7nwEfejQJzwM75hm --url https://<your-host>
 ```
 
-Switch `BACKEND_MODE` with `cartesia env set BACKEND_MODE=mock` (or `http`) and redeploy.
+Switch `BACKEND_MODE` with `cartesia env set --agent-id … BACKEND_MODE=mock` (or `http`); that redeploys.
+
+## Outbound callbacks
+
+The backend places callbacks with `POST /agents/calls` (agent `soterra-voice`, from number `ap_CWGJppviDa2Ea1jeZEYwBt`) when `PHONE_NOTIFIER=cartesia` (set on the dev deployment). The call arrives here `from` our number `to` the person, so the agent recognises it as outbound via `SOTERRA_PHONE_NUMBERS`, and sends Line's `agent_call_id` as `providerAgentCallId`; the backend stored the same id when it placed the call and finds the notification by it. The notification id is also sent in `dynamic_variables` and `metadata` in case either reaches `call_request.metadata`. The masked `call_request …` log line shows what actually arrived.
 
 ## Measured latency
 
@@ -100,6 +115,6 @@ Text-mode calls through the real SDK app against the dev backend (`brazen-perch-
 - [ ] Backend stopped (or wrong secret): fallback with 911 twice, then the apology and hang-up on the third turn
 - [ ] Caller ID withheld: the call works, no callback offered
 - [ ] Outbound callback from the backend: greeting carries the update, follow-up questions work
-- [ ] Log the first real `call_request` (masked): confirm `from_`, `to`, `metadata` on inbound and outbound, and whether pre-call metadata reaches `get_agent`
+- [ ] Check the first real `call_request …` log line (masked): `agent_call_id`, `from_`, `to`, `metadata` keys on inbound and outbound, and whether pre-call metadata reaches `get_agent`
 
 Already verified without a phone (2026-10-24, `scripts/harness_call.py` against the dev backend): the full English demo script, the Spanish dialed-number path with the danger script, and the failure cutoff (wrong secret → fallback, fallback, apology + `end_call`).

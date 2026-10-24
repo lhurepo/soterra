@@ -222,3 +222,17 @@ Each has a safe default already in the code; change it if you disagree.
 - A real phone call: end-of-speech → first-audio latency, barge-in, keypad presses, Spanish STT/TTS quality, the chosen voice on a phone line.
 - Whether pre-call metadata and outbound `dynamic_variables` reach `call_request.metadata`; `from_`/`to` on outbound calls.
 - Whether `cartesia deploy` still accepts new agents.
+
+## Cartesia go-live (2026-10-24, branch `cartesia/live`)
+
+| What we checked | How | Finding | What it changes |
+| --- | --- | --- | --- |
+| Outbound-call API | Live calls to `POST /agents/calls` | `X-API-Key` and `Authorization: Bearer` both authenticate; `Cartesia-Version: 2026-08-14`. Empty `outbound_calls` → 400 "outbound_calls must contain at least one call". A valid body → 200 `{ calls: [{ number, agent_call_id }] }`. Unknown keys in `outbound_calls[]` (`metadata`) are accepted. | Adapter verified; it also sends the notification id in `metadata`. |
+| Outbound from/to | `cartesia calls ls` after an outbound call | An outbound call is **from our Cartesia number to the person**. | Voice agent detects outbound by `from` ∈ `SOTERRA_PHONE_NUMBERS`. |
+| Tying a callback to its notification | Design | The outbound API returns `agent_call_id` (stored as the notification's `providerRef`); a Line agent receives `CallRequest.agent_call_id`. | Additive contract field `SessionStartRequest.providerAgentCallId`; backend looks the notification up by `providerRef` (index `notifications.by_providerRef`). Unverified until a real callback: that both ids are equal. |
+| Managed vs code agents | `cartesia deploy` | A Playground (managed) agent rejects code: "Managed agent not supported … create a separate agent to deploy your own code." | New code agent `soterra-voice` (`agent_1iwkwy7nwEfejQJzwM75hm`); the number moved to it. |
+| Hosted build | Build logs | uv + CPython 3.13; `main.py` must itself contain `VoiceAgentApp(...)` and `app.run()`; readiness check hits `/status`. New hosted deployments still accepted on 2026-10-24. | `main.py` builds the app; README documents redeploys. |
+
+Incident: while checking request validation, one real outbound call was placed to the fictional number +1 707 555 0123 (the 555-01xx range is reserved for fiction); Cartesia recorded it as failed after 1 s. No real person was called.
+
+Still unverified: a real inbound call end to end (latency, barge-in, keypad), a real callback end to end (`agent_call_id` equality, metadata pass-through), Spanish speech on the phone line. `cartesiaVerifiedLive` in `/health` stays false until a real callback has worked.

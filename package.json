@@ -7,6 +7,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:voice": "cd voice && uv run pytest",
+    "setup": "bash scripts/setup.sh",
+    "check": "bash scripts/dev-check.sh",
     "typecheck": "tsc -p tsconfig.json && tsc -p convex/tsconfig.json",
     "seed:fixtures": "tsx scripts/seed-fixtures.ts",
     "sim:call": "tsx scripts/sim-call.ts",

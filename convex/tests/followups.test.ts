@@ -56,6 +56,24 @@ describe("subscription → update → notification → outbound call", () => {
     expect((await t.run(async (ctx) => await ctx.db.get("subscriptions", r.subscriptionId as Id<"subscriptions">)))?.status).toBe("cancelled");
   });
 
+  it("ties an outbound call to its notification by Cartesia's agent_call_id when notificationId is missing", async () => {
+    const t = newTest();
+    await seedBulletins(t);
+    await subscribe(t);
+    await seedBulletins(t, updateDrafts);
+    await settle(t);
+    const [n] = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    // What CartesiaOutboundCallNotifier records: the agent_call_id returned by POST /agents/calls.
+    await t.run(async (ctx) => await ctx.db.patch("notifications", n._id, { providerRef: "ac_live_123" }));
+    const outbound = await start(t, { direction: "outbound", callerPhone: undefined, providerAgentCallId: "ac_live_123" });
+    expect(outbound.greeting).toContain(n.message);
+    const call = await t.run(async (ctx) => await ctx.db.get("calls", outbound.sessionId as Id<"calls">));
+    expect(call).toMatchObject({ notificationId: n._id, callerPhone: PHONE, direction: "outbound" });
+    // An unknown id falls back to the ordinary greeting rather than another caller's update.
+    const other = await start(t, { direction: "outbound", callerPhone: undefined, providerAgentCallId: "ac_unknown", providerCallId: "other-call" });
+    expect(other.greeting).not.toContain(n.message);
+  });
+
   it("re-applying the same update never notifies twice", async () => {
     const t = newTest();
     await seedBulletins(t);

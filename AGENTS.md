@@ -11,3 +11,6 @@ Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
 <!-- convex-ai-end -->
+
+Team workflow (setup, live resource ids, what to run after changing code, next steps): see `CLAUDE.md`
+→ "Soterra — team workflow" and `TEAM_PLAN.md` → "Next steps".

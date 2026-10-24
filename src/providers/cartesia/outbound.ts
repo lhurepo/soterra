@@ -1,10 +1,12 @@
-// [B, reviewed by V] Cartesia outbound-call adapter. NOT VERIFIED LIVE: no Cartesia credentials were
-// available, so this is written from the documentation only and is selected only with PHONE_NOTIFIER=cartesia.
-// Documented 2026-10-24 (docs/DECISIONS.md): POST https://api.cartesia.ai/agents/calls, headers X-API-Key and
-// Cartesia-Version: 2026-08-14, body { from_number_id, agent_id, outbound_calls: [{ to_number, dynamic_variables }] },
-// response { calls: [{ number, agent_call_id } | { number, error }] }. The request has no `metadata` field, so the
-// notification id travels in dynamic_variables.notification_id; whether that reaches a Line SDK agent's
-// CallRequest.metadata is unverified (the voice agent reads metadata.notification_id; see voice/README.md).
+// [B, reviewed by V] Cartesia outbound-call adapter (PHONE_NOTIFIER=cartesia).
+// Verified against the live API 2026-10-24 (docs/DECISIONS.md): POST https://api.cartesia.ai/agents/calls with
+// X-API-Key (Bearer also works) and Cartesia-Version: 2026-08-14; body { from_number_id, agent_id,
+// outbound_calls: [{ to_number, dynamic_variables, metadata }] } → 200 { calls: [{ number, agent_call_id }] };
+// an empty outbound_calls is a 400. The call's from is our Cartesia number and to is the person.
+// How the call is tied back to its notification: the returned agent_call_id is stored as the notification's
+// providerRef, and the voice agent sends Line's CallRequest.agent_call_id as providerAgentCallId. The id is also
+// sent in dynamic_variables (documented) and metadata (accepted by the API, undocumented) in case either reaches
+// the agent's call_request.metadata.
 import { z } from "zod";
 import type { Config } from "../../config/env";
 import { NotConfiguredError } from "../../config/errors";
@@ -32,6 +34,7 @@ export function outboundCallBody(config: Config, args: { toNumber: string; notif
       {
         to_number: args.toNumber,
         dynamic_variables: { notification_id: args.notificationId, language: args.language },
+        metadata: { notification_id: args.notificationId, language: args.language },
       },
     ],
   };

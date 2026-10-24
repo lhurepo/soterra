@@ -65,26 +65,39 @@ class CallInfo:
     called_phone: Optional[str] = None
     notification_id: Optional[str] = None
     language_hint: Optional[str] = None
+    agent_call_id: Optional[str] = None
 
 
 def _e164(value: Optional[str]) -> Optional[str]:
     return value if value and E164.match(value) else None
 
 
-def call_info_from_request(call_request: Any, settings: Settings) -> CallInfo:
-    """CallInfo from a Line CallRequest. An outbound callback is recognised by metadata.notificationId.
+def _notification_id(metadata: dict) -> Optional[str]:
+    """notificationId from metadata, or from a nested dynamic_variables object (the outbound API's field)."""
+    sources = [metadata, metadata.get("dynamic_variables") if isinstance(metadata.get("dynamic_variables"), dict) else {}]
+    for source in sources:
+        value = source.get("notificationId") or source.get("notification_id")
+        if value:
+            return str(value)
+    return None
 
-    Unverified (docs/DECISIONS.md): Cartesia documents outbound `dynamic_variables`, not `metadata`, and does
-    not say either reaches a code agent's call_request.metadata; and the from/to roles on outbound calls.
+
+def call_info_from_request(call_request: Any, settings: Settings) -> CallInfo:
+    """CallInfo from a Line CallRequest.
+
+    An outbound callback is recognised by a notification id in metadata, or by `from` being one of our own
+    numbers (SOTERRA_PHONE_NUMBERS): verified 2026-10-24 that Cartesia outbound calls are from our number to
+    the person. Cartesia's agent_call_id is sent as providerAgentCallId; the backend stored the same id when
+    it placed the call, so the call is tied to its notification even if metadata never arrives.
     """
     metadata = getattr(call_request, "metadata", None) or {}
-    raw_notification = metadata.get("notificationId") or metadata.get("notification_id")
-    notification_id = str(raw_notification) if raw_notification else None
+    notification_id = _notification_id(metadata) if isinstance(metadata, dict) else None
     from_ = _e164(getattr(call_request, "from_", None))
     to = _e164(getattr(call_request, "to", None))
-    outbound = notification_id is not None
+    outbound = notification_id is not None or (from_ is not None and from_ in settings.own_numbers and to not in settings.own_numbers)
     # On a callback we dialed the person: their number is `to`, ours is `from_`.
     caller, called = (to, from_) if outbound else (from_, to)
+    agent_call_id = getattr(call_request, "agent_call_id", None)
     return CallInfo(
         provider_call_id=str(call_request.call_id),
         direction="outbound" if outbound else "inbound",
@@ -92,6 +105,7 @@ def call_info_from_request(call_request: Any, settings: Settings) -> CallInfo:
         called_phone=called,
         notification_id=notification_id,
         language_hint=settings.language_by_dialed_number.get(called or ""),
+        agent_call_id=str(agent_call_id) if agent_call_id and agent_call_id != "unknown" else None,
     )
 
 
@@ -176,6 +190,7 @@ class SoterraAgent:
                             called_phone=self.call.called_phone,
                             language_hint=self.call.language_hint,
                             notification_id=self.call.notification_id,
+                            provider_agent_call_id=self.call.agent_call_id,
                             started_at=now_ms(),
                         )
                     ),
