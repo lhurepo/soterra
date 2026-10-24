@@ -115,7 +115,8 @@ describe("escalation callback", () => {
     await seed(t, "update");
     await t.finishAllScheduledFunctions(vi.runAllTimers);
 
-    const notifications = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    // Update calls only (a missed update call is then texted; see convex/tests/textAlerts.test.ts).
+    const notifications = (await t.run(async (ctx) => await ctx.db.query("notifications").collect())).filter((n) => n.channel === "phone_call");
     expect(notifications).toHaveLength(1);
     expect(notifications[0].status).toBe("mock");
     expect(notifications[0].recipientPhone).toBe("+17075550123");

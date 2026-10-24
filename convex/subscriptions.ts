@@ -99,13 +99,15 @@ export async function cancelSubscriptionsForPhone(ctx: MutationCtx, phone: strin
  * Stores one notification attempt and schedules delivery, unless the dedupe key was already used or
  * the subscription is rate-limited (then the attempt is stored as failed/"rate_limited" and not sent).
  */
+const countsAsUpdate = (n: Doc<"notifications">) => n.purpose === undefined || n.purpose === "update" || n.purpose === "scheduled_update";
+
 /** Matches of different requests for the same number inside this window collapse into one call. */
 const PHONE_BURST_MS = 2 * 60_000;
 
 export async function queueNotification(
   ctx: MutationCtx,
   sub: Doc<"subscriptions">,
-  n: { dedupeKey: string; message: string; bulletinRefs: Id<"bulletins">[]; now: number },
+  n: { dedupeKey: string; message: string; bulletinRefs: Id<"bulletins">[]; now: number; purpose?: "update" | "scheduled_update" },
 ): Promise<"queued" | "duplicate" | "rate_limited"> {
   const dup = await ctx.db
     .query("notifications")
@@ -123,11 +125,13 @@ export async function queueNotification(
     .query("notifications")
     .withIndex("by_recipientPhone_and_createdAt", (q) => q.eq("recipientPhone", sub.recipient.phone).gt("createdAt", n.now - PHONE_BURST_MS))
     .take(10);
-  const burst = sameNumber.some((r) => r.purpose !== "verification" && r.status !== "failed");
+  // Only update calls and texts count: the callback check and texts about a call (recap, missed call) do not.
+  const burst = sameNumber.some((r) => countsAsUpdate(r) && r.status !== "failed");
   const limited = burst
     ? ("phone_burst" as const)
     : rateLimited(
-        recent.filter((r) => !r.error?.startsWith(RATE_LIMITED_ERROR)).map((r) => r.createdAt),
+        // Texts about a call (confirmation, recap, missed call) belong to an update already counted.
+        recent.filter((r) => countsAsUpdate(r) && !r.error?.startsWith(RATE_LIMITED_ERROR)).map((r) => r.createdAt),
         n.now,
       );
   const notificationId = await ctx.db.insert("notifications", {
@@ -138,6 +142,7 @@ export async function queueNotification(
     message: n.message,
     bulletinRefs: n.bulletinRefs,
     dedupeKey: n.dedupeKey,
+    purpose: n.purpose ?? "update",
     status: limited ? "failed" : "queued",
     error: limited ? `${RATE_LIMITED_ERROR}: ${limited}` : undefined,
     createdAt: n.now,

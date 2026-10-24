@@ -66,3 +66,15 @@ export async function end(t: TestConvex, sessionId: string, reason = "caller_han
 export async function settle(t: TestConvex) {
   await t.finishAllScheduledFunctions(vi.runAllTimers);
 }
+
+/** Update notifications only (calls or texts about a bulletin change or on a schedule), oldest first. */
+export async function updateNotifications(t: TestConvex) {
+  const rows = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+  return rows.filter((n) => n.purpose === undefined || n.purpose === "update" || n.purpose === "scheduled_update");
+}
+
+/** Texts about calls (confirmation, recap, missed call), oldest first. */
+export async function callTexts(t: TestConvex) {
+  const rows = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+  return rows.filter((n) => n.purpose === "subscription_confirmation" || n.purpose === "call_recap" || n.purpose === "missed_call_text");
+}

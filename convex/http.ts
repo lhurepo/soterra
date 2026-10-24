@@ -4,6 +4,7 @@ import { appStateHttp } from "./app";
 import { mockSite } from "./mockSites";
 import { health } from "./health";
 import { apifyWebhook } from "./ingestion";
+import { twilioInbound, twilioStatus } from "./twilio";
 import { sessionEnd, sessionStart, turn } from "./voice";
 
 const http = httpRouter();
@@ -16,6 +17,10 @@ http.route({ path: "/health", method: "GET", handler: health });
 
 // [B] Public read-only feed for the iOS app (convex/app.ts).
 http.route({ path: "/app/state", method: "GET", handler: appStateHttp });
+
+// [B] Twilio texts: delivery status callbacks and incoming texts (STOP). Signed with TWILIO_AUTH_TOKEN.
+http.route({ path: "/twilio/status", method: "POST", handler: twilioStatus });
+http.route({ path: "/twilio/inbound", method: "POST", handler: twilioInbound });
 
 // [I] Apify run webhook.
 http.route({ path: "/ingest/apify", method: "POST", handler: apifyWebhook });

@@ -1,17 +1,197 @@
 // [B] Notification delivery through the selected Notifier. Rows are created (with dedupeKey and rate
 // limit) by subscriptions.queueNotification before delivery, so a retry never sends twice.
+// Texts around update calls (docs/backend.md, "Calls and texts"):
+// - an update call nobody answered (no session within callOutcomeCheckMs, only voicemail, or the call could not be
+//   placed) → the update by text ("missed_call_text");
+// - an answered update call → a short recap by text when it ends ("call_recap");
+// - a call that set up updates → one confirmation text when it ends ("subscription_confirmation");
+// - a text the number can't receive (a landline) → the subscription switches to calls, and an update is called instead.
 import { v } from "convex/values";
+import { DEFAULTS } from "../src/config/defaults";
 import { loadConfig } from "../src/config/env";
 import { selectNotifier } from "../src/notifications/notifier";
+import { buildConfirmationText, buildMissedCallText, buildRecapText, textTopic } from "../src/notifications/sms";
+import { looksLikeVoicemail } from "../src/orchestration/intents";
+import { formatSpokenTime } from "../src/orchestration/time";
+import { LANDLINE_ERROR_CODES } from "../src/providers/twilio/sms";
 import { internal } from "./_generated/api";
-import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { internalAction, internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
+import { cancelSubscriptionsForPhone } from "./subscriptions";
 import { notificationStatus } from "./validators";
+
+/** An update (on change or scheduled), as opposed to the callback check or a text about a call. */
+export function isUpdateNotification(n: Pick<Doc<"notifications">, "purpose">): boolean {
+  return n.purpose === undefined || n.purpose === "update" || n.purpose === "scheduled_update";
+}
+
+/** "HTTP 400 code 21614: …" or "code 30006: undelivered" → whether the number can't receive texts. */
+export function isLandlineError(error: string | undefined): boolean {
+  const code = error?.match(/\bcode (\d+)/)?.[1];
+  return code !== undefined && LANDLINE_ERROR_CODES.has(code);
+}
+
+function hotline(): string | undefined {
+  return loadConfig(process.env).HOTLINE_NUMBER;
+}
+
+async function subscriptionActive(ctx: MutationCtx, subscriptionId: Id<"subscriptions"> | undefined, now: number): Promise<boolean> {
+  if (!subscriptionId) return true;
+  const sub = await ctx.db.get("subscriptions", subscriptionId);
+  return sub?.status === "active" && sub.expiresAt > now;
+}
+
+/** Stores a text and schedules its delivery. Not rate-limited: it belongs to an update or a call already counted. */
+export async function queueText(
+  ctx: MutationCtx,
+  args: {
+    phone: string;
+    language: string;
+    message: string;
+    purpose: NonNullable<Doc<"notifications">["purpose"]>;
+    dedupeKey: string;
+    subscriptionId?: Id<"subscriptions">;
+    parentNotificationId?: Id<"notifications">;
+    bulletinRefs?: Id<"bulletins">[];
+    now: number;
+  },
+): Promise<Id<"notifications"> | null> {
+  const dup = await ctx.db
+    .query("notifications")
+    .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", args.dedupeKey))
+    .first();
+  if (dup) return null;
+  const notificationId = await ctx.db.insert("notifications", {
+    subscriptionId: args.subscriptionId,
+    recipientPhone: args.phone,
+    channel: "sms",
+    language: args.language,
+    message: args.message,
+    bulletinRefs: args.bulletinRefs ?? [],
+    dedupeKey: args.dedupeKey,
+    purpose: args.purpose,
+    parentNotificationId: args.parentNotificationId,
+    status: "queued",
+    createdAt: args.now,
+  });
+  await ctx.scheduler.runAfter(0, internal.notifications.deliver, { notificationId });
+  return notificationId;
+}
+
+/** The update call was missed: record it and text the update (unless the caller has stopped updates since). */
+async function markCallMissed(ctx: MutationCtx, n: Doc<"notifications">, now: number): Promise<void> {
+  await ctx.db.patch("notifications", n._id, { outcome: "missed" });
+  if (!(await subscriptionActive(ctx, n.subscriptionId, now))) return;
+  await queueText(ctx, {
+    phone: n.recipientPhone,
+    language: n.language,
+    message: buildMissedCallText(n.message, n.language, hotline()),
+    purpose: "missed_call_text",
+    dedupeKey: `${n._id}:missed`,
+    subscriptionId: n.subscriptionId,
+    parentNotificationId: n._id,
+    bulletinRefs: n.bulletinRefs,
+    now,
+  });
+}
+
+/** A text the number can't receive: its subscription switches to calls, and an update is called instead. */
+async function textUndeliverable(ctx: MutationCtx, n: Doc<"notifications">, now: number): Promise<void> {
+  if (!n.subscriptionId) return;
+  const sub = await ctx.db.get("subscriptions", n.subscriptionId);
+  if (!sub || sub.status !== "active") return;
+  if (sub.channels.includes("sms")) await ctx.db.patch("subscriptions", sub._id, { channels: ["phone_call"] });
+  if (sub.recipient.callerId) await ctx.db.patch("callers", sub.recipient.callerId, { preferredChannel: "phone_call" });
+  if (!isUpdateNotification(n)) return;
+  const dedupeKey = `${n._id}:landline`;
+  const dup = await ctx.db
+    .query("notifications")
+    .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", dedupeKey))
+    .first();
+  if (dup) return;
+  const notificationId = await ctx.db.insert("notifications", {
+    subscriptionId: n.subscriptionId,
+    recipientPhone: n.recipientPhone,
+    channel: "phone_call",
+    language: n.language,
+    message: n.message,
+    bulletinRefs: n.bulletinRefs,
+    dedupeKey,
+    purpose: n.purpose ?? "update",
+    parentNotificationId: n._id,
+    status: "queued",
+    createdAt: now,
+  });
+  await ctx.scheduler.runAfter(0, internal.notifications.deliver, { notificationId });
+}
+
+/**
+ * Called by memory.finalizeCall. On an update callback: answered (the caller said something that is not an answering
+ * machine) → recap text; otherwise → missed, text the update. On any call that set up updates → one confirmation text.
+ */
+export async function sendAfterCallTexts(ctx: MutationCtx, call: Doc<"calls">, now: number): Promise<void> {
+  const turns = await ctx.db
+    .query("callTurns")
+    .withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", call._id))
+    .take(100);
+
+  if (call.direction === "outbound" && call.notificationId) {
+    const n = await ctx.db.get("notifications", call.notificationId);
+    if (n && n.channel === "phone_call" && isUpdateNotification(n) && n.outcome === undefined) {
+      if (!turns.some((t) => !looksLikeVoicemail(t.utterance))) {
+        await markCallMissed(ctx, n, now);
+      } else {
+        await ctx.db.patch("notifications", n._id, { outcome: "answered" });
+        if (await subscriptionActive(ctx, n.subscriptionId, now)) {
+          const answers = turns.filter((t) => t.status === "complete" && t.kind === "answer" && t.reply).map((t) => t.reply!);
+          await queueText(ctx, {
+            phone: n.recipientPhone,
+            language: n.language,
+            message: buildRecapText(n.message, answers, n.language, hotline()),
+            purpose: "call_recap",
+            dedupeKey: `${n._id}:recap`,
+            subscriptionId: n.subscriptionId,
+            parentNotificationId: n._id,
+            bulletinRefs: n.bulletinRefs,
+            now,
+          });
+        }
+      }
+    }
+  }
+
+  if (!call.callerPhone) return;
+  const subs = (
+    await ctx.db
+      .query("subscriptions")
+      .withIndex("by_createdFromCallId", (q) => q.eq("createdFromCallId", call._id))
+      .take(10)
+  ).filter((s) => s.status === "active" && s.expiresAt > now);
+  if (subs.length === 0) return;
+  const language = subs[subs.length - 1].language;
+  const items = subs.map((s) => ({
+    channel: s.channels[0] ?? "phone_call",
+    intervalMs: s.mode === "scheduled" ? s.intervalMs : undefined,
+    topic: textTopic(s.target, language),
+  }));
+  const until = formatSpokenTime(Math.max(...subs.map((s) => s.expiresAt)), subs[0].target.area?.state ?? call.knownArea?.state, language);
+  await queueText(ctx, {
+    phone: call.callerPhone,
+    language,
+    message: buildConfirmationText(items, until, language, hotline()),
+    purpose: "subscription_confirmation",
+    dedupeKey: `${call._id}:confirm`,
+    subscriptionId: subs[0]._id,
+    now,
+  });
+}
 
 export const get = internalQuery({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, { notificationId }) => await ctx.db.get("notifications", notificationId),
 });
 
+/** Stores the notifier's result, then what follows from it (see the top of this file). */
 export const recordResult = internalMutation({
   args: {
     notificationId: v.id("notifications"),
@@ -21,10 +201,23 @@ export const recordResult = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, { notificationId, ...result }) => {
+    const now = Date.now();
     await ctx.db.patch("notifications", notificationId, {
       ...result,
-      deliveredAt: result.status === "sent" || result.status === "mock" || result.status === "queued" ? Date.now() : undefined,
+      deliveredAt: result.status === "sent" || result.status === "mock" || result.status === "queued" ? now : undefined,
     });
+    const n = await ctx.db.get("notifications", notificationId);
+    if (!n || result.error === "subscription_inactive") return null;
+    if (n.channel === "phone_call" && isUpdateNotification(n)) {
+      if (result.status === "failed" || result.status === "unconfigured") {
+        // The call could not even be placed: text the update now.
+        await markCallMissed(ctx, n, now);
+      } else {
+        await ctx.scheduler.runAfter(DEFAULTS.callOutcomeCheckMs, internal.notifications.checkCallOutcome, { notificationId });
+      }
+    } else if (n.channel === "sms" && result.status === "failed" && isLandlineError(result.error)) {
+      await textUndeliverable(ctx, n, now);
+    }
     return null;
   },
 });
@@ -44,7 +237,10 @@ export const deliver = internalAction({
       }
     }
     try {
-      const notifier = selectNotifier(loadConfig(process.env), n.channel, fetch);
+      const siteUrl = process.env.CONVEX_SITE_URL;
+      const notifier = selectNotifier(loadConfig(process.env), n.channel, fetch, {
+        smsStatusCallbackUrl: siteUrl ? `${siteUrl.replace(/\/$/, "")}/twilio/status` : undefined,
+      });
       const result = await notifier.send({
         recipientPhone: n.recipientPhone,
         channel: n.channel,
@@ -68,6 +264,57 @@ export const deliver = internalAction({
   },
 });
 
+/**
+ * Scheduled callOutcomeCheckMs after an update call is placed. No session for it by then: nobody picked up, so the
+ * update is texted. A session exists: memory.finalizeCall decides (answered → recap, voicemail only → missed).
+ */
+export const checkCallOutcome = internalMutation({
+  args: { notificationId: v.id("notifications") },
+  returns: v.null(),
+  handler: async (ctx, { notificationId }) => {
+    const n = await ctx.db.get("notifications", notificationId);
+    if (!n || n.outcome !== undefined || n.channel !== "phone_call" || !isUpdateNotification(n)) return null;
+    const call = await ctx.db
+      .query("calls")
+      .withIndex("by_notificationId", (q) => q.eq("notificationId", notificationId))
+      .first();
+    if (!call) await markCallMissed(ctx, n, Date.now());
+    return null;
+  },
+});
+
+/** Twilio status callback (POST /twilio/status): delivered, or failed with an error code. */
+export const recordTextStatus = internalMutation({
+  args: { sid: v.string(), status: v.string(), errorCode: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, { sid, status, errorCode }) => {
+    const n = await ctx.db
+      .query("notifications")
+      .withIndex("by_providerRef", (q) => q.eq("providerRef", sid))
+      .first();
+    if (!n || n.channel !== "sms") return null;
+    const now = Date.now();
+    if (status === "delivered" || status === "sent") {
+      // A late "sent" never overwrites a failure.
+      if (n.status !== "failed") await ctx.db.patch("notifications", n._id, { status: "sent", providerStatus: status, deliveredAt: n.deliveredAt ?? now });
+    } else if (status === "failed" || status === "undelivered") {
+      const error = `code ${errorCode ?? "unknown"}: ${status}`;
+      await ctx.db.patch("notifications", n._id, { status: "failed", providerStatus: status, error });
+      if (isLandlineError(error)) await textUndeliverable(ctx, { ...n, error }, now);
+    } else {
+      await ctx.db.patch("notifications", n._id, { providerStatus: status });
+    }
+    return null;
+  },
+});
+
+/** A text reply of STOP (POST /twilio/inbound): the same as saying "stop updates" on a call. */
+export const stopByText = internalMutation({
+  args: { phone: v.string() },
+  returns: v.number(),
+  handler: async (ctx, { phone }) => await cancelSubscriptionsForPhone(ctx, phone, Date.now()),
+});
+
 export const subscriptionIsActive = internalQuery({
   args: { subscriptionId: v.id("subscriptions"), now: v.number() },
   returns: v.boolean(),
@@ -82,6 +329,17 @@ export const recent = internalQuery({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }) => {
     const rows = await ctx.db.query("notifications").order("desc").take(Math.min(limit ?? 10, 50));
-    return rows.map((n) => ({ notificationId: n._id, status: n.status, recipientPhone: n.recipientPhone, message: n.message, createdAt: n.createdAt, error: n.error, dedupeKey: n.dedupeKey }));
+    return rows.map((n) => ({
+      notificationId: n._id,
+      status: n.status,
+      channel: n.channel,
+      purpose: n.purpose ?? "update",
+      outcome: n.outcome,
+      recipientPhone: n.recipientPhone,
+      message: n.message,
+      createdAt: n.createdAt,
+      error: n.error,
+      dedupeKey: n.dedupeKey,
+    }));
   },
 });
