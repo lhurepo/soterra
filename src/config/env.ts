@@ -21,6 +21,8 @@ const EnvSchema = z.object({
   VOICE_API_SECRET: optionalString,
   LLM_PROVIDER: z.enum(["mock", "anthropic"]).default("mock"),
   ANTHROPIC_API_KEY: optionalString,
+  /** More keys to fall back to when one runs out of credit: comma or newline separated (see src/providers/llm/pool.ts). */
+  ANTHROPIC_API_KEYS: optionalString,
   CLAUDE_FAST_MODEL: z.string().default("claude-haiku-5-5"),
   CLAUDE_SMART_MODEL: z.string().default("claude-sonnet-5-5"),
   RETRIEVER: z.enum(["convex", "moss"]).default("convex"),

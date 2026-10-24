@@ -71,13 +71,13 @@ cartesia chat 8000                      # terminal 2: talk to it in text
 
 | What | Value |
 | --- | --- |
-| Code agent (this directory) | `soterra-voice` · `agent_P9jTAaHVA3Lp4QyxqfoUkx` (linked in `cartesia.toml` / `.cartesia/config.toml`) |
-| Phone number | **+1 804 606 6867** · id `ap_QoAmgCfwRzUyj2yRVLiUk4`, assigned to `soterra-voice` |
+| Code agent (this directory) | `soterra-voice` · `agent_5qooPJfkYWFfcHxGj2GqS1` (linked in `cartesia.toml` / `.cartesia/config.toml`) |
+| Phone number | **+1 229 367 4422** · id `ap_JQBdev7QiQVUwNEkuMbTd3`, assigned to `soterra-voice` |
 | Backend | `https://brazen-perch-21.convex.site` (`BACKEND_MODE=http`) |
 | Voice | Sonic 3.6 Skylar `db6b0ed5-d5d3-463d-ae85-518a07d3c2b4` (en; also used for es until `VOICE_ID_ES` is set) |
-| Playground agent | `voice-agent` · `agent_R6EdBEhdQextsnkabGkz7X` — a *managed* (Playground-prompt) agent. Managed agents cannot run deployed code, so it no longer has the number; keep it only as the fallback described in `docs/contracts/live-call.md`. |
+| Playground agent | none in this account (the earlier one belonged to a previous Cartesia account). |
 
-Agent env (set with `cartesia env set --agent-id agent_P9jTAaHVA3Lp4QyxqfoUkx --from <file>`): `BACKEND_MODE=http`, `SOTERRA_BACKEND_URL`, `VOICE_API_SECRET`, `DEFAULT_LANGUAGE=en`, `VOICE_ID_EN`, `TTS_MODEL=sonic-3.6`, `SOTERRA_PHONE_NUMBERS=+18046066867`. Setting env creates a new deployment automatically.
+Agent env (set with `cartesia env set --agent-id agent_5qooPJfkYWFfcHxGj2GqS1 --from <file>`): `BACKEND_MODE=http`, `SOTERRA_BACKEND_URL`, `VOICE_API_SECRET`, `DEFAULT_LANGUAGE=en`, `VOICE_ID_EN`, `TTS_MODEL=sonic-3.6`, `SOTERRA_PHONE_NUMBERS=+12293674422`. Setting env creates a new deployment automatically.
 
 ## Handing the agent over (to Leia or anyone else)
 
@@ -98,8 +98,8 @@ Rolling back is the same steps with the old agent id.
 ```bash
 cd voice
 find . -name __pycache__ -prune -exec rm -rf {} +         # keep the upload small
-cartesia deploy --agent-id agent_P9jTAaHVA3Lp4QyxqfoUkx .
-cartesia deployments ls --agent-id agent_P9jTAaHVA3Lp4QyxqfoUkx   # wait for "deployed"
+cartesia deploy --agent-id agent_5qooPJfkYWFfcHxGj2GqS1 .
+cartesia deployments ls --agent-id agent_5qooPJfkYWFfcHxGj2GqS1   # wait for "deployed"
 ```
 
 Build facts learned the hard way: the builder runs `uv` with CPython 3.13, and it statically checks `main.py` for a `VoiceAgentApp(...)` and `app.run()` — if `main.py` only imports an app built elsewhere it fails with "Missing uvicorn.run() call", so `main.py` constructs `VoiceAgentApp` itself. Build logs: `GET https://api.cartesia.ai/agents/<agent_id>/deployments` (`build_logs`). A Playground (managed) agent rejects code deploys ("Managed agent not supported"); use a separate code agent.
@@ -107,14 +107,14 @@ Build facts learned the hard way: the builder runs `uv` with CPython 3.13, and i
 **Hosting ends December 1, 2026** for code-first Line agents (new hosted deployments were still accepted on 2026-10-24). After that, self-host the same app at a public HTTPS URL and attach it:
 
 ```bash
-cartesia connect --agent-id agent_P9jTAaHVA3Lp4QyxqfoUkx --url https://<your-host>
+cartesia connect --agent-id agent_5qooPJfkYWFfcHxGj2GqS1 --url https://<your-host>
 ```
 
 Switch `BACKEND_MODE` with `cartesia env set --agent-id … BACKEND_MODE=mock` (or `http`); that redeploys.
 
 ## Outbound callbacks
 
-The backend places callbacks with `POST /agents/calls` (agent `soterra-voice`, from number `ap_QoAmgCfwRzUyj2yRVLiUk4`) when `PHONE_NOTIFIER=cartesia` (set on the dev deployment). The call arrives here `from` our number `to` the person, so the agent recognises it as outbound via `SOTERRA_PHONE_NUMBERS`, and sends Line's `agent_call_id` as `providerAgentCallId`; the backend stored the same id when it placed the call and finds the notification by it. The notification id is also sent in `dynamic_variables` and `metadata` in case either reaches `call_request.metadata`. The masked `call_request …` log line shows what actually arrived.
+The backend places callbacks with `POST /agents/calls` (agent `soterra-voice`, from number `ap_JQBdev7QiQVUwNEkuMbTd3`) when `PHONE_NOTIFIER=cartesia` (set on the dev deployment). The call arrives here `from` our number `to` the person, so the agent recognises it as outbound via `SOTERRA_PHONE_NUMBERS`, and sends Line's `agent_call_id` as `providerAgentCallId`; the backend stored the same id when it placed the call and finds the notification by it. The notification id is also sent in `dynamic_variables` and `metadata` in case either reaches `call_request.metadata`. The masked `call_request …` log line shows what actually arrived.
 
 ## Measured latency
 
