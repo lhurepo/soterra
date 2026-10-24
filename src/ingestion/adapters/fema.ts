@@ -28,6 +28,12 @@ const Response = z.object({ DisasterDeclarationsSummaries: z.array(z.unknown()) 
 /** Declarations whose incident period ended more than this long ago are skipped. */
 const RECENTLY_ENDED_MS = 30 * 86_400_000;
 
+/**
+ * Declarations have no end of their own, so each bulletin expires: 30 days after the incident period ended,
+ * otherwise a type-based window after the declaration (fire management 60 days, emergency 180, major disaster 365).
+ */
+const OPEN_ENDED_MS: Record<string, number> = { FM: 60 * 86_400_000, EM: 180 * 86_400_000, DR: 365 * 86_400_000 };
+
 const DECLARATION_TYPES: Record<string, string> = {
   DR: "Major Disaster Declaration",
   EM: "Emergency Declaration",
@@ -89,6 +95,12 @@ export function normalizeFema(raw: RawResponse[], ctx: NormalizeContext): Normal
       out.rejected.push({ externalId: declaration, reason: "declaration without declarationDate", raw: first });
       continue;
     }
+    const ended = parseFeedTime(first.incidentEndDate);
+    const expiresAt = ended !== undefined ? ended + RECENTLY_ENDED_MS : issuedAt + (OPEN_ENDED_MS[first.declarationType] ?? OPEN_ENDED_MS.DR);
+    if (expiresAt <= ctx.now) {
+      out.skipped++;
+      continue;
+    }
     const areas = rows.map(areaOf).filter((a): a is AreaRef => a !== undefined);
     const kind = DECLARATION_TYPES[first.declarationType] ?? `${first.declarationType} declaration`;
     const begin = first.incidentBeginDate?.slice(0, 10);
@@ -106,6 +118,7 @@ export function normalizeFema(raw: RawResponse[], ctx: NormalizeContext): Normal
       severity: "unknown",
       status: "actual",
       issuedAt,
+      expiresAt,
       areas,
       incidentKey: `fema:${declaration}`,
       trustTier: ctx.source.trustTier,

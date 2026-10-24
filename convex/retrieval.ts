@@ -91,20 +91,25 @@ export const search = internalQuery({
   handler: async (ctx, args): Promise<RetrievedChunk[]> => {
     const candidates: Doc<"chunks">[] = [];
 
-    // 1. Full-text search over the utterance plus recent caller turns (≤ 16 terms).
+    // 1. Full-text search over the utterance plus recent caller turns (≤ 16 terms). A caller in a state also
+    //    gets national bulletins (primaryState "US", e.g. NHC storms with no US area): the filter is equality
+    //    only, so that is a second search.
     const terms = searchText([args.text, args.contextText].filter(Boolean).join(" "));
     if (terms) {
-      candidates.push(
-        ...(await ctx.db
-          .query("chunks")
-          .withSearchIndex("search_text", (q) => {
-            let s = q.search("text", terms).eq("isActive", true);
-            if (args.area && args.area.state !== "US") s = s.eq("primaryState", args.area.state);
-            if (!args.serveFixtures) s = s.eq("isFixture", false);
-            return s;
-          })
-          .take(SEARCH_CANDIDATES)),
-      );
+      const states: (string | undefined)[] = args.area && args.area.state !== "US" ? [args.area.state, "US"] : [undefined];
+      for (const state of states) {
+        candidates.push(
+          ...(await ctx.db
+            .query("chunks")
+            .withSearchIndex("search_text", (q) => {
+              let s = q.search("text", terms).eq("isActive", true);
+              if (state) s = s.eq("primaryState", state);
+              if (!args.serveFixtures) s = s.eq("isFixture", false);
+              return s;
+            })
+            .take(SEARCH_CANDIDATES)),
+        );
+      }
     }
 
     // 2. Area-first: active bulletins for the caller's area, whatever the wording (works for Spanish callers too).
