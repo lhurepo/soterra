@@ -24,7 +24,10 @@ describe("config", () => {
     expect(status.llm).toBe("unconfigured");
     expect(status.voiceAuth).toBe("live");
     expect(status.phoneNotifier).toBe("mock");
-    expect(status.sms).toBe("unconfigured");
+    expect(status.sms).toBe("mock");
+    expect(integrationStatus(loadConfig({ SMS_NOTIFIER: "twilio", TWILIO_ACCOUNT_SID: "AC1" })).sms).toBe("unconfigured");
+    expect(integrationStatus(loadConfig({ SMS_NOTIFIER: "twilio", TWILIO_ACCOUNT_SID: "AC1", TWILIO_AUTH_TOKEN: "t", TWILIO_FROM_NUMBER: "+18045550100" })).sms).toBe("live");
+    expect(integrationStatus(loadConfig({ SMS_NOTIFIER: "unconfigured" })).sms).toBe("unconfigured");
   });
 
   it("unconfigured live adapters throw NotConfiguredError naming the env vars", () => {
