@@ -1,14 +1,17 @@
 // [B] Follow-ups: "call me if it changes" creates a subscription; bulletin events are matched to them.
+// "Text me every 2 hours" creates a scheduled one, sent by the runScheduled cron whether or not anything changed.
 // The hot path only creates or cancels subscriptions (inside calls.completeTurn). Matching and delivery
 // run asynchronously. Every notification attempt is stored, including rate-limited ones.
 import { v } from "convex/values";
 import type { FollowUpRequest } from "../src/contracts";
-import { clampIntervalMs, subscriptionLifetimeMs } from "../src/notifications/schedule";
+import { loadConfig } from "../src/config/env";
+import { clampIntervalMs, nextRunAfter, subscriptionLifetimeMs } from "../src/notifications/schedule";
+import { textTopic } from "../src/notifications/sms";
 import { RATE_LIMITED_ERROR, dedupeKeyFor, eventMatches, rateLimited } from "../src/notifications/match";
-import { buildUpdateMessage } from "../src/notifications/message";
+import { buildScheduledMessage, buildUpdateMessage } from "../src/notifications/message";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, type MutationCtx } from "./_generated/server";
+import { internalMutation, type MutationCtx, type QueryCtx } from "./_generated/server";
 
 function sameTarget(a: Doc<"subscriptions">["target"], b: Doc<"subscriptions">["target"]): boolean {
   if (a.kind !== b.kind) return false;
@@ -241,5 +244,77 @@ export const expireSubscriptions = internalMutation({
       .take(100);
     for (const s of expired) await ctx.db.patch("subscriptions", s._id, { status: "expired" });
     return expired.length;
+  },
+});
+
+/**
+ * The newest official bulletin for a subscription's incident or area (what a scheduled update reports). Same rules as
+ * the matcher: official tiers only, actual or cancelled; fixture bulletins only when SERVE_FIXTURES is on.
+ */
+async function latestBulletinFor(ctx: QueryCtx, target: Doc<"subscriptions">["target"]): Promise<Doc<"bulletins"> | null> {
+  const serveFixtures = loadConfig(process.env).SERVE_FIXTURES;
+  let bulletins: Doc<"bulletins">[] = [];
+  if (target.kind === "incident" && target.incidentKey) {
+    const incidentKey = target.incidentKey;
+    bulletins = await ctx.db
+      .query("bulletins")
+      .withIndex("by_incidentKey_and_isActive", (q) => q.eq("incidentKey", incidentKey).eq("isActive", true))
+      .take(30);
+  } else if (target.kind === "area" && target.area) {
+    const area = target.area;
+    const rows = area.countyFips
+      ? await ctx.db.query("bulletinAreas").withIndex("by_isActive_and_countyFips", (q) => q.eq("isActive", true).eq("countyFips", area.countyFips)).take(60)
+      : area.nwsZone
+        ? await ctx.db.query("bulletinAreas").withIndex("by_isActive_and_nwsZone", (q) => q.eq("isActive", true).eq("nwsZone", area.nwsZone)).take(60)
+        : await ctx.db.query("bulletinAreas").withIndex("by_isActive_and_state", (q) => q.eq("isActive", true).eq("state", area.state)).take(60);
+    const ids = [...new Set(rows.map((r) => r.bulletinId))].slice(0, 30);
+    bulletins = (await Promise.all(ids.map((id) => ctx.db.get("bulletins", id)))).filter((b): b is Doc<"bulletins"> => b !== null);
+  }
+  const usable = bulletins.filter(
+    (b) => b.isActive && b.trustTier !== "unverified" && (b.status === "actual" || b.status === "cancelled") && (serveFixtures || !b.isFixture),
+  );
+  usable.sort((a, b) => (b.updatedAt ?? b.issuedAt) - (a.updatedAt ?? a.issuedAt));
+  return usable[0] ?? null;
+}
+
+/** Cron (every minute): sends the time-based updates that are due, then moves each to its next slot. */
+export const runScheduled = internalMutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const now = Date.now();
+    const due = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_status_and_nextRunAt", (q) => q.eq("status", "active").gte("nextRunAt", 0).lte("nextRunAt", now))
+      .take(50);
+    let queued = 0;
+    for (const sub of due) {
+      if (sub.mode !== "scheduled" || sub.intervalMs === undefined || sub.nextRunAt === undefined) continue;
+      if (sub.expiresAt <= now) {
+        await ctx.db.patch("subscriptions", sub._id, { status: "expired" });
+        continue;
+      }
+      const latest = await latestBulletinFor(ctx, sub.target);
+      const message = buildScheduledMessage(
+        {
+          topic: textTopic(sub.target, sub.language),
+          latest: latest ?? undefined,
+          since: sub.lastRunAt ?? sub.consentAt,
+          intervalMs: sub.intervalMs,
+          state: sub.target.area?.state,
+        },
+        sub.language,
+      );
+      const result = await queueNotification(ctx, sub, {
+        dedupeKey: `${sub._id}:sched:${sub.nextRunAt}`,
+        message,
+        bulletinRefs: latest ? [latest._id] : [],
+        now,
+        purpose: "scheduled_update",
+      });
+      if (result === "queued") queued++;
+      await ctx.db.patch("subscriptions", sub._id, { lastRunAt: now, nextRunAt: nextRunAfter(sub.nextRunAt, sub.intervalMs, now) });
+    }
+    return queued;
   },
 });

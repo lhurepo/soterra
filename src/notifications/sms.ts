@@ -15,7 +15,12 @@ export function smsFooter(language: string, hotline?: string): string {
   return hotline ? tf("smsFooterHotline", language, { hotline: formatPhoneForText(hotline) }) : t("smsFooter", language);
 }
 
-const sentences = (text: string) => (text.match(/[^.!?]+[.!?]+["”]?|[^.!?]+$/g) ?? [text]).map((s) => s.trim()).filter(Boolean);
+/** Splits at . ! ? followed by a capital, digit or quote, so "2:10 p. m." and "U.S." stay whole. */
+const sentences = (text: string) =>
+  text
+    .split(/(?<=[.!?]["”]?)\s+(?=[A-ZÁÉÍÓÚÑ¿¡"“0-9])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 
 /**
  * Keeps `body` within `max` characters together with the footer: whole sentences first, then a cut at a word with "…".

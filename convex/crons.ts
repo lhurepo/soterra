@@ -12,6 +12,8 @@ crons.interval("bulletin expiry", { minutes: 5 }, internal.ingestion.expireBulle
 crons.interval("raw payload purge", { hours: 1 }, internal.ingestion.purgeRawPayloads, {});
 // [B] Finalizes calls silent for 15 minutes that never sent /voice/session/end.
 crons.interval("stale session sweeper", { minutes: 5 }, internal.calls.sweepStaleSessions, {});
+// [B] Time-based updates ("text me every 2 hours"): sends those that are due.
+crons.interval("scheduled updates", { minutes: 1 }, internal.subscriptions.runScheduled, {});
 // [B] Marks subscriptions past expiresAt as expired (the matcher already skips them).
 crons.interval("subscription expiry", { minutes: 30 }, internal.subscriptions.expireSubscriptions, {});
 // [B] Retention: anonymous transcripts (7 days) and anonymous caller memory (30 days), in batches.

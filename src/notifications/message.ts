@@ -2,7 +2,7 @@
 // Bulletin text stays in its original language; only the framing is translated.
 import { tf } from "../config/strings";
 import { formatSpokenTime } from "../orchestration/time";
-import { formatInterval } from "./schedule";
+import { formatDuration } from "./schedule";
 
 /** First sentence of the body, without the "fictional demo data" disclaimer when that is all there is. */
 function detailSentence(body: string): string {
@@ -47,7 +47,7 @@ export function buildScheduledMessage(
   language: string,
 ): string {
   const { latest } = args;
-  if (!latest) return tf("scheduledNone", language, { topic: args.topic, interval: formatInterval(args.intervalMs, language) });
+  if (!latest) return tf("scheduledNone", language, { topic: args.topic, interval: formatDuration(args.intervalMs, language) });
   const latestAt = latest.updatedAt ?? latest.issuedAt;
   if (latestAt > args.since) return buildUpdateMessage(latest, language);
   return tf("scheduledNoChange", language, {

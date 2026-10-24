@@ -32,3 +32,12 @@ export function nextRunAfter(previousDue: number, intervalMs: number, now: numbe
   if (next <= now) next = now + intervalMs;
   return next;
 }
+
+/** "an hour", "2 hours", "a day" / "una hora", "2 horas", "un día": said after "in" / "en". */
+export function formatDuration(intervalMs: number, language: string): string {
+  const es = language.toLowerCase().startsWith("es");
+  const hours = Math.max(1, Math.round(intervalMs / 3_600_000));
+  if (hours === 24) return es ? "un día" : "a day";
+  if (hours === 1) return es ? "una hora" : "an hour";
+  return es ? `${hours} horas` : `${hours} hours`;
+}
