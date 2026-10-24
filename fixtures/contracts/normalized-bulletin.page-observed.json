@@ -1,0 +1,18 @@
+{
+  "sourceId": "mock_disaster_assistance",
+  "sourceName": "DisasterAssistance.gov (Demo)",
+  "externalId": "https://demo.soterra.example/mock-sites/disaster-assistance.html",
+  "url": "https://demo.soterra.example/mock-sites/disaster-assistance.html",
+  "title": "Disaster Assistance (Demo)",
+  "body": "Fire Management Assistance has been declared for Sonoma County (demo declaration FM-9999-CA, October 24, 2026).",
+  "hazardType": "wildfire",
+  "severity": "unknown",
+  "status": "actual",
+  "issuedAt": 1792875612345,
+  "areas": [{ "state": "CA", "county": "Sonoma", "countyFips": "06097", "label": "Sonoma County" }],
+  "trustTier": "official",
+  "language": "en",
+  "contentHash": "0a1b2c3d4e5f60",
+  "isFixture": true,
+  "timeBasis": "observed"
+}

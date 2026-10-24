@@ -106,7 +106,8 @@ bulletin update → bulletinEvents → subscriptions.matchEvents → notificatio
 
 | Failure | What the caller hears |
 | --- | --- |
-| Backend non-200, timeout (8 s), unparseable body | Voice agent speaks the fixed fallback in the session language (with the 911 line), logs, keeps the call open. |
+| Backend non-200, timeout (8 s), unparseable body | Voice agent speaks the fixed fallback in the session language (with the 911 line), logs, keeps the call open. After 3 failures in a row it apologizes, repeats the 911 line, suggests calling back, and ends the call (`reason: "error"`). |
+| Backend slow (> 1.2 s) | Voice agent speaks one filler line ("One moment, I'm checking the latest official updates."), then the reply. |
 | Session start fails | Fallback greeting with the 911 line; later turns use `providerCallId` (lazy start). |
 | Retrieval or LLM fails inside the backend | `200` with `kind: "no_info"`, `degraded: true`, fallback reply with the 911 line. |
 | Model answers without a valid citation | Rewritten to `no_info` ("I don't know yet…"), question recorded. |

@@ -28,23 +28,23 @@ Enforced in code where marked ✅.
 
 | Feature | Priority | Owner | Status |
 | --- | --- | --- | --- |
-| Inbound multi-turn call (voice ⇄ backend contract) | P0 | Leia + Alonso/Hikaru | 🟡 backend ✅ (live on dev, `sim:call --all` green), agent ✅ vs mock; no phone number yet |
+| Inbound multi-turn call (voice ⇄ backend contract) | P0 | Leia + Alonso/Hikaru | 🟡 backend ✅ (live on dev, `sim:call --all` green); agent ✅ through the real SDK runner against the dev backend (text mode); no phone number yet |
 | Grounded answers with source and time | P0 | Alonso/Hikaru | ✅ enforcement + real Claude (Haiku 5.5, structured output) verified on dev; dev defaults to MockLlm |
 | "I don't know yet" + unanswered questions | P0 | Alonso/Hikaru | ✅ |
 | Danger path | P0 | Alonso/Hikaru | ✅ (en, es patterns + false-positive tests; needs native-speaker review) |
 | Transcript + summary (consent, summary-only) | P0 | Alonso/Hikaru | ✅ summary prompt (CLAUDE_SMART_MODEL) + deterministic fallback, summary-only, batched retention purge |
-| Live NWS ingestion | P0 | Dhweya | 🟡 adapter stub with request + mapping notes |
+| Live NWS ingestion | P0 | Dhweya | ✅ adapter (lineage, cancellations, test/exercise), fixture mode; live-ready, not yet run on the deployment |
 | Fixtures (Ridgeview demo) | P0 | shared | ✅ |
 | Convex search retrieval | P0 | Alonso/Hikaru | ✅ area-first + full text, per-bulletin dedupe, token budget, explainable ranking |
 | Caller memory (last summary, language, area) | P1 | Alonso/Hikaru | ✅ context cached per call, "welcome back" offer, policy filter for the model, TTLs |
-| Spanish | P1 | Leia + Alonso/Hikaru | 🟡 backend ✅ (Spanish replies with citations, verified with Claude); wording review ⬜; voice/STT switch untested |
+| Spanish | P1 | Leia + Alonso/Hikaru | 🟡 backend ✅ (Spanish replies with citations, verified with Claude); Spanish number map + keypad switch ✅ in tests and text calls; wording review ⬜; real-call STT/TTS untested; Spanish voice not chosen |
 | Account association (verified phone link) | P1 | Alonso/Hikaru | 🟡 rule ✅ at start and finalize, account queries ✅; verification flow ⬜, auth ⬜ |
-| More official sources (USGS, FEMA, NHC, Tsunami, InciWeb, NIFC) | P1 | Dhweya | 🟡 registry + stubs |
-| Crisis mode | P1 | Dhweya | 🟡 trigger stub + tick ✅ |
-| Apify scraping of mock sites | P1 | Dhweya | 🟡 webhook route + placeholders; mock sites served ✅ |
+| More official sources (USGS, FEMA, NHC, Tsunami, InciWeb, NIFC) | P1 | Dhweya | ✅ adapters + fixtures; live-ready |
+| Crisis mode | P1 | Dhweya | ✅ trigger, extend, auto-revert, mode log |
+| Apify scraping of mock sites | P1 | Dhweya | 🟡 MockApify ✅, webhook ✅, v1→v2 escalation ✅; live actors wired, not yet run with a token |
 | Moss retriever | P1 | Alonso/Hikaru | 🟡 adapter + sync + fallback ✅; blocked: SDK can't load in Convex, queries 503/401 (DECISIONS.md) |
 | Subscriptions + outbound callbacks | P2 | Alonso/Hikaru (Leia reviews) | 🟡 matcher, rate limits, stop updates, answered questions, mock notifier ✅ (live on dev); Cartesia adapter **not verified live** |
-| X ingestion | P2 | Dhweya | ⬜ (allowlist + trust rules ✅) |
+| X ingestion | P2 | Dhweya | 🟡 fixture mode ✅ (allowlist → official_social, others → signals, burst → early poll); live actor not enabled |
 | SMS | P2 | — | ⬜ provider not chosen |
 | Streaming turns (`/voice/turn/stream`) | P2 | Alonso/Hikaru + Leia | ⬜ reserved |
 | Zone check (point in official polygon) | P2 | — | ⬜ geometry is stored when feeds give it |
@@ -76,14 +76,13 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
 ### Leia — voice (`voice/`)
 
 - **Receives:** Cartesia call events. **Returns:** speech. Talks to the backend only through the [live-call contract](docs/contracts/live-call.md).
-- **Can rely on now:** `MockBackendClient` (`BACKEND_MODE=mock`), the real backend in mock mode (`npm run sim:call` proves it), golden fixtures in `fixtures/contracts/`.
-- **First hour:** deploy a hello-world Line agent on a real phone number (`cartesia deploy`; if new hosted deploys are refused, self-host and `cartesia connect`), then make it call `GET /health` and say the result.
-- **To do:**
-  1. Deploy `voice/` with `BACKEND_MODE=http` against the dev deployment; place a real call through the Ridgeview scenario.
-  2. Log `call_request` on real inbound and outbound calls; confirm `from_`, `to`, `metadata` (see DECISIONS "still unverified").
-  3. Measure end-of-speech → first audio; report against the 2.5 s budget.
-  4. Spanish: voice choice, `AgentUpdateCall(language="es", voice_id=...)`, test with a Spanish speaker.
-  5. Outbound callback call with Alonso/Hikaru (review `src/providers/cartesia/outbound.ts`).
+- **Built (branch `voice/agent`, see [voice/README.md](voice/README.md)):** config with fail-fast env; `Backend` protocol (httpx client with typed errors + `MockBackendClient` with delays and faults); pre-call session start and STT/TTS language + voice; greeting with an uninterruptible transcription notice; turns with one filler after 1.2 s; barge-in cancellation and `interruptedPrevious`; fallback with 911, call ends after 3 failures; repeat; keypad language switch; outbound callbacks; masked logs; `scripts/harness_call.py` (whole call through the real SDK app, no Cartesia). Verified in text mode against the dev backend: the demo script, Spanish, the failure cutoff.
+- **Next:**
+  1. `cartesia init` / `env set` / `deploy` (or self-host + `cartesia connect`), provision a number, place a real call through the Ridgeview demo script (README checklist).
+  2. Log the first real `call_request` (masked) on inbound and outbound calls: `from_`, `to`, `metadata`, pre-call metadata pass-through.
+  3. Measure end of speech → first audio against the 2.5 s target; record it in the README.
+  4. Choose and record a Spanish voice (`VOICE_ID_ES`); test with a Spanish speaker; decide on `OFFER_SPANISH_DTMF`.
+  5. Outbound callback with Alonso/Hikaru: confirm whether `notificationId` reaches the agent (Cartesia documents only `dynamic_variables`).
 - **Done when:** a real phone call gets grounded answers from fixtures, a backend outage produces the fallback line, and barge-in works.
 
 ### Alonso and Hikaru — backend (`src/orchestration`, `src/retrieval`, `src/memory`, `src/notifications`, `src/providers/{llm,moss,cartesia}`, `src/config`, `convex/{voice,calls,callers,accounts,memory,retrieval,unanswered,health,subscriptions,notifications}.ts`)
@@ -100,18 +99,16 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
   6. ZIP → county table if county-level matching from ZIPs matters for the demo.
 - **Done when:** a real model answers the Ridgeview call with correct citations, refuses address-in-zone, says "I don't know yet" for Hillcrest Elementary, and the danger and fallback paths still pass. ✅ on dev via `sim:call` with Claude; pending on a real phone call.
 
-### Dhweya — ingestion (`src/ingestion`, `src/providers/apify`, `convex/{ingestion,sources,systemState}.ts`)
+### Dhweya — ingestion (`src/ingestion`, `src/providers/apify`, `convex/{ingestion,ingestionRuns,sources,signals,systemState,mockSites}.ts`)
 
 - **Receives:** official feeds, Apify datasets. **Returns:** `NormalizedBulletin[]` into `upsertBulletins`; chunks, areas and events for the backend.
-- **Can rely on now:** `upsertBulletins` (naive chunking), the source registry, raw samples in `fixtures/raw/`, mock sites at `/mock-sites/*`.
-- **First hour:** take live NWS alerts for CA end to end: implement `normalizeNwsAlerts` (`src/ingestion/adapters/nws.ts`, mapping notes in the file), test it on `fixtures/raw/nws-alerts.json`, set `NWS_USER_AGENT`, enable `nws_alerts`, watch bulletins appear.
-- **To do:**
-  1. NWS: stable `externalId` from VTEC, cancellations, test/exercise filtering, geometry to file storage when large.
-  2. Better chunking (shelter rows, sentence windows).
-  3. Crisis trigger tuning; use unverified spikes as a polling signal only.
-  4. Apify: run an actor against `/mock-sites/*`, process the webhook dataset, LLM extraction with quoted spans, quarantine failures.
-  5. USGS, InciWeb, NIFC, NHC, Tsunami, OpenFEMA adapters (priority by demo value).
-  6. X via Apify (allowlist → `official_social`); best-effort Moss sync of changed chunks.
+- **Built (branch `ingestion/pipeline`, see [docs/ingestion.md](docs/ingestion.md)):** source registry with fixture/live modes, tick with crisis intervals, Apify floor and backoff; NWS/USGS/FEMA/NHC/Tsunami/InciWeb/WFIGS adapters; Apify client + MockApify + webhook; mock sites v1/v2 with `npm run ingest:escalate`; quote-verified LLM extraction (+ deterministic mock); shelter parser; X routing and signals; crisis mode; Moss sync hook; raw payload retention; per-source status query.
+- **Next:**
+  1. M2 on the dev deployment: `NWS_USER_AGENT`, enable `nws_alerts` live, watch a tick ingest CA alerts.
+  2. `npm run ingest:apify-mock-sites` with a real `APIFY_TOKEN`; confirm the WCC/Cheerio output matches the fixtures.
+  3. Real extraction with `LLM_PROVIDER=anthropic` on the mock county page; tune the prompt.
+  4. Real `X_ALLOWLIST` handles; decide whether X live is worth the actor's cost and terms.
+  5. Gazetteers for states beyond CA; a real DisasterAssistance.gov page.
 - **Done when:** live NWS CA alerts are searchable within one tick of publication, updates create versions and events, and nothing unverified is ever retrievable.
 
 ## Integration milestones
@@ -137,11 +134,11 @@ session end | sweeper → finalizeCall → summarizeCall (LLM) → saveSummary �
 
 See [DECISIONS.md](docs/DECISIONS.md). Still unverified:
 
-- Does `cartesia deploy` accept new hosted agents before the Dec 1, 2026 shutdown? (Leia)
+- Does `cartesia deploy` accept new hosted agents before the Dec 1, 2026 shutdown? (Leia — not tested yet: no Cartesia credentials in this environment)
 - Do outbound `dynamic_variables` reach `CallRequest.metadata`? What are `from_`/`to` on outbound calls? (Leia)
 - Cartesia outbound auth header (`X-API-Key` in examples vs bearer in the spec). (Alonso/Hikaru)
 - Moss inside Convex: answered — the SDK's native binding does not load in a `"use node"` action, and queries return 503/401 for this project (DECISIONS.md). (Alonso/Hikaru)
-- Apify `headersTemplate` key and dataset id in the payload template. (Dhweya)
+- A live Apify run against the mock sites (key names verified 2026-10-24). (Dhweya)
 - Anthropic latency with Haiku 5.5: ~1.0–2.0 s per turn on dev via `sim:call`; still to measure on a real phone call. (Alonso/Hikaru)
 - Ink 2 STT covers en/fr/hi/ja/es only: Mandarin and Punjabi from the overview are out.
 
@@ -165,3 +162,5 @@ Setup: `SERVE_FIXTURES=true`, `npm run seed:fixtures`, call from a phone whose n
 
 - 2026-10-24 — Skeleton created on branch `skeleton/shared-codebase`: contracts v1, schema, mock end-to-end path, voice agent, fixtures, docs, 77 Vitest + 22 pytest tests. (Claude, for Hikaru)
 - 2026-10-24 — Backend module built on branch `backend/full-module` (docs/backend.md, docs/backend-report.md). Contract additions, all optional: `CallerContext.recentIncidentKeys?: string[]` and `RetrievedChunk.chunkIndex?: number` (`src/contracts/orchestration.ts`, golden fixtures `caller-context.json`, `retrieved-chunk.json`); `internal.retrieval.search` accepts an optional `contextText`; `/health` gains flags `cartesiaVerifiedLive` and `mockLlmFailureMode`; `timingsMs` now reports `context`, `retrieval`, `preLlm`, `llm`, `total`. No voice contract fields changed (Python mirror untouched). Behaviour changes: canonical wording in `src/config/strings.ts` (fallback line changed: sync `voice/soterra_voice/phrases.py`), subscriptions last 24 h, anonymous transcripts 7 days. (Claude, for Alonso)
+- 2026-10-24 — Ingestion module on branch `ingestion/pipeline` (Dhweya's scope; Claude). **Additive contract changes:** `NormalizedBulletin.timeBasis?` (`issued` | `page_updated` | `observed`) and `supersedesExternalIds?`; `timeBasis` on `bulletins` and `chunks`; new `Signal` schema and `signals` table; `ExtractionResult` deprecated (unused). New tables: `bulletinAliases`, `ingestionRuns`, `rawPayloads`, `systemModeLog`, `devSettings`; `sources` gains `mode`/run bookkeeping (`lastFetchedAt` replaced by `lastRunAt`); `mockSites` gains `variant`. Chunks now start with a one-sentence header (title — issuer — areas — time with basis). Fixture bulletins trigger crisis mode only when `SERVE_FIXTURES=true`. Mock sites moved to `fixtures/mock-sites/v1|v2`; `/mock-sites/*` handler moved to `convex/mockSites.ts`. **Backend to handle:** (1) speak `timeBasis` ("as of when we checked at 3:05 PM" for `observed`, "the page was last updated at …" for `page_updated`) — `RetrievedChunk` and `convex/retrieval.ts` don't carry it yet and grounding always says "issued"; (2) `/health` can include `internal.ingestionRuns.sourceStatus`; (3) `signals` are operator-only data, never retrieval input.
+- 2026-10-24 — Voice agent on branch `voice/agent` (Leia's scope; Claude). No contract changes. Behaviour the backend team should know: one filler line after 1.2 s of backend silence; 8 s turn budget; 3 consecutive failures end the call with reason `error`; repeat requests are answered locally (no `/voice/turn`, so they are not in the transcript); `languageHint` is sent only for numbers in `LANGUAGE_BY_DIALED_NUMBER`, so the caller's saved language decides otherwise; keypad 2/1 changes the language sent on later turns without a new session start. Cartesia documents outbound `dynamic_variables`, not `metadata`, so `notificationId` reaching the agent is unconfirmed.

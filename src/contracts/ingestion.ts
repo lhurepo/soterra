@@ -23,6 +23,14 @@ export type SourceDefinition = z.infer<typeof SourceDefinition>;
 export const BulletinStatus = z.enum(["actual", "test", "exercise", "cancelled"]);
 
 /**
+ * What `issuedAt` means. "issued": the source's own publication time. "page_updated": the page's own
+ * "last updated" time. "observed": the source published no time, so `issuedAt` is when Soterra fetched
+ * it ("as of when we checked at 3:05 PM"); nothing else about that time is implied. Absent = "issued".
+ */
+export const TimeBasis = z.enum(["issued", "page_updated", "observed"]);
+export type TimeBasis = z.infer<typeof TimeBasis>;
+
+/**
  * One official item after normalization. Validation rejects anything without a URL, issue time or
  * source; timestamps and areas are never invented. `test` and `exercise` items are never served.
  */
@@ -50,6 +58,13 @@ export const NormalizedBulletin = z.object({
   language: Language,
   contentHash: z.string().min(1),
   isFixture: z.boolean(),
+  /** Additive (2026-10-24). Absent means "issued". */
+  timeBasis: TimeBasis.optional(),
+  /**
+   * Additive (2026-10-24). External ids of earlier messages this one updates or cancels (NWS `references`).
+   * upsertBulletins follows them so one alert lineage stays one bulletin with versions.
+   */
+  supersedesExternalIds: z.array(z.string()).optional(),
 });
 export type NormalizedBulletin = z.infer<typeof NormalizedBulletin>;
 
@@ -90,7 +105,10 @@ export const SystemState = z.object({
 });
 export type SystemState = z.infer<typeof SystemState>;
 
-/** Every field the extraction model returns must quote the source span that supports it. */
+/**
+ * @deprecated Superseded by the evidence-only schema in src/ingestion/extract.ts (2026-10-24). Kept so
+ * nothing that imported it breaks; no module uses it.
+ */
 export const ExtractedField = z.object({
   value: z.string().min(1),
   quote: z.string().min(1),
@@ -110,3 +128,22 @@ export const ExtractionResult = z.object({
   ),
 });
 export type ExtractionResult = z.infer<typeof ExtractionResult>;
+
+/**
+ * Additive (2026-10-24). An unverified social post kept only as a signal. Never a bulletin, never chunked,
+ * never retrievable, never triggers crisis mode. A burst can trigger an early poll of official sources.
+ */
+export const Signal = z.object({
+  sourceId: z.string(),
+  platform: z.literal("x"),
+  externalId: z.string(),
+  url: z.string().url(),
+  authorHandle: z.string(),
+  text: z.string(),
+  postedAt: EpochMs.optional(),
+  observedAt: EpochMs,
+  hazardTypes: z.array(HazardType),
+  states: z.array(z.string()),
+  isFixture: z.boolean(),
+});
+export type Signal = z.infer<typeof Signal>;

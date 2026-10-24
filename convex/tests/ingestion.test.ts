@@ -64,7 +64,8 @@ describe("upsertBulletins", () => {
     });
   });
 
-  it("enters crisis mode on a severe official live bulletin, but never for fixtures", async () => {
+  it("enters crisis mode on a severe official live bulletin; fixtures count only when SERVE_FIXTURES=true", async () => {
+    setupEnv({ SERVE_FIXTURES: "false" });
     const t = newTest();
     await seed(t);
     expect(await t.query(internal.systemState.get, {})).toBeNull();

@@ -1,0 +1,19 @@
+[
+  {
+    "url": "https://demo.soterra.example/mock-sites/disaster-assistance.html",
+    "crawl": {
+      "loadedUrl": "https://demo.soterra.example/mock-sites/disaster-assistance.html",
+      "loadedTime": "2026-10-25T01:30:08.120Z",
+      "referrerUrl": "https://demo.soterra.example/mock-sites/disaster-assistance.html",
+      "depth": 0,
+      "httpStatusCode": 200
+    },
+    "metadata": {
+      "canonicalUrl": "https://demo.soterra.example/mock-sites/disaster-assistance.html",
+      "title": "Disaster Assistance (Demo)",
+      "description": null,
+      "languageCode": "en"
+    },
+    "text": "FICTIONAL DEMO PAGE shaped like a DisasterAssistance.gov page. Not affiliated with FEMA.\nRidgeview Fire (Demo): Assistance\nFire Management Assistance has been declared for Sonoma County (demo declaration FM-9999-CA, October 24, 2026).\nIndividual assistance has not been announced. Check back for updates."
+  }
+]

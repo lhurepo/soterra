@@ -30,3 +30,29 @@ export function convexRun(fn: string, args: unknown): unknown {
     return out.trim();
   }
 }
+
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function flag(name: string): string | undefined {
+  const args = process.argv.slice(2);
+  const i = args.indexOf(`--${name}`);
+  return i >= 0 ? args[i + 1] : undefined;
+}
+
+type RunRow = { _id: string; sourceId: string; status: string; counts?: unknown; error?: string; apifyRunId?: string; mossSync?: string };
+
+/** Polls ingestionRuns:getRun until the run finishes or the timeout passes. */
+export async function waitForRun(runId: string, timeoutMs: number): Promise<RunRow | null> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const row = convexRun("ingestionRuns:getRun", { runId }) as RunRow | null;
+    if (!row || row.status === "succeeded" || row.status === "failed" || Date.now() >= deadline) return row;
+    await sleep(3_000);
+  }
+}
+
+export function printRun(row: RunRow | null): void {
+  if (!row) return console.log("  (no run record)");
+  console.log(`  ${row.sourceId}: ${row.status}${row.error ? ` — ${row.error}` : ""}`);
+  if (row.counts) console.log(`    counts ${JSON.stringify(row.counts)}  moss ${row.mossSync ?? "-"}${row.apifyRunId ? `  apify ${row.apifyRunId}` : ""}`);
+}
