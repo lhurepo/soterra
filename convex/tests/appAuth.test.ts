@@ -194,3 +194,62 @@ describe("a linked number on a call", () => {
     expect(r.reply).toBe(str("profileSaved", "en").replace("{need}", "I have two dogs"));
   });
 });
+
+describe("calling from the app", () => {
+  it("'Call me' rings the linked number at once, and that call is verified: the details can be read back", async () => {
+    const t = newTest();
+    const token = await signIn(t);
+    await t.mutation(api.accounts.saveMyProfile, { token, ...profile });
+    expect(await t.mutation(api.accounts.requestVerifiedCall, { token })).toEqual({ ok: true });
+    await settle(t); // the mock notifier places the call
+    const notifications = (await t.run(async (ctx) => await ctx.db.query("notifications").collect())).filter((n) => n.purpose === "verification");
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({ recipientPhone: PHONE_2, channel: "phone_call", status: "mock", language: "es" });
+
+    // A real outbound call carries no language hint, so the account's language (Spanish) decides.
+    const call = await start(t, { direction: "outbound", callerPhone: undefined, languageHint: undefined, notificationId: notifications[0]._id });
+    expect(call.greeting).toContain(str("verifyIntro", "es"));
+    expect((await getCall(t, call.sessionId))?.callerContext).toMatchObject({ identity: "verified_phone", personalContext: profile.personalContext });
+    const r = await say(t, call.sessionId, 0, "¿Qué sabes de mí?", { language: "es" });
+    expect(r.reply).not.toBe(str("verifyAnnounce", "es"));
+  });
+
+  it("needs a real session: a phone number, a wrong token or a signed-out token rings nothing", async () => {
+    const t = newTest();
+    await expect(t.mutation(api.accounts.requestVerifiedCall, { token: "x".repeat(64) })).rejects.toThrow("not_signed_in");
+    const token = await signIn(t);
+    await t.mutation(api.accounts.signOut, { token });
+    await expect(t.mutation(api.accounts.requestVerifiedCall, { token })).rejects.toThrow("not_signed_in");
+    const verification = (await t.run(async (ctx) => await ctx.db.query("notifications").collect())).filter((n) => n.purpose === "verification");
+    expect(verification).toHaveLength(0);
+  });
+
+  it("is limited like the spoken callback: one a minute, three an hour", async () => {
+    const t = newTest();
+    const token = await signIn(t);
+    expect(await t.mutation(api.accounts.requestVerifiedCall, { token })).toEqual({ ok: true });
+    expect(await t.mutation(api.accounts.requestVerifiedCall, { token })).toEqual({ ok: false, reason: "rate_limited" });
+    for (let i = 0; i < 2; i++) {
+      vi.advanceTimersByTime(61_000);
+      expect(await t.mutation(api.accounts.requestVerifiedCall, { token })).toEqual({ ok: true });
+    }
+    vi.advanceTimersByTime(61_000);
+    expect(await t.mutation(api.accounts.requestVerifiedCall, { token })).toEqual({ ok: false, reason: "rate_limited" });
+  });
+
+  it("calls from Soterra that are not the callback check never verify a call: update calls and the sign-in code call", async () => {
+    const t = newTest();
+    await signIn(t);
+    const [codeNotification] = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    const codeCall = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: codeNotification._id });
+    expect((await getCall(t, codeCall.sessionId))?.verifiedPhone).toBeUndefined();
+    const updateId = await t.run(async (ctx) =>
+      ctx.db.insert("notifications", { recipientPhone: PHONE_2, channel: "phone_call", language: "en", message: "Update", bulletinRefs: [], dedupeKey: "u1", status: "queued", createdAt: Date.now() }),
+    );
+    const updateCall = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: updateId });
+    expect((await getCall(t, updateCall.sessionId))?.verifiedPhone).toBeUndefined();
+    expect((await getCall(t, updateCall.sessionId))?.callerContext?.identity).not.toBe("verified_phone");
+    const r = await say(t, updateCall.sessionId, 0, "What do you know about me?");
+    expect(r.reply).toBe(str("verifyAnnounce", "en"));
+  });
+});

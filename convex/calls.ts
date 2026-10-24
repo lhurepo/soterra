@@ -482,20 +482,27 @@ export const completeTurn = internalMutation({
 
 /**
  * Queues the callback check: a phone notification to the caller's own number, delivered after a short pause so
- * they can hang up first. Rate limited per number; dedupe per minute. The call it creates is verified, once.
+ * they can hang up first (the app asks for no pause: it has just authorized the call with its token). Rate limited per
+ * number; dedupe per minute. The call it creates is verified, once. Returns false when it was limited or a duplicate.
  */
-async function queueVerificationCall(ctx: MutationCtx, phone: string, language: string, now: number): Promise<void> {
+export async function queueVerificationCall(
+  ctx: MutationCtx,
+  phone: string,
+  language: string,
+  now: number,
+  delayMs: number = DEFAULTS.verificationDelayMs,
+): Promise<boolean> {
   const recent = await ctx.db
     .query("notifications")
     .withIndex("by_recipientPhone_and_createdAt", (q) => q.eq("recipientPhone", phone).gt("createdAt", now - 3_600_000))
     .take(20);
-  if (recent.filter((n) => n.purpose === "verification").length >= DEFAULTS.verificationsPerHour) return;
+  if (recent.filter((n) => n.purpose === "verification").length >= DEFAULTS.verificationsPerHour) return false;
   const dedupeKey = `verify:${phone}:${Math.floor(now / 60_000)}`;
   const dup = await ctx.db
     .query("notifications")
     .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", dedupeKey))
     .first();
-  if (dup) return;
+  if (dup) return false;
   const notificationId = await ctx.db.insert("notifications", {
     recipientPhone: phone,
     channel: "phone_call",
@@ -507,7 +514,8 @@ async function queueVerificationCall(ctx: MutationCtx, phone: string, language: 
     status: "queued",
     createdAt: now,
   });
-  await ctx.scheduler.runAfter(DEFAULTS.verificationDelayMs, internal.notifications.deliver, { notificationId });
+  await ctx.scheduler.runAfter(delayMs, internal.notifications.deliver, { notificationId });
+  return true;
 }
 
 async function endCall(ctx: MutationCtx, call: Doc<"calls">, endedAt: number, reason: NonNullable<Doc<"calls">["endReason"]>) {

@@ -9,6 +9,7 @@ import { normalizeE164 } from "../src/memory/phone";
 import { stateForZip } from "../src/orchestration/area";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
+import { queueVerificationCall } from "./calls";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 
 async function currentAccount(ctx: QueryCtx): Promise<Doc<"accounts"> | null> {
@@ -232,6 +233,25 @@ export const saveMyProfile = mutation({
     const { displayName, preferredLanguage, personalContext, homeZip, emergencyContact } = profile;
     await ctx.db.patch("accounts", session.accountId, { displayName, preferredLanguage, personalContext, homeZip, emergencyContact });
     return true;
+  },
+});
+
+/**
+ * "Call me" in the app: the signed-in app asks Soterra to ring the linked number now. The call it places is the callback
+ * check (verified for that call only), authorized by the session token, so the user gets personal commands ("what do you
+ * know about me", "forget me") without calling in and waiting. Whoever answers must hold the phone. Limits are the same
+ * as for the spoken callback: three an hour per number, one a minute.
+ */
+export const requestVerifiedCall = mutation({
+  args: { token: v.string() },
+  returns: v.union(v.object({ ok: v.literal(true) }), v.object({ ok: v.literal(false), reason: v.literal("rate_limited") })),
+  handler: async (ctx, { token }) => {
+    const session = await sessionFor(ctx, token);
+    if (!session) throw new ConvexError("not_signed_in");
+    const account = await ctx.db.get("accounts", session.accountId);
+    const language = account?.preferredLanguage && isSupportedLanguage(account.preferredLanguage) ? account.preferredLanguage : "en";
+    const queued = await queueVerificationCall(ctx, session.phone, language, Date.now(), 0);
+    return queued ? ({ ok: true } as const) : ({ ok: false, reason: "rate_limited" } as const);
   },
 });
 
