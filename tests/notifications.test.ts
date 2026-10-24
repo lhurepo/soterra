@@ -46,7 +46,10 @@ describe("matcher", () => {
     expect(eventMatches(sub({ trigger: "severity_change" }), event({ severityAfter: "severe" }), NOW)).toBe(false);
     expect(eventMatches(sub({ trigger: "evacuation_change" }), event(), NOW)).toBe(true);
     expect(eventMatches(sub({ trigger: "evacuation_change" }), event({ hazardType: "wildfire" }), NOW)).toBe(false);
-    expect(eventMatches(sub({ trigger: "evacuation_change" }), event({ change: "created" }), NOW)).toBe(false);
+    expect(eventMatches(sub({ trigger: "evacuation_change" }), event({ change: "created" }), NOW)).toBe(false); // incident request
+    const area = { kind: "area" as const, area: { state: "CA", label: "California" } };
+    expect(eventMatches(sub({ trigger: "evacuation_change", target: area }), event({ change: "created", areas: [{ state: "CA" }] }), NOW)).toBe(true);
+    expect(eventMatches(sub({ trigger: "evacuation_change", target: area }), event({ change: "created", hazardType: "flood", areas: [{ state: "CA" }] }), NOW)).toBe(false);
     expect(eventMatches(sub({ trigger: "answer_available" }), event(), NOW)).toBe(false);
   });
 

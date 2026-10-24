@@ -1,7 +1,7 @@
 // [B] Caller memory rules. A phone number is not an account: caller ID can be spoofed.
 // - buildCallerContext assembles what the backend knows (cached on the call at session start).
-// - toLlmContext is the policy filter: on caller ID alone the model sees language, a county-level area,
-//   public incidents asked about recently and active update topics. Stored needs and past-summary text
+// - toLlmContext is the policy filter: on caller ID alone the model sees language, a county-level area (to scope
+//   searches silently) and whether any updates are active. Update topics, incidents asked about, stored needs and past-summary text
 //   reach the model only for a call that is verified: linked to an account, or a callback we placed to the
 //   caller's own number (verified_phone, that call only). Nothing here is ever read back.
 import type { AreaRef, CallerContext } from "../contracts";
@@ -78,7 +78,10 @@ export function toLlmContext(context: CallerContext): CallerContext {
     language: context.language,
     // County-level area only: it scopes retrieval and is not a personal detail.
     knownArea: area ? { state: area.state, county: area.county, countyFips: area.countyFips, label: area.label } : undefined,
-    activeSubscriptions: context.activeSubscriptions,
-    recentIncidentKeys: context.recentIncidentKeys,
+    // What someone asked to be told about, and where, is history: only on a verified call. A plain call learns that
+    // updates exist (so "will you call me back?" can be answered) and nothing about their topics or places.
+    activeSubscriptions: context.activeSubscriptions?.length
+      ? [`${context.activeSubscriptions.length} active update${context.activeSubscriptions.length > 1 ? "s" : ""} (topics only after a callback check)`]
+      : undefined,
   };
 }

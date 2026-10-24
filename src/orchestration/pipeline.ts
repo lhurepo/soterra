@@ -179,6 +179,11 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
         const needs = state.context.needs;
         return simple("smalltalk", needs?.length ? tf("profileRecall", language, { needs: needs.join("; ") }) : t("profileEmpty", language), keep);
       }
+      case "updates": {
+        // "area San Francisco (evacuation change)" → "San Francisco, evacuation change"
+        const topics = (state.context.activeSubscriptions ?? []).map((s) => s.replace(/^(?:area|incident) (.+) \((.+)\)$/, "$1, $2"));
+        return simple("smalltalk", topics.length ? tf("updatesList", language, { topics: topics.join("; ") }) : t("updatesNone", language), keep);
+      }
       case "recap": {
         const summary = state.context.lastCallSummary;
         return simple("smalltalk", summary ? tf("recapSummary", language, { summary }) : t("recapNone", language), keep);
@@ -243,6 +248,7 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
       retrieved,
       context: toLlmContext(state.context),
       area: resolved.area,
+      areaFromMemory: resolved.source === "context",
       history: state.history,
       now: t1,
     },
