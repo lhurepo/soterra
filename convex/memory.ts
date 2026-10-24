@@ -38,6 +38,12 @@ export const finalizeCall = internalMutation({
       memoryExpiresAt: accountId ? undefined : now + anonMemoryTtlMs(cfg),
     });
 
+    if (call.notificationId) {
+      const notification = await ctx.db.get("notifications", call.notificationId);
+      // The greeting of a code call contains the code itself: do not keep it.
+      if (notification?.purpose === "app_code") await ctx.db.patch("calls", callId, { greeting: undefined });
+    }
+
     if (call.forgotten) {
       // "Forget me" was said on this call: keep nothing from it (no caller memory, no summary) and drop its turns.
       const { done } = await deleteTurns(ctx, callId, DEFAULTS.purgeBatchSize);

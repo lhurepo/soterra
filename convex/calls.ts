@@ -7,7 +7,7 @@ import { DEFAULTS, isSupportedLanguage, supportedLanguage } from "../src/config/
 import { buildCallerContext } from "../src/memory/callerContext";
 import { STALE_SESSION_MS } from "../src/memory/retention";
 import { stateForZip, type AreaCandidate } from "../src/orchestration/area";
-import { inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
+import { appCodeGreeting, inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
 import type { LlmMessage } from "../src/providers/llm/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -110,11 +110,23 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
     })),
     now,
   });
-  const greeting = verifiedPhone
-    ? verificationGreeting(language)
-    : args.direction === "outbound" && notification
-      ? outboundGreeting(language, notification.message)
-      : inboundGreeting(language);
+  // The call that reads the app its sign-in code: the code comes from the challenge this notification belongs to.
+  let appCode: string | null | undefined;
+  if (args.direction === "outbound" && notification?.purpose === "app_code") {
+    const challenge = await ctx.db
+      .query("phoneChallenges")
+      .withIndex("by_notificationId", (q) => q.eq("notificationId", notification._id))
+      .unique();
+    appCode = challenge && challenge.expiresAt > now ? challenge.code : null;
+  }
+  const greeting =
+    appCode !== undefined
+      ? appCodeGreeting(language, appCode)
+      : verifiedPhone
+        ? verificationGreeting(language)
+        : args.direction === "outbound" && notification
+          ? outboundGreeting(language, notification.message)
+          : inboundGreeting(language);
 
   const callId = await ctx.db.insert("calls", {
     provider: "cartesia",
@@ -228,6 +240,10 @@ export type BeginTurnResult =
       callIncidentKeys: string[];
       pendingAction?: "forget";
       verificationsLastHour: number;
+      /** For an update callback: the update we phoned about, so the model knows why it called. */
+      callReason?: string;
+      /** Chunks of the bulletin(s) behind that update; always included in the sources for this call. */
+      pinnedChunkIds?: string[];
     };
 
 /**
@@ -310,10 +326,29 @@ export const beginTurn = internalMutation({
         ).filter((n) => n.purpose === "verification").length
       : 0;
 
+    // An update callback: remember what we called about, and keep that bulletin in the sources so the caller can ask about it.
+    let callReason: string | undefined;
+    const pinnedChunkIds: string[] = [];
+    if (call.direction === "outbound" && call.notificationId && !call.verifiedPhone) {
+      const notification = await ctx.db.get("notifications", call.notificationId);
+      if (notification && (notification.purpose === undefined || notification.purpose === "update")) {
+        callReason = notification.message;
+        for (const bulletinId of notification.bulletinRefs.slice(0, 3)) {
+          const chunks = await ctx.db
+            .query("chunks")
+            .withIndex("by_bulletinId", (q) => q.eq("bulletinId", bulletinId))
+            .take(3);
+          pinnedChunkIds.push(...chunks.map((c) => c._id as string));
+        }
+      }
+    }
+
     return {
       status: "new",
       callId,
       turnId,
+      callReason,
+      pinnedChunkIds: pinnedChunkIds.length > 0 ? pinnedChunkIds : undefined,
       pendingAction: call.pendingAction,
       verificationsLastHour,
       hasCallerPhone: call.callerPhone !== undefined,
@@ -447,20 +482,27 @@ export const completeTurn = internalMutation({
 
 /**
  * Queues the callback check: a phone notification to the caller's own number, delivered after a short pause so
- * they can hang up first. Rate limited per number; dedupe per minute. The call it creates is verified, once.
+ * they can hang up first (the app asks for no pause: it has just authorized the call with its token). Rate limited per
+ * number; dedupe per minute. The call it creates is verified, once. Returns false when it was limited or a duplicate.
  */
-async function queueVerificationCall(ctx: MutationCtx, phone: string, language: string, now: number): Promise<void> {
+export async function queueVerificationCall(
+  ctx: MutationCtx,
+  phone: string,
+  language: string,
+  now: number,
+  delayMs: number = DEFAULTS.verificationDelayMs,
+): Promise<boolean> {
   const recent = await ctx.db
     .query("notifications")
     .withIndex("by_recipientPhone_and_createdAt", (q) => q.eq("recipientPhone", phone).gt("createdAt", now - 3_600_000))
     .take(20);
-  if (recent.filter((n) => n.purpose === "verification").length >= DEFAULTS.verificationsPerHour) return;
+  if (recent.filter((n) => n.purpose === "verification").length >= DEFAULTS.verificationsPerHour) return false;
   const dedupeKey = `verify:${phone}:${Math.floor(now / 60_000)}`;
   const dup = await ctx.db
     .query("notifications")
     .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", dedupeKey))
     .first();
-  if (dup) return;
+  if (dup) return false;
   const notificationId = await ctx.db.insert("notifications", {
     recipientPhone: phone,
     channel: "phone_call",
@@ -472,7 +514,8 @@ async function queueVerificationCall(ctx: MutationCtx, phone: string, language: 
     status: "queued",
     createdAt: now,
   });
-  await ctx.scheduler.runAfter(DEFAULTS.verificationDelayMs, internal.notifications.deliver, { notificationId });
+  await ctx.scheduler.runAfter(delayMs, internal.notifications.deliver, { notificationId });
+  return true;
 }
 
 async function endCall(ctx: MutationCtx, call: Doc<"calls">, endedAt: number, reason: NonNullable<Doc<"calls">["endReason"]>) {

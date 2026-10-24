@@ -36,19 +36,18 @@ export function subscriptionTopic(s: NonNullable<CallerContextSources["activeSub
 
 /** ≈ 300 tokens at most (plus ≈ 250 for a linked account's personal context): the summary, needs and lists are clipped. */
 export function buildCallerContext(src: CallerContextSources): CallerContext {
-  const phoneVerified = !src.accountId && src.verifiedPhone === true && src.callerId !== undefined;
-  const identity: CallerContext["identity"] = src.accountId
-    ? "verified_account"
-    : phoneVerified
-      ? "verified_phone"
+  // The callback check wins: a call WE placed to the caller's number is verified for that call, account or not.
+  // A call that only arrives from a linked number is "verified_account": caller ID can be spoofed, so it may shape the
+  // answers (needs, profile) but nothing is read back, listed or changed without the callback.
+  const phoneVerified = src.verifiedPhone === true && src.callerId !== undefined;
+  const identity: CallerContext["identity"] = phoneVerified
+    ? "verified_phone"
+    : src.accountId
+      ? "verified_account"
       : src.callerId
         ? "caller_id"
         : "anonymous";
-  const needs = src.accountId
-    ? [...new Set([...(src.accountNeeds ?? []), ...(src.profileNeeds ?? [])])]
-    : phoneVerified
-      ? src.profileNeeds
-      : undefined;
+  const needs = src.accountId || phoneVerified ? [...new Set([...(src.accountNeeds ?? []), ...(src.profileNeeds ?? [])])] : undefined;
   const recent = (at: number | undefined) => at !== undefined && src.now - at <= DEFAULTS.lastSummaryTtlMs;
   const context: CallerContext = {
     callerId: src.callerId,
@@ -73,7 +72,15 @@ export function approxTokens(context: CallerContext): number {
 
 /** What the model may see. */
 export function toLlmContext(context: CallerContext): CallerContext {
-  if (context.identity === "verified_account" || context.identity === "verified_phone") return context;
+  if (context.identity === "verified_phone") return context;
+  // A linked number without the callback: the profile may tailor answers, but history is only for the callback.
+  if (context.identity === "verified_account") {
+    const { lastCallSummary: _s, recentIncidentKeys: _r, activeSubscriptions: subs, ...tailoring } = context;
+    return {
+      ...tailoring,
+      activeSubscriptions: subs?.length ? [`${subs.length} active update${subs.length > 1 ? "s" : ""} (topics only after a callback check)`] : undefined,
+    };
+  }
   const area = context.knownArea;
   return {
     callerId: context.callerId,

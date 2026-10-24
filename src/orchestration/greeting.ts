@@ -1,5 +1,5 @@
 // [B] Session greetings, assembled only from canonical strings (src/config/strings.ts).
-import { t } from "../config/strings";
+import { t, tf } from "../config/strings";
 
 /**
  * Welcome, the 911 line, the one-sentence transcription notice, the question. Memory is never volunteered:
@@ -24,4 +24,13 @@ export function outboundGreeting(language: string, updateMessage: string): strin
     t("emergencyLine", language),
     t("transcriptionNotice", language),
   ].join(" ");
+}
+
+/**
+ * The call that reads the app its sign-in code. Digits are spaced so they are read one by one ("4 8 2 9 1 7"), and the code
+ * comes first so nobody has to sit through the notice to hear it. `code` is null when the code has already expired.
+ */
+export function appCodeGreeting(language: string, code: string | null): string {
+  const first = code ? tf("appCodeIntro", language, { code: code.split("").join(" ") }) : t("appCodeExpired", language);
+  return [first, t("transcriptionNotice", language)].join(" ");
 }

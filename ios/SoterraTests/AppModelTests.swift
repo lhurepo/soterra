@@ -9,7 +9,7 @@ final class AppModelTests: XCTestCase {
     func testEmergencyButtonNeverDials911InTheDemoBuild() {
         XCTAssertEqual(DemoConfig.emergencyCallURL.absoluteString, "tel:119")
         XCTAssertFalse(DemoConfig.emergencyCallURL.absoluteString.contains("911"))
-        XCTAssertEqual(DemoConfig.hotlineURL.absoluteString, "tel:+18046066867")
+        XCTAssertEqual(DemoConfig.hotlineURL.absoluteString, "tel:+17126003362")
     }
 
     func testSeverityLevels() {

@@ -56,6 +56,27 @@ describe("subscription → update → notification → outbound call", () => {
     expect((await t.run(async (ctx) => await ctx.db.get("subscriptions", r.subscriptionId as Id<"subscriptions">)))?.status).toBe("cancelled");
   });
 
+  it("an update callback knows what it called about: that bulletin is always among the sources", async () => {
+    const t = newTest();
+    await seedBulletins(t);
+    const r = await subscribe(t);
+    await seedBulletins(t, updateDrafts);
+    await settle(t);
+    const [n] = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    const outbound = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: n._id });
+    // A vague question that retrieval alone would not tie to the update.
+    await say(t, outbound.sessionId, 0, "Why did you call me?");
+    const expected = await t.run(async (ctx) =>
+      (await ctx.db.query("chunks").withIndex("by_bulletinId", (q) => q.eq("bulletinId", n.bulletinRefs[0])).take(3)).map((c) => c._id as string),
+    );
+    const turn = await t.run(async (ctx) =>
+      (await ctx.db.query("callTurns").withIndex("by_callId_and_turnIndex", (q) => q.eq("callId", outbound.sessionId as Id<"calls">)).collect())[0],
+    );
+    expect(expected.length).toBeGreaterThan(0);
+    for (const id of expected) expect(turn.retrievedChunkIds?.map(String)).toContain(id);
+    expect(r.subscriptionId).toBeDefined();
+  });
+
   it("ties an outbound call to its notification by Cartesia's agent_call_id when notificationId is missing", async () => {
     const t = newTest();
     await seedBulletins(t);

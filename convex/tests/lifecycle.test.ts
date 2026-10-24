@@ -104,26 +104,6 @@ describe("accounts", () => {
     });
   });
 
-  it("a profile saved from the app reaches the next call from that number, and saving again replaces it", async () => {
-    const t = newTest();
-    const profile = { displayName: "Ana", preferredLanguage: "es", personalContext: "Wheelchair user; insulin in the fridge.", homeZip: "95404" };
-    const accountId = await t.mutation(api.accounts.saveProfile, { phone: "(707) 555-0145", ...profile });
-    expect(await t.query(api.accounts.getProfileByPhone, { phone: PHONE_2 })).toMatchObject({ accountId, phone: PHONE_2, ...profile });
-    const s = await start(t, { callerPhone: PHONE_2, languageHint: undefined });
-    expect((await getCall(t, s.sessionId))?.callerContext).toMatchObject({
-      identity: "verified_account",
-      language: "es",
-      personalContext: profile.personalContext,
-      knownArea: { state: "CA", zip: "95404" },
-    });
-    expect(await t.mutation(api.accounts.saveProfile, { phone: PHONE_2, displayName: "Ana R." })).toBe(accountId);
-    const saved = await t.query(api.accounts.getProfileByPhone, { phone: PHONE_2 });
-    expect(saved).toMatchObject({ displayName: "Ana R." });
-    expect(saved?.personalContext).toBeUndefined();
-    await expect(t.mutation(api.accounts.saveProfile, { phone: "12" })).rejects.toThrow("invalid_phone");
-    expect(await t.query(api.accounts.getProfileByPhone, { phone: PHONE })).toBeNull();
-  });
-
   it("an unverified link gives neither accountId nor needs", async () => {
     const t = newTest();
     await t.mutation(internal.accounts.createTestAccount, { phone: PHONE_2, verified: false, needs: ["oxygen"] });

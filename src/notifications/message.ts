@@ -14,7 +14,16 @@ export function buildUpdateMessage(
   language: string,
 ): string {
   const time = formatSpokenTime(b.updatedAt ?? b.issuedAt, b.primaryState, language);
-  return tf("updateMessage", language, { source: b.sourceName, time, title: b.title.replace(/[.\s]+$/, ""), detail: detailSentence(b.body) }).trim();
+  const title = b.title.replace(/[.\s]+$/, "");
+  const detail = detailSentence(b.body);
+  // "JORA Fire. JORA Fire, Los Angeles County." says the name twice: when the detail starts with the title, say it once.
+  const repeats = detail.toLowerCase().startsWith(title.toLowerCase());
+  return tf("updateMessage", language, {
+    source: b.sourceName,
+    time,
+    title: repeats ? detail.replace(/[.\s]+$/, "") : title,
+    detail: repeats ? "" : detail,
+  }).trim();
 }
 
 export function buildAnswerMessage(
