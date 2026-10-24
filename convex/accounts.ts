@@ -4,7 +4,7 @@
 // take a phone number. Nothing here trusts a bare phone number. (Convex Auth for the "my" queries is still TODO(B):
 // until convex/auth.config.ts exists, getUserIdentity() is null and those return nothing.)
 import { ConvexError, v } from "convex/values";
-import { isSupportedLanguage } from "../src/config/defaults";
+import { DEFAULTS, isSupportedLanguage } from "../src/config/defaults";
 import { normalizeE164 } from "../src/memory/phone";
 import { stateForZip } from "../src/orchestration/area";
 import { internal } from "./_generated/api";
@@ -255,6 +255,28 @@ export const requestVerifiedCall = mutation({
   },
 });
 
+/**
+ * "Call Soterra" in the app: call this right before opening the dialer. The next inbound call from the linked number in
+ * the next two minutes is verified (once), because the app, which holds the session token, asked for it. A spoofer would
+ * have to fake the caller ID inside that window; for stronger proof use requestVerifiedCall ("Call me").
+ */
+export const armAppCall = mutation({
+  args: { token: v.string() },
+  returns: v.object({ expiresAt: v.number() }),
+  handler: async (ctx, { token }) => {
+    const session = await sessionFor(ctx, token);
+    if (!session) throw new ConvexError("not_signed_in");
+    const now = Date.now();
+    // One armed call at a time per number: older unused arms are dropped.
+    for (const old of await ctx.db.query("appCallArms").withIndex("by_phone", (q) => q.eq("phone", session.phone)).take(10)) {
+      if (old.usedAt === undefined) await ctx.db.delete("appCallArms", old._id);
+    }
+    const expiresAt = now + DEFAULTS.appCallArmMs;
+    await ctx.db.insert("appCallArms", { phone: session.phone, accountId: session.accountId, createdAt: now, expiresAt });
+    return { expiresAt };
+  },
+});
+
 export const signOut = mutation({
   args: { token: v.string() },
   returns: v.boolean(),
@@ -276,6 +298,12 @@ export const purgeAuth = internalMutation({
     for (const c of await ctx.db.query("phoneChallenges").withIndex("by_phone_and_createdAt").take(200)) {
       if (c.expiresAt < now - 3_600_000) {
         await ctx.db.delete("phoneChallenges", c._id);
+        removed++;
+      }
+    }
+    for (const a of await ctx.db.query("appCallArms").take(200)) {
+      if (a.expiresAt < now - 3_600_000) {
+        await ctx.db.delete("appCallArms", a._id);
         removed++;
       }
     }

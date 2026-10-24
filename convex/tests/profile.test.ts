@@ -124,14 +124,19 @@ describe("spoofing", () => {
     const stale = await start(t, { direction: "outbound", callerPhone: PHONE, notificationId: n._id });
     expect((await getCall(t, stale.sessionId))?.verifiedPhone).toBeUndefined();
 
-    // An ordinary update callback is not a verification either.
+    // An update callback is a call to the real number, so it verifies; but only at the number we dialed and while it is fresh.
     const updateId = await t.run(async (ctx) =>
       ctx.db.insert("notifications", {
         recipientPhone: PHONE, channel: "phone_call", language: "en", message: "Update", bulletinRefs: [], dedupeKey: "u1", status: "queued", createdAt: Date.now(),
       }),
     );
     const update = await start(t, { direction: "outbound", callerPhone: PHONE, notificationId: updateId });
-    expect((await getCall(t, update.sessionId))?.verifiedPhone).toBeUndefined();
+    expect((await getCall(t, update.sessionId))?.verifiedPhone).toBe(true);
+    const wrongNumber = await start(t, { direction: "outbound", callerPhone: PHONE_2, notificationId: updateId });
+    expect((await getCall(t, wrongNumber.sessionId))?.verifiedPhone).toBeUndefined();
+    vi.advanceTimersByTime(11 * 60_000);
+    const old = await start(t, { direction: "outbound", callerPhone: PHONE, notificationId: updateId });
+    expect((await getCall(t, old.sessionId))?.verifiedPhone).toBeUndefined();
   });
 
   it("saying who you are changes nothing", async () => {

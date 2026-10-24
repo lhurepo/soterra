@@ -237,19 +237,69 @@ describe("calling from the app", () => {
     expect(await t.mutation(api.accounts.requestVerifiedCall, { token })).toEqual({ ok: false, reason: "rate_limited" });
   });
 
-  it("calls from Soterra that are not the callback check never verify a call: update calls and the sign-in code call", async () => {
+  it("a call WE place to the number verifies (callback check, update); the sign-in code call and a plain inbound call do not", async () => {
     const t = newTest();
     await signIn(t);
     const [codeNotification] = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
     const codeCall = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: codeNotification._id });
     expect((await getCall(t, codeCall.sessionId))?.verifiedPhone).toBeUndefined();
+    const inbound = await start(t, { callerPhone: PHONE_2 });
+    expect((await getCall(t, inbound.sessionId))?.verifiedPhone).toBeUndefined();
+    expect((await say(t, inbound.sessionId, 0, "What do you know about me?")).reply).toBe(str("verifyAnnounce", "en"));
+
     const updateId = await t.run(async (ctx) =>
-      ctx.db.insert("notifications", { recipientPhone: PHONE_2, channel: "phone_call", language: "en", message: "Update", bulletinRefs: [], dedupeKey: "u1", status: "queued", createdAt: Date.now() }),
+      ctx.db.insert("notifications", { recipientPhone: PHONE_2, channel: "phone_call", language: "en", message: "Update from X: Y.", bulletinRefs: [], dedupeKey: "u1", status: "queued", createdAt: Date.now() }),
     );
     const updateCall = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: updateId });
-    expect((await getCall(t, updateCall.sessionId))?.verifiedPhone).toBeUndefined();
-    expect((await getCall(t, updateCall.sessionId))?.callerContext?.identity).not.toBe("verified_phone");
-    const r = await say(t, updateCall.sessionId, 0, "What do you know about me?");
-    expect(r.reply).toBe(str("verifyAnnounce", "en"));
+    expect(updateCall.greeting).toContain("Update from X: Y."); // still the update greeting, not the callback-check one
+    expect((await getCall(t, updateCall.sessionId))?.callerContext?.identity).toBe("verified_phone");
+    expect((await say(t, updateCall.sessionId, 0, "What do you know about me?")).reply).not.toBe(str("verifyAnnounce", "en"));
+  });
+});
+
+describe("Call Soterra in the app", () => {
+  it("arms the next inbound call from the linked number: it is verified, once", async () => {
+    const t = newTest();
+    const token = await signIn(t);
+    await t.mutation(api.accounts.saveMyProfile, { token, ...profile });
+    const armed = await t.mutation(api.accounts.armAppCall, { token });
+    expect(Math.abs(armed.expiresAt - Date.now() - 2 * 60_000)).toBeLessThan(50); // two minutes, give or take clock drift
+
+    const call = await start(t, { callerPhone: PHONE_2, languageHint: undefined });
+    expect(call.greeting).toContain(str("appVerifiedNote", "es"));
+    expect(await getCall(t, call.sessionId)).toMatchObject({ direction: "inbound", verifiedPhone: true, callerContext: { identity: "verified_phone", personalContext: profile.personalContext } });
+    expect((await say(t, call.sessionId, 0, "Recuerda que uso silla de ruedas", { language: "es" })).reply).not.toBe(str("verifyAnnounce", "es"));
+
+    // Single use: the next call from the same number is plain caller ID again.
+    const second = await start(t, { callerPhone: PHONE_2 });
+    expect((await getCall(t, second.sessionId))?.verifiedPhone).toBeUndefined();
+    expect(second.greeting).not.toContain(str("appVerifiedNote", "en"));
+  });
+
+  it("does not verify a call from another number, after the window, or without a signed-in app", async () => {
+    const t = newTest();
+    const token = await signIn(t);
+    await expect(t.mutation(api.accounts.armAppCall, { token: "x".repeat(64) })).rejects.toThrow("not_signed_in");
+    await t.mutation(api.accounts.armAppCall, { token });
+    const other = await start(t, { callerPhone: PHONE });
+    expect((await getCall(t, other.sessionId))?.verifiedPhone).toBeUndefined();
+    vi.advanceTimersByTime(2 * 60_000 + 1000);
+    const late = await start(t, { callerPhone: PHONE_2 });
+    expect((await getCall(t, late.sessionId))?.verifiedPhone).toBeUndefined();
+    await t.mutation(api.accounts.signOut, { token });
+    await expect(t.mutation(api.accounts.armAppCall, { token })).rejects.toThrow("not_signed_in");
+  });
+
+  it("arming twice keeps one armed call, and an outbound call never consumes it", async () => {
+    const t = newTest();
+    const token = await signIn(t);
+    await t.mutation(api.accounts.armAppCall, { token });
+    await t.mutation(api.accounts.armAppCall, { token });
+    expect((await t.run(async (ctx) => await ctx.db.query("appCallArms").collect())).filter((a) => a.usedAt === undefined)).toHaveLength(1);
+    const code = await t.run(async (ctx) => await ctx.db.query("notifications").first());
+    const outbound = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: code!._id });
+    expect(outbound.greeting).not.toContain(str("appVerifiedNote", "en"));
+    const inbound = await start(t, { callerPhone: PHONE_2 });
+    expect((await getCall(t, inbound.sessionId))?.verifiedPhone).toBe(true);
   });
 });
