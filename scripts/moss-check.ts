@@ -1,7 +1,7 @@
 // [B] npx tsx scripts/moss-check.ts — verifies the Moss SDK against the real service with MOSS_PROJECT_ID and
 // MOSS_PROJECT_KEY from .env.local (never printed). Creates a throwaway index of three fictional documents,
 // times create, cold query, loadIndex and warm query, then deletes the index. Prints timings only.
-import { MossClient } from "@moss-dev/moss";
+import { MossClient } from "@moss-js/moss";
 import { loadEnvLocal } from "./lib/env";
 
 loadEnvLocal();

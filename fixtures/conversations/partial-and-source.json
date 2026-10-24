@@ -1,0 +1,12 @@
+{
+  "name": "partial-and-source",
+  "description": "Partial answers lead with what was not found, then the closest facts; 'where is that from' gives the full source.",
+  "requiresFixtures": ["ridgeview-initial"],
+  "session": { "direction": "inbound", "languageHint": "en" },
+  "turns": [
+    { "utterance": "Is there a shelter in Healdsburg?", "expectKind": "answer" },
+    { "utterance": "Where did that information come from?", "expectKind": "answer" },
+    { "utterance": "Is there a shelter in San Diego?", "expectKind": "no_info" },
+    { "utterance": "Thanks, goodbye.", "expectKind": "goodbye", "expectEndCall": true }
+  ]
+}

@@ -1,11 +1,14 @@
-// [B] Live Moss index backed by @moss-dev/moss (native binaries: import only from a "use node" action).
-// Verified 2026-10-24 with the project's key (scripts/moss-check.ts): createIndex, addDocs (upsert) and
-// deleteDocs work; cloud query returned HTTP 503 and loadIndex failed downloading the embedding model (401).
-// So retrieval through Moss stays behind RETRIEVER=moss and falls back to Convex (docs/DECISIONS.md).
-import { MossClient } from "@moss-dev/moss";
+// [B] Live Moss index backed by @moss-js/moss (native binaries: import only from a "use node" action).
+// History (2026-10-24): with the old package @moss-dev/moss 1.7.1, createIndex/addDocs/deleteDocs worked but
+// loadIndex failed downloading the embedding model (401) and the cloud query returned 503. The docs say that
+// package is frozen (moved to @moss-js/moss in 1.8.0), that versions below 1.9.0 lose their model download path,
+// and that the cloud query service is retired: queries run in memory after loadIndex. See docs/DECISIONS.md.
+import { MossClient } from "@moss-js/moss";
 import type { MossConfig, MossDoc, MossHit, MossIndex } from "./index";
 
 export const MOSS_MODEL = "moss-minilm";
+/** Convex actions can write to /tmp; a warm container then skips the index download. */
+const MOSS_CACHE_PATH = "/tmp/soterra-moss";
 
 export class LiveMossIndex implements MossIndex {
   private readonly client: MossClient;
@@ -35,15 +38,14 @@ export class LiveMossIndex implements MossIndex {
     await this.client.deleteDocs(this.config.indexName, ids);
   }
 
-  /** Loads the index on first use (on-device query), falling back to the cloud query if loading fails. */
+  /**
+   * Loads the index into memory on first use, then queries it locally (the docs retired the cloud query).
+   * A failed load throws, so the retriever falls back to Convex search.
+   */
   async query(text: string, topK: number): Promise<MossHit[]> {
     if (!this.loaded) {
-      try {
-        await this.client.loadIndex(this.config.indexName);
-        this.loaded = true;
-      } catch (err) {
-        console.warn("[moss] loadIndex failed; using cloud query:", err instanceof Error ? err.message : err);
-      }
+      await this.client.loadIndex(this.config.indexName, { cachePath: MOSS_CACHE_PATH });
+      this.loaded = true;
     }
     const result = await this.client.query(this.config.indexName, text, { topK });
     return result.docs.map((d) => ({ id: d.id, score: d.score }));

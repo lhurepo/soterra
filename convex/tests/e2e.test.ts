@@ -29,7 +29,7 @@ describe("mock end-to-end call", () => {
     expect(result.greeting.greeting).toMatch(/transcribed/);
     const first = result.turns[0].response;
     expect(first.citations.length).toBeGreaterThan(0);
-    expect(first.reply).toMatch(/\(Demo\), (issued|updated) October 24 at \d+:\d\d (AM|PM) Pacific\./);
+    expect(first.reply).toMatch(/Sonoma County Fire, (\d+:\d\d (AM|PM)|yesterday|October 24)\./);
 
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     await t.run(async (ctx) => {

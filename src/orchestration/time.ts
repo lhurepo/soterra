@@ -49,3 +49,24 @@ export function formatSpokenTime(epochMs: number, state: string | undefined, lan
   const spoken = es ? `${date} a las ${time} ${label.es}` : `${date} at ${time} ${label.en}`;
   return spoken.replace(/\s+/gu, " "); // ICU may emit narrow no-break spaces
 }
+
+/**
+ * The bare minimum for an attribution: "2:10 PM" for today, "yesterday", otherwise "October 24".
+ * `now` decides what "today" means; the call's time zone comes from the source's state.
+ */
+export function formatShortTime(epochMs: number, state: string | undefined, language: string, now: number): string {
+  const es = language.toLowerCase().startsWith("es");
+  const timeZone = timeZoneForState(state);
+  try {
+    const day = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+    const locale = es ? "es-US" : "en-US";
+    if (day(epochMs) === day(now)) {
+      // "1:45 p.m." ends in a period; the attribution template adds its own.
+      return new Intl.DateTimeFormat(locale, { timeZone, hour: "numeric", minute: "2-digit" }).format(epochMs).replace(/\s+/gu, " ").replace(/\.$/, "");
+    }
+    if (day(epochMs) === day(now - 86_400_000)) return es ? "ayer" : "yesterday";
+    return new Intl.DateTimeFormat(locale, { timeZone, month: "long", day: "numeric" }).format(epochMs).replace(/\s+/gu, " ");
+  } catch {
+    return formatSpokenTime(epochMs, state, language);
+  }
+}

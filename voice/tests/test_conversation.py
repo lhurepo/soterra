@@ -6,6 +6,7 @@ import json
 import pytest
 from line.events import CallEnded, CallStarted
 
+from soterra_voice.speech import speakable
 from soterra_voice.backend_client import MockBackendClient, _golden_reply
 from soterra_voice.models import SessionEndRequest, TurnRequest
 
@@ -19,11 +20,11 @@ def test_scripted_conversation(name):
     backend = MockBackendClient.from_conversation(path)
     agent, _ = make(backend)
     spoken = said(collect(agent, CallStarted()))
-    assert "911" in " ".join(spoken)
+    assert "9 1 1" in " ".join(spoken)
     hung_up = False
     for turn in script["turns"]:
         out = collect(agent, user(turn["utterance"]))
-        assert said(out) == [_golden_reply(turn["expectKind"])]
+        assert said(out) == [speakable(_golden_reply(turn["expectKind"]))]
         hung_up = ended(out)
     assert hung_up == bool(script["turns"][-1].get("expectEndCall"))
     collect(agent, CallEnded())

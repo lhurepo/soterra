@@ -14,7 +14,7 @@ const STRINGS = {
     welcome: "This is Soterra, the disaster information line.",
     emergencyLine: "If you are in immediate danger, hang up and dial 911.",
     transcriptionNotice:
-      "This call is transcribed to help answer you; say \"summary only\" if you'd rather we keep just a short summary.",
+      "This call is transcribed; say \"summary only\" to keep just a summary.",
     returningOffer: "Welcome back. If you'd like, we can pick up where we left off.",
     askQuestion: "What would you like to know?",
     outboundIntro: "This is Soterra calling with the update you asked for.",
@@ -38,10 +38,11 @@ const STRINGS = {
     clarifyArea: "What city, county or ZIP code are you asking about?",
     addressRefusal:
       "I can't confirm whether a specific address is inside a zone. Please check the official zone lookup for your address.",
-    attribution: "That's from {source}, {verb} {time}.",
-    attributionStale: "That's from {source}, as of {time}.",
-    attributionObserved: "That's from {source}, as of our last check on {time}.",
-    attributionPageUpdated: "That's from {source}. The page was last updated on {time}.",
+    // Attribution is kept to about five words ("Sonoma County Fire, 2:10 PM."); callers can ask for the full source.
+    attribution: "{source}, {time}.",
+    attributionStale: "{source}, as of {time}.",
+    attributionObserved: "{source}, checked {time}.",
+    attributionPageUpdated: "{source}, updated {time}.",
     issued: "issued",
     updated: "updated",
     updateMessage: "Update from {source}, {time}: {title}. {detail}",
@@ -51,7 +52,7 @@ const STRINGS = {
     welcome: "Habla Soterra, la línea de información sobre desastres.",
     emergencyLine: "Si está en peligro inmediato, cuelgue y marque 911.",
     transcriptionNotice:
-      "Esta llamada se transcribe para poder ayudarle; diga \"solo resumen\" si prefiere que guardemos solo un resumen breve.",
+      "Esta llamada se transcribe; diga \"solo resumen\" para guardar solo un resumen.",
     returningOffer: "Bienvenido de nuevo. Si quiere, podemos seguir donde lo dejamos.",
     askQuestion: "¿Qué le gustaría saber?",
     outboundIntro: "Habla Soterra con la actualización que usted pidió.",
@@ -76,10 +77,10 @@ const STRINGS = {
     clarifyArea: "¿Sobre qué ciudad, condado o código postal pregunta?",
     addressRefusal:
       "No puedo confirmar si una dirección específica está dentro de una zona. Consulte la búsqueda oficial de zonas para su dirección.",
-    attribution: "Fuente: {source}, {verb} {time}.",
-    attributionStale: "Fuente: {source}, información del {time}.",
-    attributionObserved: "Fuente: {source}, según nuestra revisión del {time}.",
-    attributionPageUpdated: "Fuente: {source}. La página se actualizó por última vez el {time}.",
+    attribution: "Fuente: {source}, {time}.",
+    attributionStale: "Fuente: {source}, a partir de {time}.",
+    attributionObserved: "Fuente: {source}, revisado {time}.",
+    attributionPageUpdated: "Fuente: {source}, actualizado {time}.",
     issued: "emitido el",
     updated: "actualizado el",
     updateMessage: "Actualización de {source}, {time}: {title}. {detail}",

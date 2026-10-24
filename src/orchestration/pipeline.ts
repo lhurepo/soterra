@@ -11,7 +11,7 @@ import { isLlmError, withTimeout } from "../providers/llm/errors";
 import type { LlmClient, LlmMessage } from "../providers/llm/types";
 import type { RetrievalRequest, RetrievalResult } from "../retrieval/retriever";
 import { resolveArea, type AreaCandidate, type AreaSource } from "./area";
-import { detectDanger } from "./danger";
+import { dangerLanguage } from "./danger";
 import { enforceGrounding } from "./grounding";
 import { asksToStopUpdates, declinesTranscript } from "./intents";
 import { buildTurnRequest, parseDraft } from "./prompt";
@@ -128,7 +128,8 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   const simple = (kind: ReplyKind, reply: string, effects: TurnEffects = {}) => finish({ kind, reply, citations: [], endCall: false, effects });
 
   // 1. Danger first: deterministic, before retrieval and the LLM, and its reply needs neither.
-  if (detectDanger(input.utterance)) return simple("safety", t("safety", language));
+  const inDangerIn = dangerLanguage(input.utterance, language === "es" ? "es" : "en");
+  if (inDangerIn) return { ...simple("safety", t("safety", inDangerIn)), language: inDangerIn };
 
   // 2. Deterministic intents that must not depend on the model.
   if (asksToStopUpdates(input.utterance)) {
@@ -200,9 +201,19 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   let draft;
   let llmModel: string | undefined = deps.model;
   try {
-    const response = await withTimeout(deps.llm.complete(request), deps.timeoutMs ?? DEFAULTS.llmTimeoutMs);
-    llmModel = response.model;
-    draft = parseDraft(response);
+    const attempt = async () => {
+      const response = await withTimeout(deps.llm.complete(request), deps.timeoutMs ?? DEFAULTS.llmTimeoutMs);
+      llmModel = response.model;
+      return parseDraft(response);
+    };
+    try {
+      draft = await attempt();
+    } catch (err) {
+      // Invalid structured output is usually a one-off and the retry is fast; slow failures are not retried.
+      if (!(isLlmError(err) && err.code === "invalid_output")) throw err;
+      console.warn("[turn] invalid LLM output, retrying once");
+      draft = await attempt();
+    }
   } catch (err) {
     timingsMs.llm = deps.now() - t1;
     const code = isLlmError(err) ? `llm_${err.code}` : "llm_failed";

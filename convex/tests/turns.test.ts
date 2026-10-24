@@ -30,7 +30,7 @@ describe("grounded answers", () => {
     const r = await say(t, sessionId, 0, "What's going on with the Ridgeview Fire?");
     expect(r.kind).toBe("answer");
     expect(r.citations.length).toBeGreaterThan(0);
-    expect(r.reply).toMatch(/\(Demo\), (issued|updated) October 24 at \d+:\d\d (AM|PM) Pacific\./);
+    expect(r.reply).toMatch(/Sonoma County Fire, (\d+:\d\d (AM|PM)|yesterday|October 24)\./);
     expect(Object.keys(r.timingsMs ?? {})).toEqual(expect.arrayContaining(["context", "retrieval", "preLlm", "llm", "total"]));
 
     const row = await turnRow(t, sessionId, 0);
@@ -65,7 +65,7 @@ describe("grounded answers", () => {
     const r = await say(t, sessionId, 0, "¿Qué está pasando con el incendio Ridgeview?", { language: "es" });
     expect(r.language).toBe("es");
     expect(r.kind).toBe("answer");
-    expect(r.reply).toMatch(/Fuente: .+\(Demo\), (emitido|actualizado) el 24 de octubre/);
+    expect(r.reply).toMatch(/Fuente: Sonoma County Fire, /);
     expect(r.citations.length).toBeGreaterThan(0);
     // Any other language is answered in English.
     const fr = await say(t, sessionId, 1, "Ridgeview Fire evacuation?", { language: "fr" });

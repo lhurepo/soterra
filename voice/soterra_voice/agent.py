@@ -15,12 +15,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Optional
 
 from line.events import (
     AgentEndCall,
-    AgentSendText,
     AgentTurnEnded,
     AgentTurnStarted,
     AgentUpdateCall,
@@ -36,6 +36,7 @@ from line.events import (
 from . import phrases
 from .backend_client import Backend, BackendError, now_ms
 from .config import E164, Settings, mask_phone, normalize_language
+from .speech import say
 from .models import SessionEndRequest, SessionStartRequest, TurnRequest, TurnResponse
 
 log = logging.getLogger("soterra.voice")
@@ -45,16 +46,37 @@ META_SESSION_ID = "soterra_session_id"
 META_LANGUAGE = "soterra_language"
 META_GREETING = "soterra_greeting"
 
-REPEAT = re.compile(
-    r"^\s*(?:please\s+|can you\s+|could you\s+)?(?:repeat(?: that| it)?|say (?:that|it) again|"
-    r"(?:¿\s*)?(?:me\s+)?(?:lo\s+)?(?:puede|podría)\s+repetir|rep[ií]te(?:lo)?|rep[ií]ta(?:lo)?)"
-    r"(?:\s*,?\s*please)?\s*(?:por favor)?\s*[.?!]*\s*$",
-    re.IGNORECASE,
-)
+# "Say that again" shortcuts. The match is on the whole utterance (after trimming filler and punctuation), so a
+# real question that merely contains "repeat" ("repeat the evacuation order for zone 3") still goes to the backend.
+_OBJECT = r"(?:that|it|this|that part|the question|the answer|the last part|the last thing|what you (?:just )?said|everything|all of that)"
+_TAIL = r"(?: again| one more time| from the (?:start|beginning|top)| please)*"
+_POLITE = r"(?:(?:can|could|would|will) you |please )*(?:please )?"
+_REPEAT_PATTERNS = [
+    # repeat / restart / start over (optionally: that, the question, the answer, ...)
+    rf"{_POLITE}(?:repeat|restart|start over|replay|redo)(?: {_OBJECT})?{_TAIL}",
+    # say that again / tell me that again
+    rf"{_POLITE}(?:say|tell me|go over) {_OBJECT}(?: again| one more time| from the (?:start|beginning))(?: please)?",
+    # short "I missed it" phrases
+    r"(?:come again|one more time|again please|again|what did you (?:just )?say|what was that|say what|pardon(?: me)?|huh|sorry what|"
+    r"i (?:missed|didn't catch|did not catch|couldn't catch|didn't get|did not get) (?:that|it|the (?:last )?(?:part|answer|question)))",
+    # Spanish
+    r"(?:(?:me |lo )*(?:puede|podria|podrias|puedes) )?(?:repetir|repite|repita|repitelo|repitela)(?: (?:eso|esto|la pregunta|la respuesta|lo que dijo|lo que dijiste))?(?: otra vez| de nuevo| por favor)*",
+    r"(?:otra vez|de nuevo|desde el principio|empieza de nuevo|empiece de nuevo|que dijo|que dijiste|no entendi|no escuche|perdon)(?: por favor)?",
+]
+_REPEAT_RE = re.compile(r"^(?:" + "|".join(_REPEAT_PATTERNS) + r")$")
+_LEADING_FILLER = re.compile(r"^(?:(?:ok|okay|sorry|um+|uh+|hey|wait|so|and|yeah|hold on|excuse me)\s+)+")
+
+
+def _normalize_utterance(utterance: str) -> str:
+    text = unicodedata.normalize("NFKD", utterance.lower())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r"[^a-z0-9' ]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return _LEADING_FILLER.sub("", text)
 
 
 def is_repeat_request(utterance: str) -> bool:
-    return bool(REPEAT.match(utterance))
+    return bool(_REPEAT_RE.match(_normalize_utterance(utterance)))
 
 
 @dataclass
@@ -207,9 +229,9 @@ class SoterraAgent:
                 yield LogMetric(name="backend_start_failed", value=1)
                 greeting = None
         for text, interruptible in split_greeting(greeting or phrases.greeting_fallback(self.language)):
-            yield AgentSendText(text=text, interruptible=interruptible)
+            yield say(text, interruptible=interruptible)
         if self.settings.offer_spanish_dtmf and self.call.direction == "inbound":
-            yield AgentSendText(text=phrases.phrase("spanish_offer", self.language))
+            yield say(phrases.phrase("spanish_offer", self.language))
 
     def _language_update(self) -> AgentUpdateCall:
         return AgentUpdateCall(language=self.language, voice_id=self.settings.voice_for(self.language))
@@ -226,11 +248,11 @@ class SoterraAgent:
             if switch_to and switch_to != self.language:
                 self.language = switch_to
                 yield self._language_update()
-                yield AgentSendText(text=phrases.phrase("switched", self.language))
+                yield say(phrases.phrase("switched", self.language))
             return
 
         if is_repeat_request(utterance):
-            yield AgentSendText(text=self.last_reply or phrases.phrase("nothing_to_repeat", self.language))
+            yield say(self.last_reply or phrases.phrase("nothing_to_repeat", self.language))
             return
 
         index = self.turn_index
@@ -255,7 +277,7 @@ class SoterraAgent:
         try:
             done, _ = await asyncio.wait({task}, timeout=self.settings.filler_after_s)
             if not done:
-                yield AgentSendText(text=phrases.phrase("filler", self.language))
+                yield say(phrases.phrase("filler", self.language))
                 yield LogMetric(name="filler_used", value=1)
             remaining = max(0.0, self.settings.turn_timeout_s - (loop.time() - t0))
             response = await asyncio.wait_for(task, timeout=remaining)
@@ -284,7 +306,7 @@ class SoterraAgent:
         yield LogMetric(name="backend_turn_ms", value=elapsed_ms)
         log.info("turn %s kind=%s degraded=%s %d ms", index, response.kind, bool(response.degraded), elapsed_ms)
         self.last_reply = response.reply
-        yield AgentSendText(text=response.reply)
+        yield say(response.reply)
         if response.end_call:
             self._agent_ended = True
             await self._end("agent_end")
@@ -295,12 +317,12 @@ class SoterraAgent:
         log.error("turn %s failed after %d ms: %s (%d in a row)", index, elapsed_ms, error, self.consecutive_failures)
         yield LogMetric(name="backend_turn_failed", value=1)
         if self.consecutive_failures >= self.settings.max_consecutive_failures:
-            yield AgentSendText(text=phrases.phrase("give_up", self.language))
+            yield say(phrases.phrase("give_up", self.language))
             self._agent_ended = True
             await self._end("error")
             yield AgentEndCall()
             return
-        yield AgentSendText(text=phrases.fallback(self.language))
+        yield say(phrases.fallback(self.language))
 
     # ───────────────────────── call end ─────────────────────────
 
