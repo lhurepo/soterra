@@ -68,6 +68,25 @@ enum AlertKind: String, Hashable {
 
 enum HazardType: String, Hashable {
     case wildfire, evacuation, shelter, roadClosure
+    case flood, hurricane, tornado, earthquake, tsunami, winterStorm, extremeHeat, other
+
+    /// The backend's `hazardType` strings (snake_case) map onto these cases.
+    init(backend: String) {
+        switch backend {
+        case "wildfire": self = .wildfire
+        case "evacuation": self = .evacuation
+        case "shelter": self = .shelter
+        case "road_closure": self = .roadClosure
+        case "flood": self = .flood
+        case "hurricane": self = .hurricane
+        case "tornado": self = .tornado
+        case "earthquake": self = .earthquake
+        case "tsunami": self = .tsunami
+        case "winter_storm": self = .winterStorm
+        case "extreme_heat": self = .extremeHeat
+        default: self = .other
+        }
+    }
 
     var systemImage: String {
         switch self {
@@ -75,6 +94,14 @@ enum HazardType: String, Hashable {
         case .evacuation: "figure.walk"
         case .shelter: "house"
         case .roadClosure: "road.lanes"
+        case .flood: "water.waves"
+        case .hurricane: "hurricane"
+        case .tornado: "tornado"
+        case .earthquake: "waveform.path.ecg"
+        case .tsunami: "water.waves.and.arrow.up"
+        case .winterStorm: "snowflake"
+        case .extremeHeat: "thermometer.sun"
+        case .other: "exclamationmark.triangle"
         }
     }
 }

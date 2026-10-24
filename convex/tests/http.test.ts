@@ -71,3 +71,31 @@ describe("mock sites", () => {
     expect(await res.text()).toContain("Ridgeview Fire");
   });
 });
+
+describe("app state feed", () => {
+  it("is public and returns normal mode with no alerts on an empty deployment", async () => {
+    setupEnv();
+    const res = await newTest().fetch("/app/state", { method: "GET" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.contractVersion).toBe(CONTRACT_VERSION);
+    expect(body.mode).toBe("normal");
+    expect(body.alerts).toEqual([]);
+  });
+
+  it("lists active official bulletins with their areas, newest first, and no secrets", async () => {
+    setupEnv();
+    const t = newTest();
+    await seed(t);
+    const body = await (await t.fetch("/app/state", { method: "GET" })).json();
+    expect(body.alerts.length).toBeGreaterThan(0);
+    for (const a of body.alerts) {
+      expect(a.title).toBeTruthy();
+      expect(a.sourceName).toBeTruthy();
+      expect(Array.isArray(a.areaLabels)).toBe(true);
+    }
+    const times = body.alerts.map((a: { updatedAt?: number; issuedAt: number }) => a.updatedAt ?? a.issuedAt);
+    expect([...times].sort((x, y) => y - x)).toEqual(times);
+    expect(JSON.stringify(body)).not.toContain("test-voice-secret");
+  });
+});

@@ -10,7 +10,7 @@ struct AlertDetailView: View {
 
     var body: some View {
         Group {
-            if let alert = DemoData.alert(id: alertID) {
+            if let alert = model.alert(id: alertID) {
                 content(for: alert)
             } else {
                 ContentUnavailableView("This alert is no longer active", systemImage: "bell.slash")

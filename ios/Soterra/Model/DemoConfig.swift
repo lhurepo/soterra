@@ -1,10 +1,13 @@
 import Foundation
 
-/// Settings for the mock build. Nothing here talks to the live backend.
+/// Settings for the demo build. The backend URL is the dev deployment (CLAUDE.md, "Live resources").
 enum DemoConfig {
     /// The live Soterra hotline (docs: CLAUDE.md, "Live resources").
     static let hotlineDisplay = "+1 804 606 6867"
     static let hotlineURL = URL(string: "tel:+18046066867")!
+
+    /// The Convex HTTP site that serves `GET /app/state`.
+    static let backendURL = URL(string: "https://brazen-perch-21.convex.site")!
 
     /// Demo safety: every "Call 911" button opens the dialer with this number instead of 911, so testing the
     /// mock never reaches emergency services. iOS still asks before placing the call.
