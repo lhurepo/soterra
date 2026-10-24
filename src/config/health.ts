@@ -9,7 +9,7 @@ export function integrationStatus(config: Config): Record<string, IntegrationSta
 
   return {
     voiceAuth: has(config.VOICE_API_SECRET) ? "live" : "unconfigured",
-    llm: liveIf(config.LLM_PROVIDER === "anthropic", has(config.ANTHROPIC_API_KEY)),
+    llm: liveIf(config.LLM_PROVIDER === "anthropic", has(config.ANTHROPIC_API_KEY ?? config.ANTHROPIC_API_KEYS)),
     // Convex search needs no configuration; Moss is only "live" when selected and configured.
     retriever:
       config.RETRIEVER === "convex"

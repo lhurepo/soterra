@@ -27,7 +27,7 @@ import { NotConfiguredError } from "../src/config/errors";
 import { ApifyWebhookPayload, LiveApifyClient, RUN_END_EVENTS, WEBHOOK_SECRET_HEADER, verifyApifyWebhook, type ApifyClient } from "../src/providers/apify";
 import { actorInput } from "../src/providers/apify/actors";
 import { MockApifyClient } from "../src/providers/apify/mock";
-import { createAnthropicLlm } from "../src/providers/llm/anthropic";
+import { createAnthropicFromConfig } from "../src/providers/llm";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { httpAction, internalAction, internalMutation, internalQuery, type ActionCtx, type MutationCtx } from "./_generated/server";
@@ -593,7 +593,7 @@ export const processApifyRun = internalAction({
       const isFixture = isFixtureRun(source, run.mode);
       const llm =
         cfg.LLM_PROVIDER === "anthropic"
-          ? createAnthropicLlm(cfg.ANTHROPIC_API_KEY, { timeoutMs: settings.EXTRACTION_TIMEOUT_MS })
+          ? createAnthropicFromConfig(cfg, { timeoutMs: settings.EXTRACTION_TIMEOUT_MS })
           : createDeterministicExtractionLlm();
       const result = await adapter.normalizeItems(items, normalizeContext(source, cfg, settings, isFixture, Date.now()), {
         llm,
