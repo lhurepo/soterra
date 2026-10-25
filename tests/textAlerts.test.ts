@@ -108,7 +108,7 @@ describe("text templates", () => {
       [
         "Update on Cooley Fire (4:40 PM PT):",
         "As of 2:22 PM PT: Cooley Fire, Mendocino County: about 1,365 acres, 90% contained.",
-        "Reply STOP COOLEY FIRE to stop receiving updates on Cooley Fire. Questions? Call (712) 600-3362. In danger? Call 911.",
+        "Reply STOP COOLEY FIRE to stop receiving updates on Cooley Fire.\nQuestions? Call (712) 600-3362.\nIn danger? Call 911.",
       ].join("\n\n"),
     );
     // An older official time carries its date.
@@ -118,7 +118,7 @@ describe("text templates", () => {
   it("adds the repeat line to time-based updates, and says when nothing changed", () => {
     const scheduled = { intervalMs: 2 * HOUR, since: SENT - 3 * HOUR };
     const text = buildUpdateText({ ...base, scheduled }, "en", "+17126003362");
-    expect(text).toContain("\n\nThis is an update every 2 hours. Reply STOP COOLEY FIRE to stop receiving updates on Cooley Fire.");
+    expect(text).toContain("\n\nThis is an update every 2 hours.\nReply STOP COOLEY FIRE to stop receiving updates on Cooley Fire.");
     expect(text).toContain("As of 2:22 PM PT:");
     const same = buildUpdateText({ ...base, scheduled: { ...scheduled, since: SENT - 30 * 60_000 } }, "en");
     expect(same).toContain("No new official updates since 4:10 PM PT. Latest, as of 2:22 PM PT: Cooley Fire, Mendocino County");
@@ -144,11 +144,11 @@ describe("text templates", () => {
     const long = buildUpdateText({ ...base, latest: { ...COOLEY, body: `Cooley Fire ${"burns in steep terrain near the river ".repeat(30)}.` } }, "en", "+17126003362");
     expect(long.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
     expect(long).toMatch(/^Update on Cooley Fire/);
-    expect(long).toMatch(/\.\.\.\n\nReply STOP COOLEY FIRE .* Call 911\.$/);
+    expect(long).toMatch(/\.\.\.\n\nReply STOP COOLEY FIRE [^]* Call 911\.$/);
     const missed = withMissedCallLead(long, "en");
     expect(missed.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
     const cut = fitText(`Intro. ${"word ".repeat(100)}end.`, t("smsFooter", "en"));
-    expect(cut).toMatch(/^Intro\. word word .*\.\.\. Reply STOP/);
+    expect(cut).toMatch(/^Intro\. word word .*\.\.\.\n\nReply STOP/);
     expect(cut.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
   });
 
@@ -180,10 +180,10 @@ describe("text templates", () => {
       "en",
     );
     expect(en).toBe(
-      `Soterra: you'll get texts about Ridgeview Fire when officials post updates; and a call every 2 hours about Sonoma County, until October 25 at 3:00 PM Pacific. ${t("smsFooter", "en")}`,
+      `Soterra: you'll get texts about Ridgeview Fire when officials post updates; and a call every 2 hours about Sonoma County, until October 25 at 3:00 PM Pacific.\n\n${t("smsFooter", "en")}`,
     );
     expect(buildConfirmationText([{ channel: "phone_call", topic: "Ridgeview Fire" }], "x", "en")).toMatch(/a text if you miss one/);
-    expect(buildConfirmationText([{ channel: "sms", intervalMs: HOUR, topic: "Ridgeview Fire" }], "25 de octubre", "es")).toMatch(/^Soterra: recibirá un mensaje cada hora sobre Ridgeview Fire, hasta 25 de octubre\. Responda STOP/);
+    expect(buildConfirmationText([{ channel: "sms", intervalMs: HOUR, topic: "Ridgeview Fire" }], "25 de octubre", "es")).toMatch(/^Soterra: recibirá un mensaje cada hora sobre Ridgeview Fire, hasta 25 de octubre\.\n\nResponda STOP/);
   });
 
   it("names topics for texts", () => {
