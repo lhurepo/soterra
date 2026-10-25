@@ -111,13 +111,14 @@ struct SimpleModeView: View {
             .accessibilityHint("Calls the Soterra hotline, \(DemoConfig.hotlineDisplay)")
 
             Button {
-                model.setMyStatus(.safe)
+                model.toggleSafe()
             } label: {
                 BigButtonLabel(title: isMarkedSafe ? "You're marked safe" : "I'm safe",
-                               detail: "For your household", systemImage: isMarkedSafe ? "checkmark" : "hand.raised")
+                               detail: isMarkedSafe ? "Tap to undo" : "For your household",
+                               systemImage: isMarkedSafe ? "checkmark" : "hand.raised")
             }
             .buttonStyle(BigButtonStyle(fill: Palette.surface, ink: Palette.accent, border: Palette.accent))
-            .disabled(isMarkedSafe)
+            .accessibilityHint(isMarkedSafe ? "Removes your safe status" : "Tells your household you are safe")
 
             Button {
                 let point = model.meetingPoint
