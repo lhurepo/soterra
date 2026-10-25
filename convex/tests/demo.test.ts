@@ -188,7 +188,8 @@ describe("manual demo: wave 1 calm, then wave 1 on the first release, then one w
     expect(run.escalateAt).toBeUndefined();
     expect(await t.mutation(internal.demo.escalate, { runId: run.runId! })).toBeNull(); // auto escalation never applies
     expect(await page(t, "sf/alertsf.html")).toContain("There are no active emergency alerts");
-    expect(await t.query(internal.demo.progress, {})).toMatchObject({ stage: "calm", inProgress: { calm: 5, escalation: 0 }, remaining: { escalation: 13 } });
+    // 0 done, 5 in progress (5 calm), 8 sources remaining (8 escalation).
+    expect(await t.query(internal.demo.progress, {})).toMatchObject({ stage: "calm", done: { calm: 0, escalation: 0 }, inProgress: { calm: 5, escalation: 0 }, remaining: { calm: 0, escalation: 8 } });
 
     // As the pipeline would record them: one ingestion run per started site.
     const finish = (sourceIds: string[], status: "succeeded" | "failed" | "awaiting_apify", error?: string) =>
@@ -212,21 +213,21 @@ describe("manual demo: wave 1 calm, then wave 1 on the first release, then one w
     expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId!, phase: "calm" })).toEqual([]);
     expect(await t.query(internal.demo.acceptsResult, { sourceId: "sfdemo_alerts", startedAt: Date.now() })).toBe(true);
     const ready = await t.query(internal.demo.progress, {});
-    expect(ready).toMatchObject({ stage: "calm_ready", done: { calm: 5, escalation: 0 }, inProgress: { calm: 0, escalation: 0 }, remaining: { calm: 0, escalation: 13 } });
+    expect(ready).toMatchObject({ stage: "calm_ready", done: { calm: 5, escalation: 0 }, inProgress: { calm: 0, escalation: 0 }, remaining: { calm: 0, escalation: 8 } });
     expect(ready.calm.map((s) => s.sourceId)).toEqual(wave1);
 
     // First Enter: the pages switch to the earthquake and wave 1 is crawled again; the wave-2 counts do not move.
     vi.setSystemTime(Date.now() + 60_000);
     expect(await t.mutation(internal.demo.release, {})).toMatchObject({ ok: true, message: expect.stringContaining("wave 1") });
     expect(await page(t, "sf/alertsf.html")).toContain("Evacuation Order");
-    expect(await t.query(internal.demo.progress, {})).toMatchObject({ stage: "quake", done: { calm: 5, escalation: 0 }, inProgress: { escalation: 5 }, remaining: { escalation: 8 } });
+    expect(await t.query(internal.demo.progress, {})).toMatchObject({ stage: "quake", done: { calm: 5, escalation: 0 }, inProgress: { escalation: 0 }, remaining: { escalation: 8 } });
     expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId!, phase: "calm" })).toEqual([]);
     expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual(wave1);
     expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual([]);
 
     // Next Enter: one wave-2 site. It waits for a slot while wave 1 holds all 5.
     expect(await t.mutation(internal.demo.release, {})).toEqual({ ok: true, message: "Started: Situation Update." });
-    expect(await t.query(internal.demo.progress, {})).toMatchObject({ inProgress: { escalation: 6 }, remaining: { escalation: 7 } });
+    expect(await t.query(internal.demo.progress, {})).toMatchObject({ inProgress: { escalation: 1 }, remaining: { escalation: 7 } });
     expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual([]);
     vi.setSystemTime(Date.now() + 1_000);
     await finish(wave1, "succeeded");
@@ -234,13 +235,13 @@ describe("manual demo: wave 1 calm, then wave 1 on the first release, then one w
     vi.setSystemTime(Date.now() + 1_000);
     await finish(["sfdemo_situation"], "succeeded");
     const p = await t.query(internal.demo.progress, {});
-    // The panel's example: 11 done (5 calm, 6 escalation), 0 in progress, 7 remaining (7 escalation).
-    expect(p).toMatchObject({ done: { calm: 5, escalation: 6 }, inProgress: { calm: 0, escalation: 0 }, remaining: { calm: 0, escalation: 7 } });
+    // 6 done (5 calm, 1 escalation), 0 in progress, 7 sources remaining (7 escalation).
+    expect(p).toMatchObject({ done: { calm: 5, escalation: 1 }, inProgress: { calm: 0, escalation: 0 }, remaining: { calm: 0, escalation: 7 } });
     expect(p.calm.every((s) => s.state === "done")).toBe(true); // calm and earthquake runs are counted apart
 
     // The rest of wave 2, then nothing more to release.
     for (let i = 0; i < 7; i++) expect((await t.mutation(internal.demo.release, {})).ok).toBe(true);
-    expect(await t.query(internal.demo.progress, {})).toMatchObject({ done: { escalation: 6 }, inProgress: { escalation: 7 }, remaining: { escalation: 0 } });
+    expect(await t.query(internal.demo.progress, {})).toMatchObject({ done: { escalation: 1 }, inProgress: { escalation: 7 }, remaining: { escalation: 0 } });
     expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toHaveLength(5);
     expect(await t.mutation(internal.demo.release, {})).toEqual({ ok: false, message: "Every source has been released." });
 

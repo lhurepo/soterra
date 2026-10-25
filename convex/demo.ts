@@ -236,9 +236,9 @@ const siteState = v.object({
 const tally = v.object({ calm: v.number(), escalation: v.number() });
 
 /**
- * For the terminal control panel: every crawl of the run, calm (wave 1 at start) and escalation (the earthquake pages:
- * wave 1 on the first release, then one wave-2 site per release), counted as done / in progress / remaining.
- * Wave 1 is crawled twice, so a manual run has 18 crawls over 13 sources; an auto run has 13 escalation crawls.
+ * For the terminal control panel: the 13 sources as done / in progress / remaining. Manual mode: wave 1 counts as calm
+ * (its calm crawl) and wave 2 as escalation (one site per release); wave 1's earthquake crawls on the first release are
+ * in `quake` only (the panel shows them on their own line). Auto mode: all 13 count as escalation.
  */
 export const progress = internalQuery({
   args: {},
@@ -263,8 +263,11 @@ export const progress = internalQuery({
     const switched = run.launched !== undefined;
     const quake = siteStates(run.launched ?? [], switched ? await latestRuns(ctx, run, "quake") : new Map());
     const released = manual ? (run.released ?? 0) : switched ? QUEUE.length : 0;
+    // Manual mode: the escalation counts are wave 2's (wave 1 was released as one step on the first Enter).
+    const skip = manual ? WAVE1.length : 0;
+    const escalated = Math.max(0, released - skip);
     const calmDone = calm.filter(finished).length;
-    const quakeDone = quake.filter(finished).length;
+    const quakeDone = quake.slice(skip).filter(finished).length;
     const stage: "calm" | "calm_ready" | "quake" = switched ? "quake" : manual && calmDone === calm.length ? "calm_ready" : "calm";
     return {
       on: true,
@@ -275,8 +278,8 @@ export const progress = internalQuery({
       quake,
       done: { calm: calmDone, escalation: quakeDone },
       // Calm crawls start on their own; a released site waiting for an Apify slot counts as in progress.
-      inProgress: { calm: calm.length - calmDone, escalation: released - quakeDone },
-      remaining: { calm: 0, escalation: QUEUE.length - released },
+      inProgress: { calm: calm.length - calmDone, escalation: escalated - quakeDone },
+      remaining: { calm: 0, escalation: QUEUE.length - skip - escalated },
     };
   },
 });

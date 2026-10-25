@@ -17,15 +17,18 @@ npm run demo:offline   # switch every source off and take every non-demo bulleti
 `demo:start` stays open as a control panel, redrawn in place:
 
 ```
-11 done (5 calm, 6 escalation)
+6 done (5 calm, 1 escalation)
 1 in progress (1 escalation)
 6 sources remaining (6 escalation)
+
+Earthquake wave 1: 5/5 done
 
 [Enter] next crawl: SFMTA   [q] close (the demo keeps running)
 ```
 
 The 13 sites are in two waves (`wave` in `demo/scenario.ts`). Wave 1: Evacuation Order, USGS, SF Fire, shelters, X feed.
-Wave 2: the other 8. Wave 1 is crawled twice (calm, then escalation), so the counts cover 18 crawls: 5 calm + 13 escalation.
+Wave 2: the other 8. The counts cover the 13 sources: wave 1 as calm, wave 2 as escalation. Wave 1's earthquake crawls
+(first Enter) have their own line.
 If the panel cannot reach Convex it says "Not updating" with the age of the counts on screen.
 
 1. Run `demo:start` **before** the call and wait for **calm ready**. Wave 1's 5 calm pages are crawled together, which takes
@@ -76,8 +79,8 @@ friend at the hackathon.
       `release` (Enter) rewrites the v2 pages with times from that moment, switches to them and releases wave 1; each
       later release adds one wave-2 site.
     - Auto (the default for the mutation and the button): after the delay, `escalate` switches to v2 and `crawlNext` crawls every site.
-  - `progress`: every crawl of the run as done / in progress / remaining, split calm and escalation (the control panel
-    polls it).
+  - `progress`: the 13 sources as done / in progress / remaining, split calm (wave 1) and escalation (wave 2), plus every
+    earthquake crawl (the control panel polls it).
   - `stop`: resets the demo data, cancels the subscriptions and deletes the update notifications created since
     the run started, sets crisis mode back to normal and the pages back to calm.
   - Unused, but available: `POST /demo/start`, `POST /demo/stop` and `GET /demo/status`, with Bearer `DEMO_SECRET`.

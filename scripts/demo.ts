@@ -31,13 +31,17 @@ const kinds = (t: Tally, extra = "") => {
   return parts || extra ? ` (${[parts, extra].filter(Boolean).join("; ")})` : "";
 };
 
-/** The panel's lines: done / in progress / remaining over every crawl (calm and escalation), then the keys. */
+/**
+ * The panel's lines: done / in progress / remaining over the 13 sources (manual: wave 1 calm, wave 2 escalation), wave 1's
+ * earthquake crawls on their own line once released, then the keys.
+ */
 function frame(p: Progress | undefined, note: string): string[] {
   if (!p) return ["Connecting to Convex…"];
   if (!p.on) return ["The demo is off. Start it with: npm run demo:start", "", "[q] close"];
-  const failed = [...p.calm, ...p.quake].filter((s) => s.state === "failed");
-  const released = p.quake.length - p.remaining.escalation;
-  const next = p.quake[released];
+  const skip = p.manual ? p.calm.length : 0;
+  const counted = [...p.calm, ...p.quake.slice(skip)];
+  const failed = counted.filter((s) => s.state === "failed");
+  const next = p.quake[p.quake.length - p.remaining.escalation];
   const lines = [
     `Marina Earthquake demo (${p.runId}${p.manual ? "" : ", auto"})`,
     "",
@@ -46,6 +50,11 @@ function frame(p: Progress | undefined, note: string): string[] {
     `${total(p.remaining)} sources remaining${kinds(p.remaining)}`,
     "",
   ];
+  if (p.manual && p.stage === "quake") {
+    const wave1 = p.quake.slice(0, skip);
+    const wave1Failed = wave1.filter((s) => s.state === "failed");
+    lines.push(`Earthquake wave 1: ${wave1.filter(finished).length}/${skip} done${wave1Failed.length > 0 ? ` (failed: ${wave1Failed.map((s) => s.label).join(", ")})` : ""}`, "");
+  }
   if (!p.manual) lines.push("Auto mode: every site is crawled on its own.   [q] close (the demo keeps running)");
   else if (p.stage === "calm") lines.push("Calm crawls running: take the call when they are done.   [q] close (the demo keeps running)");
   else if (p.stage === "calm_ready") lines.push(`Calm ready: take the call.   [Enter] the earthquake (wave 1: ${p.calm.map((s) => s.label).join(", ")})   [q] close`);
