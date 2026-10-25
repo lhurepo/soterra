@@ -34,7 +34,6 @@ Simulator: pick any iPhone simulator and press Run. Tests: **Product → Test** 
   (`DemoConfig.emergencyDialNumber`). 119 is an emergency number in some countries, such as Japan and South Korea.
 - **Map:** full-screen. Search and filters float on top and fade while you move the map; tap empty map to bring
   them back. Tap a shelter, a zone, the fire or the road closure for its slide-up panel; drag it down to close.
-- **Call Soterra** really dials the live hotline, +1 804 606 6867.
 - **More → Appearance:** Light (default), Dark or Match system.
 - **911 pill** (every screen): opens the danger sheet. **Demo safety:** "Call 911" opens the dialer with
   **119**, not 911 (`DemoConfig.emergencyDialNumber`). iOS asks before calling. 119 is an emergency number in

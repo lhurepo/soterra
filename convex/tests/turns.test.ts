@@ -30,7 +30,7 @@ describe("grounded answers", () => {
     const r = await say(t, sessionId, 0, "What's going on with the Ridgeview Fire?");
     expect(r.kind).toBe("answer");
     expect(r.citations.length).toBeGreaterThan(0);
-    expect(r.reply).toMatch(/Sonoma County Fire, (\d+:\d\d (AM|PM)|yesterday|October 24)\./);
+    expect(r.reply).toMatch(/Sonoma County Fire, (as of )?(\d+:\d\d (AM|PM)|yesterday|October 24)\./);
     expect(Object.keys(r.timingsMs ?? {})).toEqual(expect.arrayContaining(["context", "retrieval", "preLlm", "llm", "total"]));
 
     const row = await turnRow(t, sessionId, 0);
