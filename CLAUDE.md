@@ -51,7 +51,8 @@ does not accept `SMS_NOTIFIER=mac_relay` and fails to load its config, so pull b
 
 ## The demo (Marina Earthquake) — current focus
 
-The Cal Hacks demo runs from the terminal: `npm run demo:start`, `npm run demo:status`, `npm run demo:stop`.
+The Cal Hacks demo runs from the terminal: `npm run demo:start` (crawls wave 1's calm pages; the first Enter crawls
+wave 1's earthquake pages, each later Enter one wave-2 site), `npm run demo:control`, `npm run demo:status`, `npm run demo:stop`.
 Read `demo/README.md` first (story, call script, how it works, limits). On the dev deployment **everything else
 is offline on purpose**: every source is disabled and every non-demo bulletin is out of service; the pipeline code
 stays. Do not re-enable sources or re-seed the old Ridgeview fixtures unless the user asks (`npm run demo:offline`

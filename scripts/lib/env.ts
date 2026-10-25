@@ -1,5 +1,5 @@
 // [S] Script helpers: load .env.local (written by `npx convex dev`) and run the Convex CLI.
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -31,7 +31,21 @@ export function convexRun(fn: string, args: unknown): unknown {
   }
 }
 
-export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** convexRun without blocking (for the demo control panel): stderr is captured (and becomes the error) so it never draws over the screen. */
+export function convexRunAsync(fn: string, args: unknown): Promise<unknown> {
+  return new Promise((done, fail) => {
+    execFile(resolve(ROOT, "node_modules", ".bin", "convex"), ["run", fn, JSON.stringify(args)], { cwd: ROOT, encoding: "utf8" }, (err, out, errOut) => {
+      if (err) return fail(new Error(errOut.trim() || err.message));
+      try {
+        done(JSON.parse(out));
+      } catch {
+        done(out.trim());
+      }
+    });
+  });
+}
+
+export const sleep =(ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function flag(name: string): string | undefined {
   const args = process.argv.slice(2);

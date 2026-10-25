@@ -1,6 +1,8 @@
 // [S] The demo scenario: the Marina Earthquake (fictional). 13 mock sites served by Convex at /mock-sites/sf/<page>
 // and crawled by real Apify actors. Each site has a "before" page (calm) and an "after" page (the earthquake).
-// `npm run demo:start` writes both, serves "before", switches to "after" a few seconds later and crawls every site.
+// `npm run demo:start` writes both and crawls wave 1's "before" pages. The first press of Enter switches every site to
+// "after" and crawls wave 1 again; each later press crawls one wave-2 site. `--auto` keeps the old flow: "after" a few
+// seconds in, crawl all.
 // Pages are deliberately short: one fact per sentence, every sentence ends with a period, times in "Last updated" form,
 // so the extractor quotes them cleanly. Every page ends with "This is fictional demo data."
 //
@@ -18,6 +20,8 @@ export type DemoTimes = {
 
 export type DemoSite = {
   sourceId: string;
+  /** Short name for the demo control panel (`npm run demo:start`). */
+  label: string;
   /** Issuer shown and spoken ("(Demo)" is added for fixture data by the pipeline when missing). */
   name: string;
   /** Path under /mock-sites/. */
@@ -28,7 +32,7 @@ export type DemoSite = {
   pageFunction?: "shelters" | "x-feed";
   /** Independence group: pages of the same agency never confirm each other. */
   group: string;
-  /** Wave 1 is crawled as soon as the pages switch; wave 2 a few seconds later (Apify concurrency). */
+  /** Wave 1 (the Evacuation Order drives the callback) is crawled calm at start and again on the first Enter; wave 2 one site per Enter. */
   wave: 1 | 2;
   before: (t: DemoTimes) => string;
   after: (t: DemoTimes) => string;
@@ -169,6 +173,7 @@ const SF_DEM = "San Francisco Department of Emergency Management";
 export const DEMO_SITES: DemoSite[] = [
   {
     sourceId: "sfdemo_alerts",
+    label: "Evacuation Order",
     name: `${SF_DEM} (Demo)`,
     path: "sf/alertsf.html",
     kind: "official_web",
@@ -188,6 +193,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_usgs",
+    label: "USGS",
     name: "U.S. Geological Survey (Demo)",
     path: "sf/usgs-event.html",
     kind: "official_web",
@@ -206,6 +212,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_sffd",
+    label: "SF Fire",
     name: "San Francisco Fire Department (Demo)",
     path: "sf/sffd-incident.html",
     kind: "official_web",
@@ -224,6 +231,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_shelters",
+    label: "Shelters",
     name: `${SF_DEM} (Demo)`,
     path: "sf/shelters.html",
     kind: "official_web",
@@ -243,6 +251,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_x",
+    label: "X feed",
     name: "X (Demo)",
     path: "sf/x-feed.html",
     kind: "social",
@@ -262,6 +271,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_situation",
+    label: "Situation Update",
     name: `${SF_DEM} (Demo)`,
     path: "sf/situation.html",
     kind: "official_web",
@@ -281,6 +291,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_tsunami",
+    label: "Tsunami Center",
     name: "National Tsunami Center (Demo)",
     path: "sf/tsunami.html",
     kind: "official_web",
@@ -297,6 +308,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_sfmta",
+    label: "SFMTA",
     name: "SFMTA (Demo)",
     path: "sf/sfmta.html",
     kind: "official_web",
@@ -314,6 +326,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_caltrans",
+    label: "Caltrans",
     name: "Caltrans District 4 (Demo)",
     path: "sf/caltrans.html",
     kind: "official_web",
@@ -331,6 +344,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_bart",
+    label: "BART",
     name: "BART (Demo)",
     path: "sf/bart.html",
     kind: "official_web",
@@ -348,6 +362,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_pge",
+    label: "PG&E",
     name: "PG&E (Demo)",
     path: "sf/pge.html",
     kind: "official_web",
@@ -365,6 +380,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_water",
+    label: "SF Water",
     name: "San Francisco Public Utilities Commission (Demo)",
     path: "sf/water.html",
     kind: "official_web",
@@ -381,6 +397,7 @@ export const DEMO_SITES: DemoSite[] = [
   },
   {
     sourceId: "sfdemo_redcross",
+    label: "Red Cross",
     name: "American Red Cross (Demo)",
     path: "sf/redcross.html",
     kind: "official_web",

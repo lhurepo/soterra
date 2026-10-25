@@ -32,7 +32,7 @@ const DEMO_SOURCES: IngestionSource[] = DEMO_SITES.map((site) => ({
   fetchVia: "apify",
   normalIntervalMin: 30,
   crisisIntervalMin: 5,
-  // Never polled by the tick: `npm run demo:start` crawls them once, right after the pages switch.
+  // Never polled by the tick: `npm run demo:start` crawls them when the presenter says so (convex/demo.ts).
   enabled: false,
   mode: "fixture",
   regionStates: ["CA"],

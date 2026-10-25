@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p convex/tsconfig.json",
     "go-live": "bash scripts/go-live.sh",
     "demo:start": "tsx scripts/demo.ts start",
+    "demo:control": "tsx scripts/demo.ts control",
     "demo:stop": "tsx scripts/demo.ts stop",
     "demo:status": "tsx scripts/demo.ts status",
     "demo:offline": "tsx scripts/demo.ts offline",
