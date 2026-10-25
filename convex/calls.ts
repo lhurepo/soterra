@@ -14,7 +14,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { addNeed } from "../src/memory/profile";
 import { forgetCallerMemory, getOrCreateCaller, verifiedAccountForPhone } from "./callers";
-import { cancelSubscriptionsForPhone, createSubscriptionForCall } from "./subscriptions";
+import { cancelSubscriptionsForPhone, createSubscriptionForCall, subscriptionTopic } from "./subscriptions";
 import { recordUnansweredForCall } from "./unanswered";
 import { areaRef, citation, endReason, followUpRequest, hazardType, replyKind } from "./validators";
 
@@ -256,8 +256,10 @@ export type BeginTurnResult =
       callIncidentKeys: string[];
       pendingAction?: "forget";
       verificationsLastHour: number;
+      preferredChannel?: "phone_call" | "sms";
       /** For an update callback: the update we phoned about, so the model knows why it called. */
       callReason?: string;
+      updateTopic?: string;
       /** Chunks of the bulletin(s) behind that update; always included in the sources for this call. */
       pinnedChunkIds?: string[];
     };
@@ -342,13 +344,18 @@ export const beginTurn = internalMutation({
         ).filter((n) => n.purpose === "verification").length
       : 0;
 
+    const caller = call.callerId ? await ctx.db.get("callers", call.callerId) : null;
     // An update callback: remember what we called about, and keep that bulletin in the sources so the caller can ask about it.
     let callReason: string | undefined;
+    let updateTopic: string | undefined;
     const pinnedChunkIds: string[] = [];
     if (call.direction === "outbound" && call.notificationId) {
       const notification = await ctx.db.get("notifications", call.notificationId);
-      if (notification && (notification.purpose === undefined || notification.purpose === "update")) {
+      if (notification && (notification.purpose === undefined || notification.purpose === "update" || notification.purpose === "scheduled_update")) {
         callReason = notification.message;
+        const sub = notification.subscriptionId ? await ctx.db.get("subscriptions", notification.subscriptionId) : null;
+        const bulletin = notification.bulletinRefs[0] ? await ctx.db.get("bulletins", notification.bulletinRefs[0]) : null;
+        if (sub) updateTopic = subscriptionTopic(sub, bulletin?.title);
         for (const bulletinId of notification.bulletinRefs.slice(0, 3)) {
           const chunks = await ctx.db
             .query("chunks")
@@ -363,7 +370,9 @@ export const beginTurn = internalMutation({
       status: "new",
       callId,
       turnId,
+      preferredChannel: caller?.preferredChannel,
       callReason,
+      updateTopic,
       pinnedChunkIds: pinnedChunkIds.length > 0 ? pinnedChunkIds : undefined,
       pendingAction: call.pendingAction,
       verificationsLastHour,

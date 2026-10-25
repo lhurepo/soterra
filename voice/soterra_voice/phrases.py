@@ -37,6 +37,11 @@ PHRASES: dict[str, dict[str, str]] = {
         "en": "Okay, continuing in English. What would you like to know?",
         "es": "De acuerdo, seguimos en español. ¿Qué le gustaría saber?",
     },
+    # An update call reached voicemail and the backend could not be reached for the short message; the call ends.
+    "voicemail": {
+        "en": "Hi, this is Soterra, the disaster information line, with the update you asked for. We'll text you the details. If you are in danger, call 911. Goodbye.",
+        "es": "Hola, habla Soterra, la línea de información sobre desastres, con la actualización que pidió. Le enviaremos los detalles por mensaje de texto. Si está en peligro, llame al 911. Adiós.",
+    },
     # Caller asked to repeat but nothing has been said yet.
     "nothing_to_repeat": {
         "en": "I haven't given you any information yet. What would you like to know?",

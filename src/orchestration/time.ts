@@ -70,3 +70,31 @@ export function formatShortTime(epochMs: number, state: string | undefined, lang
     return formatSpokenTime(epochMs, state, language);
   }
 }
+
+const ZONE_ABBREVIATIONS: Record<string, string> = {
+  "America/Los_Angeles": "PT",
+  "America/Phoenix": "MT",
+  "America/Denver": "MT",
+  "America/Chicago": "CT",
+  "America/New_York": "ET",
+  "Pacific/Honolulu": "HT",
+  "America/Anchorage": "AKT",
+};
+
+/**
+ * Times in texts: "2:22 PM PT" on the day of `now`, otherwise "Oct 23, 2:22 PM PT". "PT" rather than "PST"/"PDT", so it is
+ * right all year.
+ */
+export function formatTextTime(epochMs: number, state: string | undefined, language: string, now: number): string {
+  const es = language.toLowerCase().startsWith("es");
+  const timeZone = timeZoneForState(state);
+  try {
+    const locale = es ? "es-US" : "en-US";
+    const day = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+    const time = new Intl.DateTimeFormat(locale, { timeZone, hour: "numeric", minute: "2-digit" }).format(epochMs);
+    const date = day(epochMs) === day(now) ? "" : `${new Intl.DateTimeFormat(locale, { timeZone, month: "short", day: "numeric" }).format(epochMs).replace(/\.$/, "")}, `;
+    return `${date}${time} ${ZONE_ABBREVIATIONS[timeZone] ?? timeZone}`.replace(/\s+/gu, " ");
+  } catch {
+    return `${new Date(epochMs).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  }
+}

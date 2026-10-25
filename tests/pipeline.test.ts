@@ -99,10 +99,45 @@ describe("answers", () => {
 describe("follow-ups and goodbye", () => {
   it("creates an incident subscription and confirms what and how to stop", async () => {
     const out = await turn("Please call me if the evacuation changes.");
-    expect(out.effects.createSubscription).toEqual({ targetKind: "incident", incidentKey: "ridgeview-fire-demo", trigger: "evacuation_change" });
+    expect(out.effects.createSubscription).toEqual({ targetKind: "incident", incidentKey: "ridgeview-fire-demo", trigger: "evacuation_change", channel: "phone_call" });
     expect(out.reply).toContain(t("topicEvacuation", "en"));
+    expect(out.reply).toContain(t("followupMissedCallNote", "en"));
     expect(out.reply).toContain(t("stopUpdates", "en"));
     expect(out.reply).toMatch(/next 24 hours/);
+  });
+
+  it("'text me' creates a text subscription and says how to stop texts", async () => {
+    const out = await turn("Can you text me if the evacuation changes?");
+    expect(out.effects.createSubscription).toMatchObject({ targetKind: "incident", channel: "sms", trigger: "evacuation_change" });
+    expect(out.effects.createSubscription?.intervalMinutes).toBeUndefined();
+    expect(out.reply).toMatch(/I'll text this number/);
+    expect(out.reply).toContain(t("stopTexts", "en"));
+    expect(out.reply).not.toContain(t("followupMissedCallNote", "en"));
+  });
+
+  it("uses the caller's saved channel when they don't say", async () => {
+    const out = await turn("Keep me updated on the Ridgeview Fire", deps(), state({ preferredChannel: "sms" }));
+    expect(out.effects.createSubscription).toMatchObject({ channel: "sms" });
+    expect((await turn("Call me if it changes", deps(), state({ preferredChannel: "sms" }))).effects.createSubscription).toMatchObject({ channel: "phone_call" });
+  });
+
+  it("'every 2 hours' creates a scheduled update; shorter intervals are raised to an hour", async () => {
+    const out = await turn("Text me updates about the Ridgeview Fire every 2 hours");
+    expect(out.effects.createSubscription).toMatchObject({ channel: "sms", intervalMinutes: 120 });
+    expect(out.reply).toMatch(/every 2 hours/);
+    expect(out.reply).toMatch(/next 24 hours/);
+    const fast = await turn("Call me every 10 minutes about the Ridgeview Fire");
+    expect(fast.effects.createSubscription).toMatchObject({ channel: "phone_call", intervalMinutes: 60 });
+    expect(fast.reply).toMatch(/every hour/);
+    const daily = await turn("Keep me updated daily about the fire");
+    expect(daily.effects.createSubscription).toMatchObject({ intervalMinutes: 1440 });
+    expect(daily.reply).toMatch(/every day .* next 72 hours/);
+  });
+
+  it("confirms text updates in Spanish", async () => {
+    const out = await turn("Mándame un mensaje si cambia la evacuación", deps(), state(), "es");
+    expect(out.effects.createSubscription).toMatchObject({ channel: "sms" });
+    expect(out.reply).toContain(t("stopTexts", "es"));
   });
 
   it("declines a callback politely when the number is withheld", async () => {
@@ -113,7 +148,7 @@ describe("follow-ups and goodbye", () => {
 
   it("targets the open question for 'call me when you know'", async () => {
     const out = await turn("Call me when you know", deps(), state({ hasOpenQuestion: true }));
-    expect(out.effects.createSubscription).toEqual({ targetKind: "question", trigger: "answer_available" });
+    expect(out.effects.createSubscription).toEqual({ targetKind: "question", trigger: "answer_available", channel: "phone_call" });
   });
 
   it("asks for an area when there is nothing to watch", async () => {

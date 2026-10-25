@@ -9,8 +9,8 @@
     "apify": "unconfigured",
     "nws": "unconfigured",
     "phoneNotifier": "mock",
-    "sms": "unconfigured"
+    "sms": "mock"
   },
-  "flags": { "serveFixtures": true, "mockSites": false, "cartesiaVerifiedLive": false, "mockLlmFailureMode": false },
+  "flags": { "serveFixtures": true, "mockSites": false, "cartesiaVerifiedLive": false, "twilioVerifiedLive": false, "mockLlmFailureMode": false },
   "now": 1792893600000
 }

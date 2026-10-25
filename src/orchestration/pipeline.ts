@@ -14,7 +14,8 @@ import { resolveArea, type AreaCandidate, type AreaSource } from "./area";
 import { dangerLanguage } from "./danger";
 import { enforceGrounding } from "./grounding";
 import { addNeed } from "../memory/profile";
-import { asksToStopUpdates, declinesTranscript, explicitFollowUpRequest, isConfirmation, isRefusal, profileCommand } from "./intents";
+import { clampIntervalMs, subscriptionLifetimeMs, formatInterval } from "../notifications/schedule";
+import { asksToStopUpdates, declinesTranscript, explicitFollowUpRequest, isConfirmation, isRefusal, looksLikeVoicemail, profileCommand, requestedChannel, requestedIntervalMinutes } from "./intents";
 import { buildTurnRequest, parseDraft } from "./prompt";
 
 export type TurnInput = {
@@ -43,8 +44,12 @@ export type TurnState = {
   pendingAction?: "forget";
   /** Verification callbacks already requested for this number in the last hour (rate limit). */
   verificationsLastHour?: number;
+  /** How this caller last asked to get updates; used when they don't say "text me" or "call me". */
+  preferredChannel?: "phone_call" | "sms";
   /** For an update callback: what we phoned about (the update text). */
   callReason?: string;
+  /** For an update callback: what the update is about ("Cooley Fire"), for the voicemail message. */
+  updateTopic?: string;
 };
 
 export type TurnDeps = {
@@ -102,6 +107,21 @@ function followUpTopic(request: FollowUpRequest, language: string): string {
   return t("topicIncident", language);
 }
 
+/** "Okay. I'll text this number every 2 hours with …", then how to stop. Hours match the stored lifetime. */
+function followUpConfirmation(request: FollowUpRequest, language: string): string {
+  const intervalMs = request.intervalMinutes === undefined ? undefined : request.intervalMinutes * 60_000;
+  const sms = request.channel === "sms";
+  const vars = {
+    topic: followUpTopic(request, language),
+    hours: Math.round(subscriptionLifetimeMs(intervalMs) / 3_600_000),
+    interval: intervalMs === undefined ? "" : formatInterval(intervalMs, language),
+  };
+  const key = intervalMs === undefined ? (sms ? "followupCreatedSms" : "followupCreated") : sms ? "followupScheduledSms" : "followupScheduled";
+  return [tf(key, language, vars), sms ? undefined : t("followupMissedCallNote", language), t(sms ? "stopTexts" : "stopUpdates", language)]
+    .filter((p): p is string => p !== undefined)
+    .join(" ");
+}
+
 /** Fills in a usable target, or returns null when there is nothing to watch (no incident, area or question). */
 export function completeFollowUp(
   requested: FollowUpRequest | undefined,
@@ -143,6 +163,12 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   // 1. Danger first: deterministic, before retrieval and the LLM, and its reply needs neither.
   const inDangerIn = dangerLanguage(input.utterance, language === "es" ? "es" : "en");
   if (inDangerIn) return { ...simple("safety", t("safety", inDangerIn)), language: inDangerIn };
+
+  // 1b. An update callback that reached voicemail: a short message and hang up; the update follows by text
+  // (notifications.sendAfterCallTexts sees only voicemail turns and sends the missed-call text).
+  if (state.updateTopic !== undefined && looksLikeVoicemail(input.utterance) && state.recentCallerUtterances.every(looksLikeVoicemail)) {
+    return { ...simple("smalltalk", tf("outboundVoicemail", language, { topic: state.updateTopic })), endCall: true };
+  }
 
   // 2. Deterministic intents that must not depend on the model.
   // 2a. A destructive command from the previous turn is waiting for "yes"; anything else cancels it.
@@ -315,9 +341,14 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
         recentIncidentKeys: [...(state.callIncidentKeys ?? []), ...(state.context.recentIncidentKeys ?? [])],
       });
       if (request) {
-        effects.createSubscription = request;
-        const hours = Math.round(DEFAULTS.subscriptionTtlMs / 3_600_000);
-        reply = `${tf("followupCreated", language, { topic: followUpTopic(request, language), hours })} ${t("stopUpdates", language)}`;
+        // Deterministic first ("text me", "every 2 hours"), then the model's reading, then the caller's saved choice.
+        const channel = requestedChannel(input.utterance) ?? draft.followUpRequest?.channel ?? state.preferredChannel ?? "phone_call";
+        const minutes =
+          request.targetKind === "question" ? undefined : (requestedIntervalMinutes(input.utterance) ?? draft.followUpRequest?.intervalMinutes);
+        const full: FollowUpRequest = { ...request, channel };
+        if (minutes !== undefined) full.intervalMinutes = clampIntervalMs(minutes) / 60_000;
+        effects.createSubscription = full;
+        reply = followUpConfirmation(full, language);
       } else {
         kind = "clarify";
         reply = t("clarifyArea", language);

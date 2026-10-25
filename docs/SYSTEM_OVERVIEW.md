@@ -229,7 +229,7 @@ sequenceDiagram
 | Suggested questions             | Tappable chips that change with the topic                                    | Built               | Same rules, or generated from current bulletins                                                                      |
 | Read aloud                      | Speaks answers with the device's voices                                      | Browser speech      | Same in the browser; on the phone line, Cartesia's voice                                                             |
 | End call and summary            | Saves a summary and (if allowed) the transcript                              | Built               | logCall tool writes the call and summary to Convex                                                                   |
-| Callbacks                       | Soterra calls you back when news changes or a question is answered           | Not in demo         | Convex scheduled functions call Cartesia's outbound-call API                                                         |
+| Callbacks                       | Soterra calls or texts you when news changes, on a schedule, or when a question is answered | Not in demo         | Convex scheduled functions call Cartesia's outbound-call API; texts by Twilio                                        |
 
 ### 5.7 History
 
@@ -332,7 +332,7 @@ A separate Next.js web app for officials, on the same Convex backend. Its featur
 | Maps                       | Hand-drawn diagram; Leaflet with OpenStreetMap tiles on request                   | Same                                                                                                                        | Only for the street map     |
 | Zone check                 | None                                                                              | turf.js point-in-polygon against official shapes                                                                            | Only for the zone check     |
 | Walking routes             | Hand-made street graph                                                            | **Not chosen yet**                                                                                                          |                             |
-| Push notifications and SMS | On-screen banners                                                                 | **Not chosen yet** (callbacks by phone call are planned)                                                                    |                             |
+| Push notifications and SMS | On-screen banners                                                                 | Push **not chosen yet**; SMS for updates by **Twilio** (update texts, missed-call texts, call recaps; see docs/backend.md)   |                             |
 | Hosting for the web apps   | Local                                                                             | **Not chosen yet** (Convex hosts the backend)                                                                               |                             |
 | Testing                    | Vitest, Testing Library, Playwright, axe                                          | Same, plus test calls in every language                                                                                     |                             |
 

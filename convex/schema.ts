@@ -11,6 +11,7 @@ import {
   citation,
   hazardType,
   notificationChannel,
+  notificationPurpose,
   notificationStatus,
   replyKind,
   runOutcome,
@@ -37,6 +38,8 @@ export default defineSchema({
      */
     profileNeeds: v.optional(v.array(v.string())),
     profileUpdatedAt: v.optional(v.number()),
+    /** How the caller last asked to get updates ("text me" / "call me"); used when they don't say. */
+    preferredChannel: v.optional(notificationChannel),
     /** Anonymous memory expiry (ANON_MEMORY_TTL_DAYS after the last call); unset while linked to a verified account. */
     expiresAt: v.optional(v.number()),
   })
@@ -143,7 +146,8 @@ export default defineSchema({
     .index("by_transcriptExpiresAt", ["transcriptExpiresAt"])
     .index("by_memoryExpiresAt", ["memoryExpiresAt"])
     .index("by_accountId_and_startedAt", ["accountId", "startedAt"])
-    .index("by_callerId_and_startedAt", ["callerId", "startedAt"]),
+    .index("by_callerId_and_startedAt", ["callerId", "startedAt"])
+    .index("by_notificationId", ["notificationId"]),
 
   /** One row per caller utterance; the assistant reply is stored on the same row once produced. */
   callTurns: defineTable({
@@ -267,7 +271,8 @@ export default defineSchema({
     timeBasis: v.optional(timeBasis),
   })
     .index("by_sourceId_and_externalId", ["sourceId", "externalId"])
-    .index("by_isActive_and_expiresAt", ["isActive", "expiresAt"]),
+    .index("by_isActive_and_expiresAt", ["isActive", "expiresAt"])
+    .index("by_incidentKey_and_isActive", ["incidentKey", "isActive"]),
 
   /** Every external id seen for a bulletin (NWS Update/Cancel messages get new ids that reference old ones). */
   bulletinAliases: defineTable({
@@ -451,7 +456,16 @@ export default defineSchema({
     lastNotifiedAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
     createdFromCallId: v.optional(v.id("calls")),
+    /** Absent = "on_change". "scheduled" subscriptions fire every intervalMs (cron subscriptions.runScheduled), never on events. */
+    mode: v.optional(v.union(v.literal("on_change"), v.literal("scheduled"))),
+    intervalMs: v.optional(v.number()),
+    nextRunAt: v.optional(v.number()),
+    lastRunAt: v.optional(v.number()),
+    /** What texts call it ("Cooley Fire", "Sonoma County"); also its STOP keyword ("STOP COOLEY FIRE"). Set at creation. */
+    topicLabel: v.optional(v.string()),
   })
+    .index("by_status_and_nextRunAt", ["status", "nextRunAt"])
+    .index("by_createdFromCallId", ["createdFromCallId"])
     .index("by_status_and_targetIncidentKey", ["status", "target.incidentKey"])
     .index("by_status_and_targetKind", ["status", "target.kind"])
     .index("by_status_and_expiresAt", ["status", "expiresAt"])
@@ -469,8 +483,16 @@ export default defineSchema({
     message: v.string(),
     bulletinRefs: v.array(v.id("bulletins")),
     dedupeKey: v.string(),
-    /** "verification" = the callback check that proves a caller holds the phone; "app_code" = the call that reads the app a code. */
-    purpose: v.optional(v.union(v.literal("update"), v.literal("verification"), v.literal("app_code"))),
+    /** Absent = "update". See NotificationPurpose in src/contracts/notifications.ts. */
+    purpose: v.optional(notificationPurpose),
+    /** Updates only: the text version ("Update on Cooley Fire (4:40 PM PT): …"); `message` is what a call speaks. */
+    text: v.optional(v.string()),
+    /** Texts about a call (missed-call text, recap): the update call they follow. */
+    parentNotificationId: v.optional(v.id("notifications")),
+    /** Phone calls only: whether the caller picked up and spoke (set by the outcome check or at finalize). */
+    outcome: v.optional(v.union(v.literal("answered"), v.literal("missed"))),
+    /** Raw delivery status from the provider's status callback (Twilio: delivered, undelivered, failed). */
+    providerStatus: v.optional(v.string()),
     status: notificationStatus,
     providerRef: v.optional(v.string()),
     error: v.optional(v.string()),

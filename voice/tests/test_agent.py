@@ -218,6 +218,73 @@ def test_outbound_metadata_starts_an_outbound_session_with_the_notification():
     assert collect(agent, user("what changed?"))  # the conversation continues normally
 
 
+def _outbound(backend=None, wait=5.0):
+    info = CallInfo(provider_call_id="out-1", direction="outbound", caller_phone="+17075550123", called_phone="+17126003362", notification_id="n1")
+    return make(backend, call=info, outbound_greeting_wait_s=wait)
+
+
+def _answer_during_wait(agent, event) -> tuple[list, list]:
+    """CallStarted runs until the person speaks; the runner then cancels it (UserTurnStarted) and runs the turn."""
+
+    async def go():
+        started: list = []
+
+        async def run_start():
+            async for out in agent.process(ENV, CallStarted()):
+                started.append(out)
+
+        task = asyncio.create_task(run_start())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        return started, [out async for out in agent.process(ENV, event)]
+
+    return asyncio.run(go())
+
+
+def test_outbound_hello_gets_the_greeting_at_once_without_a_backend_turn():
+    agent, backend = _outbound()
+    started, out = _answer_during_wait(agent, user("Hello?"))
+    assert said(started) == []
+    assert " ".join(said(out)) == speakable(MockBackendClient().greeting)
+    assert turns(backend) == []
+    assert agent.session_id == "mock-session-out-1"  # the session started even though CallStarted was cancelled
+
+
+def test_outbound_voicemail_prompt_gets_the_short_message_not_the_greeting():
+    backend = MockBackendClient(script=[MockTurn(reply="Hi, this is Soterra with the update. Goodbye.", end_call=True)])
+    agent, _ = _outbound(backend)
+    _, out = _answer_during_wait(agent, user("You've reached Sam. Please leave a message after the tone."))
+    assert said(out) == ["Hi, this is Soterra with the update. Goodbye."]
+    assert ended(out)
+    assert turns(backend)[0].utterance.startswith("You've reached Sam")
+
+
+def test_outbound_voicemail_with_backend_down_leaves_the_local_message():
+    agent, _ = _outbound(MockBackendClient(script=[Fault.HTTP_500]))
+    _, out = _answer_during_wait(agent, user("The person you are calling is not available."))
+    assert said(out) == [speakable(phrases.phrase("voicemail", "en"))]
+    assert ended(out)
+
+
+def test_outbound_silence_gets_the_greeting_after_the_wait():
+    agent, _ = _outbound(wait=0.01)
+    assert " ".join(said(collect(agent, CallStarted()))) == speakable(MockBackendClient().greeting)
+
+
+def test_inbound_greets_at_once_whatever_the_outbound_wait():
+    agent, _ = make(outbound_greeting_wait_s=5.0)
+    assert said(collect(agent, CallStarted()))
+
+
+def test_voicemail_phrases_match_the_backend_list():
+    from soterra_voice.agent import looks_like_voicemail
+
+    assert looks_like_voicemail("Please leave a message after the beep")
+    assert looks_like_voicemail("Deje su mensaje después del tono")
+    assert not looks_like_voicemail("Hello? Who is this?")
+
+
 def test_withheld_caller_id_is_omitted():
     info = call_info_from_request(SimpleNamespace(call_id="c", from_="anonymous", to="+17075550100", metadata=None), settings())
     assert info.caller_phone is None and info.direction == "inbound"

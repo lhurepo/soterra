@@ -73,7 +73,11 @@ curl -s -X POST "$CONVEX_SITE_URL/voice/turn" -H "Authorization: Bearer $VOICE_A
 
 ### `GET /health`
 
-No auth. `integrations`: `voiceAuth`, `llm`, `retriever`, `mossSync`, `apify`, `nws`, `phoneNotifier`, `sms` as `live` · `mock` · `unconfigured`. `flags`: `serveFixtures`, `mockSites`, `cartesiaVerifiedLive` (always `false` today), `mockLlmFailureMode`.
+No auth. `integrations`: `voiceAuth`, `llm`, `retriever`, `mossSync`, `apify`, `nws`, `phoneNotifier`, `sms` as `live` · `mock` · `unconfigured`. `flags`: `serveFixtures`, `mockSites`, `cartesiaVerifiedLive` (always `false` today), `twilioVerifiedLive` (false until a real text has been delivered), `mockLlmFailureMode`.
+
+### `POST /twilio/status` and `POST /twilio/inbound`
+
+Twilio webhooks, form-encoded, signed with `X-Twilio-Signature` (checked with `TWILIO_AUTH_TOKEN`; without it, or with a bad signature, `403`). `/twilio/status` is set as the `StatusCallback` of every text we send and records delivery (`204`). `/twilio/inbound` is the Twilio number's "A message comes in" webhook (set it in the Twilio console to `https://<deployment>.convex.site/twilio/inbound`). STOP cancels every update for the number and gets empty TwiML (Twilio answers STOP and HELP itself). "STOP COOLEY FIRE" (also "stop cooley", "PARAR PREGUNTA") cancels only the subscriptions it names and is answered with a TwiML `<Message>` ("Soterra: you won't get more updates on Cooley Fire…", or "no active updates match …"). Other texts get empty TwiML.
 
 ### Internal functions for operators (dashboard or `npx convex run`)
 
@@ -82,7 +86,8 @@ No auth. `integrations`: `voiceAuth`, `llm`, `retriever`, `mossSync`, `apify`, `
 | `calls:debugCall '{"callId":"<sessionId or providerCallId>"}'` | Turns with kinds, replies, retrieved and cited chunk ids, retriever, area source, model, error codes, timings. |
 | `unanswered:listOpen` / `unanswered:answerUnansweredQuestion '{"id":"…","answer":"…","sourceUrl":"https://…","sourceName":"…"}'` | Stand-in for the responder console; answering notifies `answer_available` subscribers. |
 | `unanswered:dismiss` | Close a question without answering. |
-| `notifications:recent '{"limit":5}'` | Latest notification attempts. |
+| `notifications:recent '{"limit":5}'` | Latest notification attempts, with channel (call or text), purpose and call outcome. |
+| `subscriptions:runScheduled` | Send due time-based updates now (also a cron every minute). |
 | `callers:forgetCaller '{"phone":"+1…"}'` | Cancel a number's updates and delete its memory. |
 | `accounts:createTestAccount '{"phone":"+1…","verified":true}'` | Dev/test stand-in for sign-up + phone verification. |
 | `memory:purgeExpired` | Run the retention purge now (also a daily cron). |
@@ -104,7 +109,9 @@ Set on the deployment with `npx convex env set NAME value` (dev only from this s
 | `RETRIEVER` | `convex` | `moss` tries Moss first and falls back to Convex (Moss cannot load in Convex today). |
 | `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `MOSS_INDEX_NAME` | — | Moss. |
 | `PHONE_NOTIFIER` | `mock` | `cartesia` uses the outbound-call adapter (**not verified live**; needs `CARTESIA_API_KEY`, `CARTESIA_AGENT_ID`, `CARTESIA_FROM_NUMBER_ID`). |
-| `SMS_NOTIFIER` | `unconfigured` | No SMS provider. |
+| `SMS_NOTIFIER` | `mock` | `mock` stores texts without sending, `twilio` sends them (**not verified live**; needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`), `unconfigured` sends nothing. |
+| `TWILIO_AUTH_TOKEN` | — | Also checks the signature on `/twilio/*`. |
+| `HOTLINE_NUMBER` | `+17126003362` | Printed in texts ("Questions? Call (712) 600-3362"). |
 | `SERVE_FIXTURES` | `false` | `true` lets callers hear the fictional demo bulletins. |
 | `ANON_TRANSCRIPT_TTL_HOURS` | `168` | Turns of anonymous calls. |
 | `ANON_MEMORY_TTL_DAYS` | `30` | Anonymous caller rows, call rows and summaries. |
@@ -116,8 +123,11 @@ Set on the deployment with `npx convex env set NAME value` (dev only from this s
 | Anonymous transcript TTL | 7 days | env `ANON_TRANSCRIPT_TTL_HOURS` |
 | Anonymous caller memory TTL | 30 days | env `ANON_MEMORY_TTL_DAYS`; counted from the last call; unset while linked to a verified account |
 | Last-summary TTL for caller context | 7 days | |
-| Subscription expiry | 24 hours (72 hours max) | `subscriptionTtl()` clamps |
-| Notification rate limit | 1 per 15 minutes, 4 per hour, per subscription | rate-limited attempts are stored as `failed` / `rate_limited: …` |
+| Subscription expiry | 24 hours (72 hours max) | `subscriptionTtl()` clamps; time-based updates last at least 3 intervals (`subscriptionLifetimeMs`) |
+| Time-based update interval | 1–24 hours | "every 10 minutes" becomes every hour |
+| Notification rate limit | 1 per 15 minutes, 4 per hour, per subscription | rate-limited attempts are stored as `failed` / `rate_limited: …`; only update notifications count |
+| Missed-call check | 100 s after an update call is placed | `callOutcomeCheckMs`; Cartesia rings for 45 s |
+| Text length | ≤ 450 characters (three GSM segments) | `smsMaxChars`; only the middle part is cut, never the header or the STOP and 911 lines |
 | "As of" staleness threshold | 3 hours | newest cited source older than this → "as of" its time |
 | Stale-session sweep | 15 minutes of silence | contract value (the build prompt said 10) |
 | LLM (turns) | 6 s timeout, 300 max tokens, temperature 0.2 **not sent** | the API rejects `temperature` (verified 400) |
@@ -143,6 +153,14 @@ Canonical spoken wording (safety, fallback, no_info, transcription notice, stop-
 - **A linked number on a call is still just caller ID.** The saved profile (needs, personal context, home area) may shape the answers on a call from the linked number, but history, saved needs read-back, update topics and every personal command ("what do you know about me", "forget me", "what updates do I have") need the callback check (identity `verified_phone`). A callback to a linked number gets both: the account's data and the commands.
 - **Key pool** (`src/providers/llm/pool.ts`): `ANTHROPIC_API_KEY` plus `ANTHROPIC_API_KEYS` (comma separated). When a key is out of credit, unauthorized or rate limited the backend uses the next one and skips the spent key for 10 minutes (1 hour if unauthorized, 1 minute if rate limited). Other errors (timeouts, bad output) never switch keys. Add keys with `npm run key:add -- sk-ant-…`; `npm run key:list` shows only the last four characters. Keys live in Convex env, never in git.
 - **Voice profile and the callback check** (`src/orchestration/pipeline.ts` step 2b, `src/memory/profile.ts`, `convex/calls.ts`): a caller can say "remember I use a wheelchair", "what do you know about me", "what did we talk about last time" or "forget me". These are matched in code, never by the model, and need a *verified* call. Caller ID is not enough (it can be spoofed), so on a plain call the reply is "I'll call you back at this number to confirm it's you" and the call ends. `queueVerificationCall` queues a phone notification with `purpose: "verification"` (delivered after `verificationDelayMs`, at most `verificationsPerHour` per number, one per minute). When that outbound call connects, `startSessionImpl` marks it `verifiedPhone` only if it is outbound, tied to a verification notification created within `verificationValidMs`, and answered at the number we dialed; identity becomes `verified_phone` for that call alone. Saved needs live on `callers.profileNeeds` (max 5, 80 characters each, never addresses, phone numbers or emails). "Forget me" asks for a "yes" on the next turn, then deletes the profile, summaries and updates and marks the call `forgotten`, so `finalizeCall` writes no memory and no summary for it. Personal-command turns are left out of call summaries.
+- **Calls and texts** (`convex/notifications.ts`, `src/notifications/sms.ts`, `src/providers/twilio/sms.ts`):
+  - **Choosing.** A caller picks the channel by voice: "text me" or "call me", in English or Spanish, matched in code (`requestedChannel`), then the model's `followUpRequest.channel`, then the saved `callers.preferredChannel`, else a call. "Every 2 hours", "hourly", "daily" or "cada hora" makes a time-based subscription (`mode: "scheduled"`, `intervalMs`, `nextRunAt`); without one the subscription fires on changes (`mode: "on_change"`). The spoken confirmation states the channel, the interval and how long it lasts. For calls it adds "If you miss a call, I'll text you the update"; for texts it explains how to stop them.
+  - **Sending.** Change alerts come from `matchEvents`, as before. Time-based updates come from the `runScheduled` cron, which sends whatever is due every minute. The message is the newest official bulletin for the incident or area if it changed since the last update, otherwise "No new official updates about X since …", or "no updates right now". A call speaks it; a text gets the text format below.
+  - **After an update call.** If the call cannot be placed, the update is texted at once. Otherwise `checkCallOutcome` runs 100 s later: with no session by then the call was missed, and the update is texted. If a session exists, `finalizeCall` decides when it ends. If the caller said anything that is not an answering machine ("leave a message after the tone"), the call was answered and gets the update by text (`call_recap`; nothing said on the call is texted). Otherwise it was missed and gets the update with "We tried to call you." in front. When the first turns of an update call look like an answering machine, the turn reply is a short voicemail message with `endCall` (`outboundVoicemail`), and the voice agent waits for whoever answers before greeting (voice/README.md). `notifications.outcome` records `answered` or `missed`.
+  - **Text format** (`buildUpdateText`): "Update on Cooley Fire (4:40 PM PT):", blank line, "As of 2:22 PM PT: <bulletin title and first sentence>", blank line, "[This is an update every 2 hours.] Reply STOP COOLEY FIRE to stop receiving updates on Cooley Fire. Questions? Call (712) 600-3362. In danger? Call 911." Nothing new on a time-based update: "No new official updates since 2:40 PM PT. Latest, as of …". An answered question: "You asked: "…?" As of …: <answer>". Built when the update is queued and stored as `notifications.text` (`message` stays the spoken version, used by calls and the landline fallback). The topic is `subscriptions.topicLabel` (set at creation: the incident's name from its newest bulletin, e.g. "Cooley Fire", or the area's label).
+  - **After any call that set up updates.** One confirmation text (what, call or text, how often, until when, STOP, 911).
+  - **Texts are notifications.** Each is a `notifications` row (`channel: "sms"`, a `purpose`, a `parentNotificationId` for texts about a call), deduped by key and not rate-limited. They are not sent once the subscription is cancelled or expired.
+  - **Landlines and STOP.** A Twilio landline error (21614 when sending, 30006 in the status callback) switches the subscription and `preferredChannel` to calls, and the update is called instead. A text reply of STOP cancels all updates for the number, the same as saying "stop updates"; "STOP COOLEY FIRE" cancels only that one.
 - **Fail safe**: after validation, `/voice/turn` always answers 200; failures give the canonical fallback (with the 911 line) and `degraded: true`, and are logged with an `errorCode` on the turn.
 
 ## Retrieval scoring (explainable)

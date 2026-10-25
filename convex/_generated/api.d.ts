@@ -29,6 +29,7 @@ import type * as signals from "../signals.js";
 import type * as sources from "../sources.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as systemState from "../systemState.js";
+import type * as twilio from "../twilio.js";
 import type * as unanswered from "../unanswered.js";
 import type * as validators from "../validators.js";
 import type * as voice from "../voice.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   sources: typeof sources;
   subscriptions: typeof subscriptions;
   systemState: typeof systemState;
+  twilio: typeof twilio;
   unanswered: typeof unanswered;
   validators: typeof validators;
   voice: typeof voice;

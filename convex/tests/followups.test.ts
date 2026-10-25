@@ -5,7 +5,7 @@ import { t as str } from "../../src/config/strings";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { newTest, setupEnv } from "../test.setup";
-import { PHONE, end, say, seedBulletins, settle, start, updateDrafts, useDemoClock } from "./backend.helpers";
+import { PHONE, callTexts, end, say, seedBulletins, settle, start, updateDrafts, updateNotifications, useDemoClock } from "./backend.helpers";
 
 beforeEach(() => {
   useDemoClock();
@@ -39,9 +39,9 @@ describe("subscription → update → notification → outbound call", () => {
     expect(updated.change).toBe("updated");
     await settle(t);
 
-    const notifications = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    const notifications = await updateNotifications(t);
     expect(notifications).toHaveLength(1);
-    expect(notifications[0]).toMatchObject({ status: "mock", recipientPhone: PHONE, channel: "phone_call", subscriptionId: r.subscriptionId });
+    expect(notifications[0]).toMatchObject({ status: "mock", recipientPhone: PHONE, channel: "phone_call", subscriptionId: r.subscriptionId, purpose: "update" });
     expect(notifications[0].message).toMatch(/Evacuation Order for zone SON-3A/);
     expect(notifications[0].dedupeKey).toBe(`${r.subscriptionId}:${updated.bulletinId}:v2`);
 
@@ -62,7 +62,7 @@ describe("subscription → update → notification → outbound call", () => {
     const r = await subscribe(t);
     await seedBulletins(t, updateDrafts);
     await settle(t);
-    const [n] = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    const [n] = await updateNotifications(t);
     const outbound = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: n._id });
     // A vague question that retrieval alone would not tie to the update.
     await say(t, outbound.sessionId, 0, "Why did you call me?");
@@ -83,7 +83,7 @@ describe("subscription → update → notification → outbound call", () => {
     await subscribe(t);
     await seedBulletins(t, updateDrafts);
     await settle(t);
-    const [n] = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    const [n] = await updateNotifications(t);
     // What CartesiaOutboundCallNotifier records: the agent_call_id returned by POST /agents/calls.
     await t.run(async (ctx) => await ctx.db.patch("notifications", n._id, { providerRef: "ac_live_123" }));
     const outbound = await start(t, { direction: "outbound", callerPhone: undefined, providerAgentCallId: "ac_live_123" });
@@ -103,7 +103,7 @@ describe("subscription → update → notification → outbound call", () => {
     await settle(t);
     await seedBulletins(t, updateDrafts); // unchanged: no new event
     await settle(t);
-    expect(await t.run(async (ctx) => (await ctx.db.query("notifications").collect()).length)).toBe(1);
+    expect(await updateNotifications(t)).toHaveLength(1);
   });
 
   it("rate-limits a subscription to one notification per 15 minutes, storing the attempt", async () => {
@@ -115,7 +115,7 @@ describe("subscription → update → notification → outbound call", () => {
     vi.advanceTimersByTime(5 * 60_000);
     await seedBulletins(t, [{ ...updateDrafts[0], body: `${updateDrafts[0].body} Zone SON-3B is now also under an Evacuation Order.` }]);
     await settle(t);
-    const rows = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    const rows = await updateNotifications(t);
     expect(rows.map((n) => n.status)).toEqual(["mock", "failed"]);
     expect(rows[1].error).toMatch(/^rate_limited/);
   });
@@ -128,7 +128,7 @@ describe("subscription → update → notification → outbound call", () => {
     expect(await t.mutation(internal.subscriptions.expireSubscriptions, {})).toBe(1);
     await seedBulletins(t, updateDrafts);
     await settle(t);
-    expect(await t.run(async (ctx) => (await ctx.db.query("notifications").collect()).length)).toBe(0);
+    expect(await updateNotifications(t)).toHaveLength(0);
   });
 
   it("a caller can stop updates on a later call", async () => {
@@ -140,7 +140,9 @@ describe("subscription → update → notification → outbound call", () => {
     expect(r).toMatchObject({ kind: "followup", reply: str("updatesStopped", "en") });
     await seedBulletins(t, updateDrafts);
     await settle(t);
-    expect(await t.run(async (ctx) => (await ctx.db.query("notifications").collect()).length)).toBe(0);
+    expect(await updateNotifications(t)).toHaveLength(0);
+    // Only the confirmation from the first call was ever texted.
+    expect((await callTexts(t)).map((n) => n.purpose)).toEqual(["subscription_confirmation"]);
   });
 });
 
@@ -163,7 +165,7 @@ describe("answered questions", () => {
     });
     expect(result.notificationsCreated).toBe(1);
     await settle(t);
-    const n = await t.run(async (ctx) => await ctx.db.query("notifications").first());
+    const [n] = await updateNotifications(t);
     expect(n).toMatchObject({ status: "mock", recipientPhone: PHONE });
     expect(n?.message).toMatch(/Hillcrest Elementary opened as a shelter at 5 PM\. That's from Sonoma County Emergency Management \(Demo\)/);
     expect((await t.run(async (ctx) => await ctx.db.get("unansweredQuestions", q.unansweredQuestionId as Id<"unansweredQuestions">)))?.status).toBe("answered");

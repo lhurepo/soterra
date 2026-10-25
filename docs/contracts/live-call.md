@@ -91,7 +91,12 @@ bulletin update → bulletinEvents → subscriptions.matchEvents → notificatio
   → notifications.deliver → Cartesia POST /agents/calls (dynamic_variables.notification_id)
   → Line agent CallStarted (metadata.notification_id — unverified, see DECISIONS.md)
   → POST /voice/session/start {direction:"outbound", notificationId} → greeting = intro + update + 911 line
+  → voicemail answers → a short message + endCall; then the update by text, "We tried to call you." (missed_call_text)
+  → no session within 100 s → the same text
+  → answered → at session end, the update by text (call_recap; nothing said on the call)
 ```
+
+Text-only subscriptions skip the call: the update goes straight to Twilio. No voice contract field changed for texts: the voice agent sees outbound calls exactly as before.
 
 ## Latency budget
 

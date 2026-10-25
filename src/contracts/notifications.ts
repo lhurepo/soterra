@@ -33,6 +33,15 @@ export const Subscription = z.object({
   createdVia: z.enum(["call", "app"]),
   expiresAt: EpochMs,
   lastNotifiedAt: EpochMs.optional(),
+  /**
+   * Additive (2026-10-24): "on_change" (default when absent) fires on matching bulletin events; "scheduled" fires every
+   * intervalMs with the latest official information, whether or not anything changed, and never on events.
+   */
+  mode: z.enum(["on_change", "scheduled"]).optional(),
+  /** Scheduled subscriptions only: how often (≥ 1 hour) and when the next update is due. */
+  intervalMs: z.number().int().positive().optional(),
+  nextRunAt: EpochMs.optional(),
+  lastRunAt: EpochMs.optional(),
 });
 export type Subscription = z.infer<typeof Subscription>;
 
@@ -50,6 +59,22 @@ export const NotificationRequest = z.object({
   notificationId: z.string().optional(),
 });
 export type NotificationRequest = z.infer<typeof NotificationRequest>;
+
+/**
+ * Why a notification exists. "update": a bulletin change; "scheduled_update": a time-based update; "verification": the
+ * callback check; "missed_call_text": an update call nobody answered, sent by text; "call_recap": a text after an
+ * answered update call; "subscription_confirmation": a text after a call that set up updates.
+ */
+export const NotificationPurpose = z.enum([
+  "update",
+  "scheduled_update",
+  "verification",
+  "app_code",
+  "missed_call_text",
+  "call_recap",
+  "subscription_confirmation",
+]);
+export type NotificationPurpose = z.infer<typeof NotificationPurpose>;
 
 export const NotificationStatus = z.enum(["sent", "queued", "failed", "unconfigured", "mock"]);
 export type NotificationStatus = z.infer<typeof NotificationStatus>;

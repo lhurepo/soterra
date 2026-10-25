@@ -2,9 +2,10 @@
 // Bulletin text stays in its original language; only the framing is translated.
 import { tf } from "../config/strings";
 import { formatSpokenTime } from "../orchestration/time";
+import { formatDuration } from "./schedule";
 
 /** First sentence of the body, without the "fictional demo data" disclaimer when that is all there is. */
-function detailSentence(body: string): string {
+export function detailSentence(body: string): string {
   const sentences = (body.match(/[^.!?]+[.!?]+/g) ?? [body]).map((s) => s.trim()).filter(Boolean);
   return sentences.find((s) => !/fictional demo data/i.test(s)) ?? sentences[0] ?? "";
 }
@@ -37,4 +38,32 @@ export function buildAnswerMessage(
     source: q.sourceName,
     time,
   });
+}
+
+/**
+ * A time-based update ("every 2 hours"), spoken on a call or sent as a text. Something new since the last one: the
+ * update itself. Nothing new: says so, with the latest official item. Nothing at all: says so and when we check again.
+ */
+export function buildScheduledMessage(
+  args: {
+    topic: string;
+    latest?: { sourceName: string; title: string; body: string; issuedAt: number; updatedAt?: number; primaryState: string };
+    /** When the previous scheduled update (or the request) was. */
+    since: number;
+    intervalMs: number;
+    state?: string;
+  },
+  language: string,
+): string {
+  const { latest } = args;
+  if (!latest) return tf("scheduledNone", language, { topic: args.topic, interval: formatDuration(args.intervalMs, language) });
+  const latestAt = latest.updatedAt ?? latest.issuedAt;
+  if (latestAt > args.since) return buildUpdateMessage(latest, language);
+  return tf("scheduledNoChange", language, {
+    topic: args.topic,
+    since: formatSpokenTime(args.since, args.state ?? latest.primaryState, language),
+    source: latest.sourceName,
+    time: formatSpokenTime(latestAt, latest.primaryState, language),
+    title: latest.title.replace(/[.\s]+$/, ""),
+  }).trim();
 }

@@ -1,9 +1,10 @@
 // [B] Notifier interface and implementations: mock phone calls (default), Cartesia outbound calls
-// (PHONE_NOTIFIER=cartesia, NOT verified live: no credentials yet), SMS (no provider chosen).
+// (PHONE_NOTIFIER=cartesia), mock texts (default) and Twilio texts (SMS_NOTIFIER=twilio, NOT verified live).
 // Nothing in the hotline's hot path imports this file.
 import type { Config } from "../config/env";
 import type { NotificationRequest, NotificationResult } from "../contracts";
 import { placeOutboundCall } from "../providers/cartesia/outbound";
+import { sendSms } from "../providers/twilio/sms";
 
 export interface Notifier {
   readonly name: string;
@@ -39,7 +40,31 @@ export class CartesiaOutboundCallNotifier implements Notifier {
   }
 }
 
-/** No SMS provider has been chosen. Do not add one without a team decision. */
+/** Sends no text. The row is stored with status "mock". */
+export class MockSmsNotifier implements Notifier {
+  readonly name = "mock_sms";
+  readonly sent: NotificationRequest[] = [];
+  async send(request: NotificationRequest): Promise<NotificationResult> {
+    this.sent.push(request);
+    return { status: "mock", providerRef: `mock-sms:${request.dedupeKey}` };
+  }
+}
+
+/** Texts through Twilio. "queued" = Twilio accepted it; the status callback later records delivered or failed. */
+export class TwilioSmsNotifier implements Notifier {
+  readonly name = "twilio_sms";
+  constructor(
+    private readonly config: Config,
+    private readonly fetchFn: typeof fetch,
+    private readonly statusCallbackUrl?: string,
+  ) {}
+  async send(request: NotificationRequest): Promise<NotificationResult> {
+    const result = await sendSms(this.config, this.fetchFn, { to: request.recipientPhone, body: request.message, statusCallback: this.statusCallbackUrl });
+    return "sid" in result ? { status: "queued", providerRef: result.sid } : { status: "failed", error: result.error };
+  }
+}
+
+/** SMS_NOTIFIER=unconfigured: texts are stored but never sent. */
 export class UnconfiguredSmsNotifier implements Notifier {
   readonly name = "sms_unconfigured";
   async send(): Promise<NotificationResult> {
@@ -47,7 +72,15 @@ export class UnconfiguredSmsNotifier implements Notifier {
   }
 }
 
-export function selectNotifier(config: Config, channel: NotificationRequest["channel"], fetchFn: typeof fetch): Notifier {
-  if (channel === "sms") return new UnconfiguredSmsNotifier();
+export function selectNotifier(
+  config: Config,
+  channel: NotificationRequest["channel"],
+  fetchFn: typeof fetch,
+  opts: { smsStatusCallbackUrl?: string } = {},
+): Notifier {
+  if (channel === "sms") {
+    if (config.SMS_NOTIFIER === "twilio") return new TwilioSmsNotifier(config, fetchFn, opts.smsStatusCallbackUrl);
+    return config.SMS_NOTIFIER === "mock" ? new MockSmsNotifier() : new UnconfiguredSmsNotifier();
+  }
   return config.PHONE_NOTIFIER === "cartesia" ? new CartesiaOutboundCallNotifier(config, fetchFn) : new MockPhoneNotifier();
 }

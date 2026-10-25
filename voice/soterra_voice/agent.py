@@ -79,6 +79,18 @@ def is_repeat_request(utterance: str) -> bool:
     return bool(_REPEAT_RE.match(_normalize_utterance(utterance)))
 
 
+# An answering machine, not a person. Keep in step with looksLikeVoicemail in src/orchestration/intents.ts.
+_VOICEMAIL_RE = re.compile(
+    r"\b(leave (me )?(a |your )?(message|name and number)|after the (tone|beep)|at the (tone|beep)|(is )?not available|"
+    r"unavailable|voice ?mail|mailbox|record your message|can'?t (take|come to) (your|the|my) (call|phone)|"
+    r"deje (su|un) mensaje|despues del tono|no (esta|se encuentra) disponible|buzon de voz)\b"
+)
+
+
+def looks_like_voicemail(utterance: str) -> bool:
+    return bool(_VOICEMAIL_RE.search(_normalize_utterance(utterance)))
+
+
 @dataclass
 class CallInfo:
     provider_call_id: str
@@ -180,6 +192,10 @@ class SoterraAgent:
         self._interrupted = False
         self._ended = False
         self._agent_ended = False
+        # Outbound: the greeting waits for whoever answers (see _on_call_started); None once spoken or dropped.
+        self._pending_greeting: Optional[str] = None
+        self._start_task: Optional[asyncio.Task] = None
+        self._start_language: Optional[str] = None
 
     # ───────────────────────── dispatch ─────────────────────────
 
@@ -202,37 +218,61 @@ class SoterraAgent:
         )
         greeting = self._prestart_greeting
         if self.session_id is None or greeting is None:
-            try:
-                t0 = asyncio.get_running_loop().time()
-                res = await asyncio.wait_for(
-                    self.backend.start_session(
-                        SessionStartRequest(
-                            provider_call_id=self.call.provider_call_id,
-                            direction=self.call.direction,  # type: ignore[arg-type]
-                            caller_phone=self.call.caller_phone,
-                            called_phone=self.call.called_phone,
-                            language_hint=self.call.language_hint,
-                            notification_id=self.call.notification_id,
-                            provider_agent_call_id=self.call.agent_call_id,
-                            started_at=now_ms(),
-                        )
-                    ),
-                    timeout=self.settings.turn_timeout_s,
-                )
+            # A task, shielded: on an outbound call the person (or their voicemail) may speak while it runs, and the
+            # runner cancels this handler then; the session must still start.
+            t0 = asyncio.get_running_loop().time()
+            self._start_task = asyncio.ensure_future(self._start_session())
+            ok, greeting = await asyncio.shield(self._start_task)
+            if ok:
                 yield LogMetric(name="backend_start_ms", value=round((asyncio.get_running_loop().time() - t0) * 1000))
-                self.session_id, greeting = res.session_id, res.greeting
-                language = normalize_language(res.language)
-                if language and language != self.language:
-                    self.language = language
-                    yield self._language_update()
-            except (BackendError, asyncio.TimeoutError) as e:
-                log.error("session start failed (%s); first turn will start it via providerCallId", _err(e))
+            else:
                 yield LogMetric(name="backend_start_failed", value=1)
-                greeting = None
-        for text, interruptible in split_greeting(greeting or phrases.greeting_fallback(self.language)):
-            yield say(text, interruptible=interruptible)
+        language = self._start_language
+        if language and language != self.language:
+            self.language = language
+            yield self._language_update()
+        greeting = greeting or phrases.greeting_fallback(self.language)
+        if self.call.direction == "outbound" and self.settings.outbound_greeting_wait_s > 0:
+            # Let whoever answers speak first: "Hello?" gets the greeting at once (_on_user_turn), an answering
+            # machine's prompt gets the short voicemail message instead, and silence gets the greeting after the wait.
+            self._pending_greeting = greeting
+            await asyncio.sleep(self.settings.outbound_greeting_wait_s)
+            if self._pending_greeting is None:
+                return
+            self._pending_greeting = None
+        for out in self._greeting(greeting):
+            yield out
+
+    async def _start_session(self) -> tuple[bool, Optional[str]]:
+        """(started, greeting). Sets session_id and the backend's language."""
+        try:
+            res = await asyncio.wait_for(
+                self.backend.start_session(
+                    SessionStartRequest(
+                        provider_call_id=self.call.provider_call_id,
+                        direction=self.call.direction,  # type: ignore[arg-type]
+                        caller_phone=self.call.caller_phone,
+                        called_phone=self.call.called_phone,
+                        language_hint=self.call.language_hint,
+                        notification_id=self.call.notification_id,
+                        provider_agent_call_id=self.call.agent_call_id,
+                        started_at=now_ms(),
+                    )
+                ),
+                timeout=self.settings.turn_timeout_s,
+            )
+            self.session_id = res.session_id
+            self._start_language = normalize_language(res.language)
+            return True, res.greeting
+        except (BackendError, asyncio.TimeoutError) as e:
+            log.error("session start failed (%s); first turn will start it via providerCallId", _err(e))
+            return False, None
+
+    def _greeting(self, greeting: str) -> list[Any]:
+        out: list[Any] = [say(text, interruptible=interruptible) for text, interruptible in split_greeting(greeting)]
         if self.settings.offer_spanish_dtmf and self.call.direction == "inbound":
-            yield say(phrases.phrase("spanish_offer", self.language))
+            out.append(say(phrases.phrase("spanish_offer", self.language)))
+        return out
 
     def _language_update(self) -> AgentUpdateCall:
         return AgentUpdateCall(language=self.language, voice_id=self.settings.voice_for(self.language))
@@ -251,6 +291,19 @@ class SoterraAgent:
                 yield self._language_update()
                 yield say(phrases.phrase("switched", self.language))
             return
+
+        voicemail = False
+        if self._pending_greeting is not None:
+            # Outbound, and whoever answered spoke before the greeting.
+            if self._start_task is not None and not self._start_task.done():
+                await asyncio.gather(asyncio.shield(self._start_task), return_exceptions=True)
+            greeting, self._pending_greeting = self._pending_greeting, None
+            if not looks_like_voicemail(utterance):
+                for out in self._greeting(greeting):
+                    yield out
+                return
+            # An answering machine: the backend replies with a short voicemail message and ends the call.
+            voicemail = True
 
         if is_repeat_request(utterance):
             yield say(self.last_reply or phrases.phrase("nothing_to_repeat", self.language))
@@ -277,7 +330,7 @@ class SoterraAgent:
         error: Optional[str] = None
         try:
             done, _ = await asyncio.wait({task}, timeout=self.settings.filler_after_s)
-            if not done:
+            if not done and not voicemail:  # no "One moment." on an answering machine
                 yield say(phrases.filler(self.language, self._fillers_used))
                 self._fillers_used += 1
                 yield LogMetric(name="filler_used", value=1)
@@ -297,6 +350,13 @@ class SoterraAgent:
                 await asyncio.gather(task, return_exceptions=True)
 
         elapsed_ms = round((loop.time() - t0) * 1000)
+        if response is None and voicemail:
+            log.error("voicemail turn failed after %d ms: %s; leaving the local message", elapsed_ms, error)
+            yield say(phrases.phrase("voicemail", self.language))
+            self._agent_ended = True
+            await self._end("agent_end")
+            yield AgentEndCall()
+            return
         if response is None:
             async for out in self._on_failure(index, error or "unknown", elapsed_ms):
                 yield out

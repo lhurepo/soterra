@@ -38,7 +38,7 @@ def user(*texts: str, dtmf: str | None = None) -> UserTurnEnded:
 
 
 def settings(**overrides) -> Settings:
-    base = dict(backend_mode="mock", filler_after_s=5.0, turn_timeout_s=5.0, end_session_timeout_s=1.0)
+    base = dict(backend_mode="mock", filler_after_s=5.0, turn_timeout_s=5.0, end_session_timeout_s=1.0, outbound_greeting_wait_s=0.0)
     base.update(overrides)
     return Settings(**base)
 

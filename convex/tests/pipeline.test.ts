@@ -204,7 +204,8 @@ describe("mock-site escalation", () => {
     ]);
     const after = (await bulletins(t)).find((b) => b._id === county._id)!;
     expect(after.body).toMatch(/An Evacuation Order is now in effect for zone SON-3A/);
-    const notifications = await t.run(async (ctx) => await ctx.db.query("notifications").collect());
+    // Update calls only (a missed update call is then texted; see convex/tests/textAlerts.test.ts).
+    const notifications = (await t.run(async (ctx) => await ctx.db.query("notifications").collect())).filter((n) => n.channel === "phone_call");
     expect(notifications).toHaveLength(1);
     expect(notifications[0].status).toBe("mock");
     // Shelter capacity changed too.

@@ -26,6 +26,18 @@ export const DEFAULTS = {
   /** Per subscription: at most one notification per window, and at most `notifyMaxPerHour` per hour. */
   notifyMinIntervalMs: 15 * MINUTE,
   notifyMaxPerHour: 4,
+  /** Time-based updates ("every 2 hours"): the interval is clamped to this range. */
+  scheduledMinIntervalMs: HOUR,
+  scheduledMaxIntervalMs: DAY,
+  /**
+   * After an update call is placed: when to check whether it was answered. Cartesia rings for 45 s
+   * (src/providers/cartesia/outbound.ts), so a call with no session by then was missed.
+   */
+  callOutcomeCheckMs: 100_000,
+  /** Longest text we send: three GSM segments (Spanish accents make it UCS-2, so more segments there). */
+  smsMaxChars: 450,
+  /** Printed in texts when HOTLINE_NUMBER is not set: the Soterra line. */
+  hotlineNumber: "+17126003362",
   /** When the newest cited source is older than this, the reply says "as of" its time. */
   staleSourceMs: 3 * HOUR,
   /** Sessions silent this long are finalized by the sweeper (docs/contracts/live-call.md says 15 minutes). */

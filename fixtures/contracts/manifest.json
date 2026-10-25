@@ -82,6 +82,21 @@
       "python": false
     },
     {
+      "file": "subscription.scheduled-sms.json",
+      "schema": "Subscription",
+      "python": false
+    },
+    {
+      "file": "notification-request.sms.json",
+      "schema": "NotificationRequest",
+      "python": false
+    },
+    {
+      "file": "follow-up-request.text-scheduled.json",
+      "schema": "FollowUpRequest",
+      "python": false
+    },
+    {
       "file": "call-summary.json",
       "schema": "CallSummary",
       "python": false

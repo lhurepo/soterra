@@ -13,6 +13,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { isConfirmation, isRefusal, profileCommand } from "../src/orchestration/intents";
 import { forgetCallerRows, hasActiveSubscription, verifiedAccountForPhone } from "./callers";
+import { sendAfterCallTexts } from "./notifications";
 import { areaRef, hazardType } from "./validators";
 
 /**
@@ -68,6 +69,8 @@ export const finalizeCall = internalMutation({
         });
       }
     }
+    // Texts about this call: the recap or missed-call text of an update callback, and the confirmation of new updates.
+    await sendAfterCallTexts(ctx, call, now);
     await ctx.scheduler.runAfter(0, internal.memory.summarizeCall, { callId });
     return null;
   },
