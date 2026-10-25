@@ -196,7 +196,7 @@ struct AssistantView: View {
             .buttonStyle(FilledButtonStyle())
             .disabled(isSaved)
             if question.lowercased().contains("shelter") {
-                Text("Open shelters right now: Ridgeview Community Center, 500 Elm Street (pets in crates). Checked 2:30 PM.")
+                Text("Open shelters right now: Hamilton Recreation Center, 1900 Geary Boulevard (pets in crates). Checked 3:45 PM.")
                     .font(.footnote)
                     .foregroundStyle(Palette.textSecondary)
             }

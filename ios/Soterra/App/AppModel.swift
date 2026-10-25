@@ -12,7 +12,7 @@ enum Route: Hashable {
     case activity, callHistory, following, checklist, area, language, privacy, settings, about
 }
 
-/// Which Home the demo shows. Switch it in More → Demo controls.
+/// Which Home the demo shows ("Quake": the earthquake just struck, no order yet; "Order": the Evacuation Order is out). Switch it in More → Demo controls.
 enum HomeScenario: String, CaseIterable, Identifiable {
     case crisis, escalated, calm
 
@@ -20,7 +20,7 @@ enum HomeScenario: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .crisis: "Warning"
+        case .crisis: "Quake"
         case .escalated: "Order"
         case .calm: "No alerts"
         }
@@ -67,7 +67,7 @@ struct MapFilters: Equatable {
 enum MapPlace: Hashable {
     case shelter(Shelter.ID)
     case zone(String)
-    case fire
+    case epicenter
     case roadClosure
 }
 
@@ -92,13 +92,13 @@ final class AppModel {
     @ObservationIgnored var client: AppStateFetching = BackendClient()
 
     // Demo controls
-    var scenario: HomeScenario = .crisis
+    var scenario: HomeScenario = .escalated
     var isOffline = false
     var appearance: Appearance = .light
 
     // Alerts and following
     var alertsFilter: AlertsFilter = .all
-    var followedAlertIDs: Set<HazardAlert.ID> = [DemoData.warningID, DemoData.orderID]
+    var followedAlertIDs: Set<HazardAlert.ID> = [DemoData.orderID, DemoData.quakeID]
     var followedTopics: [FollowedTopic] = DemoData.followedTopics
 
     // Map
@@ -107,7 +107,7 @@ final class AppModel {
 
     // Household
     var members: [HouseholdMember] = DemoData.members
-    var meetingPointID: Shelter.ID = DemoData.ridgeviewCenterID
+    var meetingPointID: Shelter.ID = DemoData.hamiltonID
 
     // Settings
     var language: AppLanguage = .english
@@ -144,8 +144,8 @@ final class AppModel {
         isOffline = defaults.bool(forKey: "SoterraOffline")
         if defaults.object(forKey: "SoterraLive") != nil { useLiveData = defaults.bool(forKey: "SoterraLive") }
         switch defaults.string(forKey: "SoterraScreen") {
-        case "alert": homePath = [.alert(topAlert?.id ?? DemoData.warningID)]
-        case "assistant": homePath = [.assistant(topic: "Evacuation Warning")]
+        case "alert": homePath = [.alert(topAlert?.id ?? DemoData.orderID)]
+        case "assistant": homePath = [.assistant(topic: "Evacuation Order")]
         case "danger": isShowingDanger = true
         case "shelter": showShelters()
         default: break
@@ -162,13 +162,17 @@ final class AppModel {
         return DemoData.alerts(for: scenario)
     }
     var topAlert: HazardAlert? { alerts.first }
+    /// The map draws the incident only while Home shows alerts, so the two never disagree.
+    var hasActiveIncident: Bool { !alerts.isEmpty }
+    /// The evacuation zone is drawn only once an Evacuation Order is among the alerts.
+    var hasEvacuationOrder: Bool { alerts.contains { $0.kind == .order } }
     /// True when any active alert is more than info; the bell's badge turns red.
     var hasUrgentAlert: Bool { alerts.contains { $0.severity.level != .unknown } }
     var todayItems: [TimelineItem] {
         if isShowingLive, let liveState { return LiveAlerts.timeline(from: liveState) }
         return DemoData.today(for: scenario)
     }
-    var homeTitle: String { isShowingLive || scenario == .calm ? "Home" : "Ridgeview Fire" }
+    var homeTitle: String { isShowingLive || scenario == .calm ? "Home" : "Marina Earthquake" }
     var newUpdateCount: Int {
         if isShowingLive, let liveState { return liveState.alerts.filter { $0.updatedAt != nil }.count }
         return scenario == .escalated ? 3 : 2

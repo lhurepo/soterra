@@ -189,6 +189,9 @@ struct Shelter: Identifiable, Hashable {
     let checkedAt: String
     /// Capacity was checked long enough ago that it should be confirmed before relying on it.
     let needsReconfirming: Bool
+    /// Shelters that have not opened yet say when, instead of "Open".
+    var isOpen = true
+    var statusText = "Open"
 
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
 }

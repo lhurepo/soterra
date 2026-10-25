@@ -10,8 +10,8 @@ struct MoreView: View {
 
         List {
             Section {
-                row(.activity, "bell", "Activity", "Evacuation Warning for SON-3A and SON-3B · 1:45 PM", badge: 3)
-                row(.callHistory, "phone", "Call history", "Last call today, 1:58 PM")
+                row(.activity, "bell", "Activity", "Evacuation Order for the Marina District · 3:43 PM", badge: 3)
+                row(.callHistory, "phone", "Call history", "Last call today, 3:42 PM")
                 row(.following, "list.bullet", "Updates I'm following",
                     "\(model.followedTopics.filter(\.isActive).count) active · end after 24 hours")
                 row(.checklist, "checklist", "Preparedness checklist",

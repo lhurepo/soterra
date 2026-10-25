@@ -54,7 +54,7 @@ struct AlertsView: View {
         if model.alerts.isEmpty {
             ContentUnavailableView("No active official alerts",
                                    systemImage: "checkmark.shield",
-                                   description: Text("Last checked 2:14 PM for Sonoma County."))
+                                   description: Text("Last checked 2:14 PM for San Francisco."))
                 .padding(.top, 40)
         } else {
             ContentUnavailableView("Not following any alerts",
