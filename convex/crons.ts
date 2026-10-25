@@ -14,6 +14,8 @@ crons.interval("raw payload purge", { hours: 1 }, internal.ingestion.purgeRawPay
 crons.interval("stale session sweeper", { minutes: 5 }, internal.calls.sweepStaleSessions, {});
 // [B] Time-based updates ("text me every 2 hours"): sends those that are due.
 crons.interval("scheduled updates", { minutes: 1 }, internal.subscriptions.runScheduled, {});
+// [B] Deletes expired sign-in codes and app sessions.
+crons.interval("app auth purge", { hours: 1 }, internal.accounts.purgeAuth, {});
 // [B] Marks subscriptions past expiresAt as expired (the matcher already skips them).
 crons.interval("subscription expiry", { minutes: 30 }, internal.subscriptions.expireSubscriptions, {});
 // [B] Retention: anonymous transcripts (7 days) and anonymous caller memory (30 days), in batches.

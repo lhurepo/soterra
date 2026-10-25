@@ -176,7 +176,12 @@ export function enforceGrounding(args: {
   }
 
   if (draft.kind === "no_info") {
-    return noInfoReply(draft.unansweredQuestion?.trim() || utterance, language, { endCall: draft.endCall, rewritten: false });
+    const base = noInfoReply(draft.unansweredQuestion?.trim() || utterance, language, { endCall: draft.endCall, rewritten: false });
+    // The model may say "I don't have that one yet" in its own warm words, but only if it states no facts: short, no
+    // numbers, no shelter or zone claims. Anything else gets the canonical line.
+    const own = draft.reply.trim();
+    const safe = own.length > 0 && own.split(/\s+/).length <= 45 && !/\d/.test(own) && !claimsShelterOpen(own) && !claimsAddressInZone(own);
+    return safe ? { ...base, reply: own } : base;
   }
 
   if (draft.kind !== "answer") {

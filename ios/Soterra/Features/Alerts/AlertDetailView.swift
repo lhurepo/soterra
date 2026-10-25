@@ -3,6 +3,8 @@ import SwiftUI
 /// One alert: what it says, what to do, the zones, and its official source.
 struct AlertDetailView: View {
     @Environment(AppModel.self) private var model
+    /// Lines "Also reported by" up with the source name (ListRow's icon width plus spacing).
+    @ScaledMetric(relativeTo: .body) private var sourceIndent: CGFloat = 36
     let alertID: HazardAlert.ID
 
     @State private var isShowingZoneInfo = false
@@ -17,7 +19,7 @@ struct AlertDetailView: View {
                     .screenBackground()
             }
         }
-        .soterraToolbar(showsArea: false)
+        .soterraToolbar(showsWordmark: false)
     }
 
     private func content(for alert: HazardAlert) -> some View {
@@ -73,15 +75,18 @@ struct AlertDetailView: View {
                 Button {
                     isShowingSourceInfo = true
                 } label: {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        // The bulletin's own time ("Issued", "Updated"), not the clock.
                         ListRow(systemImage: "building.columns", title: alert.source.name,
-                                subtitle: alert.times.last.map { "\($0.label) \($0.value)" })
+                                subtitle: alert.times.last(where: { $0.label != "Now" }).map { "\($0.label) \($0.value)" })
                         if !alert.source.corroboratedBy.isEmpty {
                             Label("Also reported by \(ListFormatter.localizedString(byJoining: alert.source.corroboratedBy))",
                                   systemImage: "checkmark.seal")
                                 .font(.caption)
                                 .foregroundStyle(Palette.textSecondary)
-                                .padding(.leading, 36)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.leading, sourceIndent)
                         }
                     }
                     .padding(.horizontal, 16)

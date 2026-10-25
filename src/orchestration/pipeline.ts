@@ -15,7 +15,7 @@ import { dangerLanguage } from "./danger";
 import { enforceGrounding } from "./grounding";
 import { addNeed } from "../memory/profile";
 import { clampIntervalMs, subscriptionLifetimeMs, formatInterval } from "../notifications/schedule";
-import { asksToStopUpdates, declinesTranscript, isConfirmation, isRefusal, profileCommand, requestedChannel, requestedIntervalMinutes } from "./intents";
+import { asksToStopUpdates, declinesTranscript, explicitFollowUpRequest, isConfirmation, isRefusal, profileCommand, requestedChannel, requestedIntervalMinutes } from "./intents";
 import { buildTurnRequest, parseDraft } from "./prompt";
 
 export type TurnInput = {
@@ -46,6 +46,8 @@ export type TurnState = {
   verificationsLastHour?: number;
   /** How this caller last asked to get updates; used when they don't say "text me" or "call me". */
   preferredChannel?: "phone_call" | "sms";
+  /** For an update callback: what we phoned about (the update text). */
+  callReason?: string;
 };
 
 export type TurnDeps = {
@@ -162,7 +164,8 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
 
   // 2. Deterministic intents that must not depend on the model.
   // 2a. A destructive command from the previous turn is waiting for "yes"; anything else cancels it.
-  const verified = state.context.identity === "verified_phone" || state.context.identity === "verified_account";
+  // Only the callback check counts. A call from a linked number is still just caller ID, which can be spoofed.
+  const verified = state.context.identity === "verified_phone";
   const clearPending = state.pendingAction !== undefined;
   if (state.pendingAction === "forget") {
     if (verified && isConfirmation(input.utterance)) return simple("smalltalk", t("forgetDone", language), { forgetCaller: true, clearPendingAction: true });
@@ -275,6 +278,7 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
       context: toLlmContext(state.context),
       area: resolved.area,
       areaFromMemory: resolved.source === "context",
+      callReason: state.callReason,
       history: state.history,
       now: t1,
     },
@@ -313,6 +317,11 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   // 8. Effects.
   if (g.unansweredQuestion !== undefined) effects.recordUnanswered = { text: g.unansweredQuestion, area: resolved.area };
   if (draft.detectedArea && !effects.setKnownArea) effects.setKnownArea = draft.detectedArea;
+  if (kind === "followup" && !explicitFollowUpRequest(input.utterance)) {
+    // The model chose "followup" but the caller never asked to be called or told: do not create an update.
+    kind = "clarify";
+    reply = t("followupUnclear", language);
+  }
   if (kind === "followup") {
     if (!state.hasCallerPhone) {
       reply = t("callbackDeclined", language);

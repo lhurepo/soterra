@@ -24,18 +24,30 @@ Simulator: pick any iPhone simulator and press Run. Tests: **Product → Test** 
 
 - **More → Demo controls:** switch Home between *Warning*, *Order* (just escalated, lit red edge) and
   *No alerts*, and turn **Offline** on.
+- **More → Appearance:** Light (default), Dark or Match system. **More → Area** holds the area (it used to be
+  in the top bar, which now shows the small wordmark and the 911 pill).
+- **More → Simple mode:** one screen with bigger text and buttons and only the essentials (what is happening,
+  Call 911, Call Soterra, I'm safe, directions to the meeting point). It is remembered across launches;
+  "Switch to the full app" at the bottom turns it off.
+- **911 pill** (every screen, same size everywhere): opens the danger sheet. "Call 911" asks "Call 911 now?"
+  first, then iOS shows its own call prompt. **Demo safety:** it dials **119**, not 911
+  (`DemoConfig.emergencyDialNumber`). 119 is an emergency number in some countries, such as Japan and South Korea.
+- **Map:** full-screen. Search and filters float on top and fade while you move the map; tap empty map to bring
+  them back. Tap a shelter, a zone, the fire or the road closure for its slide-up panel; drag it down to close.
 - **More → Appearance:** Light (default), Dark or Match system.
 - **911 pill** (every screen): opens the danger sheet. **Demo safety:** "Call 911" opens the dialer with
   **119**, not 911 (`DemoConfig.emergencyDialNumber`). iOS asks before calling. 119 is an emergency number in
   some countries, such as Japan and South Korea.
-- **Call Soterra** really dials the live hotline, +1 804 606 6867.
+- **Profile sign-in** (backend ready, screen not built): ask for the phone number, call `accounts:requestPhoneCode` (Soterra phones it and reads a 6-digit code), let the user type the code into `accounts:verifyPhoneCode`, keep the returned token in the Keychain, and pass it to `accounts:getMyProfile` / `accounts:saveMyProfile`. To get verified access on a call, the app can also call `accounts:requestVerifiedCall` with the token ("Call me"): Soterra rings the number, and that call is verified (the user can then say "what do you know about me", "forget me"). For **Call Soterra**, call `accounts:armAppCall` with the token just before opening the `tel:` link: the next call from that number within two minutes is verified (once). A call the user makes without that, even from a linked number, is not verified; update callbacks from Soterra are. See docs/backend.md ("App sign-in and profile"). There is no way to read or save a profile with only a phone number.
+- **Call Soterra** really dials the live hotline, +1 712 600 3362.
 - **Ask Soterra:** try "What's going on with the Ridgeview Fire?", "Where are the shelters?",
   "Is Hillcrest Elementary open as a shelter?" (I don't know yet), then "Call me when you know", or
   "I'm trapped" (danger sheet).
 
 Debug builds also accept launch arguments (Edit Scheme → Run → Arguments), for screenshots:
 `-SoterraTab map|alerts|household|more`, `-SoterraScenario crisis|escalated|calm`,
-`-SoterraAppearance light|dark|system`, `-SoterraOffline YES`, `-SoterraScreen alert|assistant|danger|shelter`.
+`-SoterraAppearance light|dark|system`, `-SoterraOffline YES`, `-SoterraScreen alert|assistant|danger|shelter`,
+`-SoterraSimpleMode YES|NO`.
 
 ## Layout
 
@@ -47,6 +59,7 @@ Debug builds also accept launch arguments (Edit Scheme → Run → Arguments), f
 | `Soterra/Model` | Value types mirroring the backend data, demo data, the demo assistant, `DemoConfig` |
 | `Soterra/Resources` | Asset catalog (placeholder app icon from the current logo), Outfit SemiBold (SIL OFL) |
 | `SoterraTests` | Unit tests for the assistant rules and app state |
+| `SoterraUITests` | UI tests: 911 pill size on every screen, the call confirmation, map search and panels, Simple mode, the Area setting, and layout at the largest text size (keeps screenshots in the test result) |
 
 Rules the UI keeps (from `PRODUCT.md`): 911 one tap away on every screen and never "help is on the way";
 every fact shows its source and time; "I don't know yet" is a normal answer; no address-in-zone guessing;

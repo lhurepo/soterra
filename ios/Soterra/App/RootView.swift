@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Tabs: Home · Alerts · Map · Household · More. The danger sheet and toasts can appear over any of them.
+/// Tabs: Home · Alerts · Map · Household · More, or the single Simple mode screen. The danger sheet and toasts
+/// can appear over either.
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
@@ -8,36 +9,12 @@ struct RootView: View {
     var body: some View {
         @Bindable var model = model
 
-        TabView(selection: $model.selectedTab) {
-            NavigationStack(path: $model.homePath) {
-                HomeView().withRoutes()
+        Group {
+            if model.isSimpleMode {
+                NavigationStack { SimpleModeView() }
+            } else {
+                tabs
             }
-            .tabItem { Label("Home", systemImage: "house") }
-            .tag(AppTab.home)
-
-            NavigationStack(path: $model.alertsPath) {
-                AlertsView().withRoutes()
-            }
-            .tabItem { Label("Alerts", systemImage: "bell") }
-            .tag(AppTab.alerts)
-
-            NavigationStack {
-                MapScreen()
-            }
-            .tabItem { Label("Map", systemImage: "map") }
-            .tag(AppTab.map)
-
-            NavigationStack(path: $model.householdPath) {
-                HouseholdView().withRoutes()
-            }
-            .tabItem { Label("Household", systemImage: "person.2") }
-            .tag(AppTab.household)
-
-            NavigationStack(path: $model.morePath) {
-                MoreView().withRoutes()
-            }
-            .tabItem { Label("More", systemImage: "ellipsis") }
-            .tag(AppTab.more)
         }
         .sheet(isPresented: $model.isShowingDanger) {
             DangerSheet()
@@ -58,6 +35,42 @@ struct RootView: View {
             if scenePhase == .active { await model.refresh() }
         }
     }
+
+    private var tabs: some View {
+        @Bindable var model = model
+
+        return TabView(selection: $model.selectedTab) {
+            NavigationStack(path: $model.homePath) {
+                HomeView().withRoutes()
+            }
+            .tabItem { Label("Home", systemImage: "house") }
+            .tag(AppTab.home)
+
+            NavigationStack(path: $model.alertsPath) {
+                AlertsView().withRoutes()
+            }
+            .tabItem { Label("Alerts", systemImage: "bell") }
+            .tag(AppTab.alerts)
+
+            NavigationStack(path: $model.mapPath) {
+                MapScreen().withRoutes()
+            }
+            .tabItem { Label("Map", systemImage: "map") }
+            .tag(AppTab.map)
+
+            NavigationStack(path: $model.householdPath) {
+                HouseholdView().withRoutes()
+            }
+            .tabItem { Label("Household", systemImage: "person.2") }
+            .tag(AppTab.household)
+
+            NavigationStack(path: $model.morePath) {
+                MoreView().withRoutes()
+            }
+            .tabItem { Label("More", systemImage: "ellipsis") }
+            .tag(AppTab.more)
+        }
+    }
 }
 
 private struct RouteDestinations: ViewModifier {
@@ -70,6 +83,7 @@ private struct RouteDestinations: ViewModifier {
             case .callHistory: CallHistoryView()
             case .following: FollowingView()
             case .checklist: ChecklistView()
+            case .area: AreaView()
             case .language: LanguageView()
             case .privacy: PrivacyView()
             case .settings: AppearanceSettingsView()

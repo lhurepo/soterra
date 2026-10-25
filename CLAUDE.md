@@ -36,9 +36,9 @@ rolldown binding (Vitest then fails "Cannot find native binding"); fix with
 
 | What | Value |
 | --- | --- |
-| Phone number | **+1 229 367 4422** (Cartesia number id `ap_JQBdev7QiQVUwNEkuMbTd3`) |
-| Voice agent (code, deployed from `voice/`) | `soterra-voice` = `agent_5qooPJfkYWFfcHxGj2GqS1` |
-| Cartesia account | Dhweya's organization (key in Convex env `CARTESIA_API_KEY`, never in git). Create a fresh agent and number with `~/.cartesia/bin/cartesia init --new <name>` and `phone-numbers provision <label>` |
+| Phone number | **+1 712 600 3362** (Cartesia number id `ap_CWGJppviDa2Ea1jeZEYwBt`) |
+| Voice agent (code, deployed from `voice/`) | `soterra-voice` = `agent_1iwkwy7nwEfejQJzwM75hm` |
+| Cartesia account | "Soterra" (key in Convex env `CARTESIA_API_KEY`, never in git). Another account was used briefly for a new agent and number; switch with `cartesia auth login <key>` plus the three `CARTESIA_*` Convex env vars |
 | Convex dev deployment | `brazen-perch-21` → `https://brazen-perch-21.convex.site` (`/health`) |
 | Twilio webhooks (texts) | `https://brazen-perch-21.convex.site/twilio/status` (set per text) and `/twilio/inbound` (set on the Twilio number) |
 
@@ -55,10 +55,10 @@ Always first: `npm test && npm run typecheck && npm run test:voice`
 | You changed | Then |
 | --- | --- |
 | `convex/` or `src/` (backend) | `npx convex dev --once` (pushes to the dev deployment; read `convex/_generated/ai/guidelines.md` before editing `convex/`) |
-| `voice/` | Redeploy the phone agent: `cd voice && find . -name __pycache__ -prune -exec rm -rf {} + && ~/.cartesia/bin/cartesia deploy --agent-id agent_5qooPJfkYWFfcHxGj2GqS1 .` then `~/.cartesia/bin/cartesia deployments ls --agent-id agent_5qooPJfkYWFfcHxGj2GqS1` until "deployed" |
-| voice env vars | `~/.cartesia/bin/cartesia env set --agent-id agent_5qooPJfkYWFfcHxGj2GqS1 KEY=value` (redeploys) |
+| `voice/` | Redeploy the phone agent: `cd voice && find . -name __pycache__ -prune -exec rm -rf {} + && ~/.cartesia/bin/cartesia deploy --agent-id agent_1iwkwy7nwEfejQJzwM75hm .` then `~/.cartesia/bin/cartesia deployments ls --agent-id agent_1iwkwy7nwEfejQJzwM75hm` until "deployed" |
+| voice env vars | `~/.cartesia/bin/cartesia env set --agent-id agent_1iwkwy7nwEfejQJzwM75hm KEY=value` (redeploys) |
 | `src/contracts/` | follow "Contract change protocol" in `TEAM_PLAN.md` (zod + fixture + Python mirror) |
-| anything | after deploying, **call +1 229 367 4422** and run the demo script (`TEAM_PLAN.md` → Demo script) |
+| anything | after deploying, **call +1 712 600 3362** and run the demo script (`TEAM_PLAN.md` → Demo script) |
 
 Commit and push only when the user asks.
 

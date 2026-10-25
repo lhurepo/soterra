@@ -45,7 +45,7 @@ struct AssistantView: View {
         .screenBackground()
         .navigationTitle("Ask Soterra")
         .navigationBarTitleDisplayMode(.inline)
-        .soterraToolbar(showsArea: false)
+        .soterraToolbar(showsWordmark: false)
         .safeAreaInset(edge: .bottom, spacing: 0) { composer }
         .task {
             guard messages.isEmpty else { return }

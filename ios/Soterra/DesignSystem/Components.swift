@@ -18,7 +18,8 @@ struct SeverityChip: View {
         .foregroundStyle(level.chipInk)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background(level.fill, in: Capsule())
+        .background(level.chipFill, in: Capsule())
+        .overlay { Capsule().strokeBorder(level.chipBorder, lineWidth: 1) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(level.accessibilityLabel). \(text)")
     }
@@ -348,12 +349,15 @@ struct ListRow: View {
     let title: String
     var subtitle: String?
     var showsChevron = true
+    /// Grows with the text size so a large icon never overlaps the title.
+    @ScaledMetric(relativeTo: .body) private var iconWidth: CGFloat = 24
 
     var body: some View {
-        HStack(spacing: 12) {
+        // First-baseline alignment keeps the icon beside the first line when the title wraps.
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: systemImage)
                 .foregroundStyle(Palette.accent)
-                .frame(width: 24)
+                .frame(width: iconWidth)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -372,6 +376,8 @@ struct ListRow: View {
                     .accessibilityHidden(true)
             }
         }
+        // Vertical padding keeps wrapped titles (long source names, larger text) off the card's edges.
+        .padding(.vertical, 8)
         .frame(minHeight: 52)
         .contentShape(Rectangle())
     }
@@ -492,7 +498,8 @@ struct ToastView: View {
 
 // MARK: - Toolbar
 
-/// The 911 pill: in every screen's navigation bar, one tap to the danger sheet.
+/// The 911 pill: in every screen's navigation bar, one tap to the danger sheet. It is the same size on every
+/// screen: a fixed height, and text that stops growing at the bar's limit (long press shows it larger).
 struct EmergencyButton: View {
     @Environment(AppModel.self) private var model
 
@@ -502,53 +509,67 @@ struct EmergencyButton: View {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "phone.fill")
-                    .font(.caption.weight(.bold))
+                    .font(.footnote.weight(.bold))
                 Text("911")
                     .font(.subheadline.weight(.bold))
+                    .monospacedDigit()
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
-            .frame(minHeight: 34)
+            .frame(height: 34)
             .background(Palette.emergency, in: Capsule())
+            .fixedSize()
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Emergency")
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+        .accessibilityShowsLargeContentViewer()
+        .accessibilityLabel("Emergency, 911")
         .accessibilityHint("Shows how to call 911")
     }
 }
 
-/// The area picker. The demo has one area.
-struct AreaMenu: View {
-    @Environment(AppModel.self) private var model
-
+/// The lowercase "soterra" wordmark, small, in the leading corner of top-level screens.
+struct Wordmark: View {
     var body: some View {
-        Menu {
-            Button {
-                model.show("Showing Sonoma County, CA")
-            } label: {
-                Label("Sonoma County, CA", systemImage: "checkmark")
-            }
-            Text("More areas after the demo")
-        } label: {
-            HStack(spacing: 4) {
-                Text("Sonoma County, CA")
-                    .font(.body.weight(.medium))
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
-            }
-            .foregroundStyle(Palette.accent)
-        }
-        .accessibilityLabel("Area: Sonoma County, California")
+        Image("Wordmark")
+            .resizable()
+            .scaledToFit()
+            .frame(height: 20)
+            .foregroundStyle(Palette.wordmark)
+            .accessibilityLabel("Soterra")
     }
 }
 
 private struct SoterraToolbarModifier: ViewModifier {
-    let showsArea: Bool
+    let showsWordmark: Bool
 
     func body(content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            // iOS 26 wraps every bar item in a shared glass capsule, which clipped the pill and changed its size
+            // from screen to screen. Both items draw their own shape, so they opt out of it.
+            content.toolbar {
+                if showsWordmark {
+                    ToolbarItem(placement: .topBarLeading) { Wordmark() }
+                        .sharedBackgroundVisibility(.hidden)
+                }
+                ToolbarItem(placement: .topBarTrailing) { EmergencyButton() }
+                    .sharedBackgroundVisibility(.hidden)
+            }
+        } else {
+            standardToolbar(content)
+        }
+        #else
+        standardToolbar(content)
+        #endif
+    }
+
+    private func standardToolbar(_ content: Content) -> some View {
         content.toolbar {
-            if showsArea {
-                ToolbarItem(placement: .topBarLeading) { AreaMenu() }
+            if showsWordmark {
+                ToolbarItem(placement: .topBarLeading) { Wordmark() }
             }
             ToolbarItem(placement: .topBarTrailing) { EmergencyButton() }
         }
@@ -556,9 +577,9 @@ private struct SoterraToolbarModifier: ViewModifier {
 }
 
 extension View {
-    /// The standard bar: area picker (top-level screens) and the 911 pill (every screen).
-    func soterraToolbar(showsArea: Bool = true) -> some View {
-        modifier(SoterraToolbarModifier(showsArea: showsArea))
+    /// The standard bar: the wordmark (top-level screens) and the 911 pill (every screen).
+    func soterraToolbar(showsWordmark: Bool = true) -> some View {
+        modifier(SoterraToolbarModifier(showsWordmark: showsWordmark))
     }
 
     /// The page background used behind every screen.

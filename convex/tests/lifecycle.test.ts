@@ -1,7 +1,7 @@
 // [B] Caller identity, memory, accounts, call completion and retention, through the HTTP routes.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { t as str } from "../../src/config/strings";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { newTest, setupEnv } from "../test.setup";
 import { PHONE, PHONE_2, end, say, seedBulletins, settle, start, useDemoClock } from "./backend.helpers";

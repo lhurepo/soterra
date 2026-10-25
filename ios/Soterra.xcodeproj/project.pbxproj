@@ -25,6 +25,7 @@
 		8C9A0D77FA6382A641B5A6C9 = {isa = PBXBuildFile; fileRef = CF401E918324C74F54583643 /* DemoAssistant.swift */; };
 		8E4BBF4A85F2946694907DBF = {isa = PBXBuildFile; fileRef = 948AE2568A18CA1F0EECF71B /* RootView.swift */; };
 		92E0D4F50C28F4F059C49F8B = {isa = PBXBuildFile; fileRef = 73661683B95B1100658759E8 /* DangerSheet.swift */; };
+		FD20091F2E6060F88FC4DA9F = {isa = PBXBuildFile; fileRef = 60BB2A32316F053780279C68 /* SimpleModeView.swift */; };
 		A38B53C0486A18E933FDFAD5 = {isa = PBXBuildFile; fileRef = 95EA1204454E21935FE0236C /* Typography.swift */; };
 		AA140505D918A4A8DCB8F3A0 = {isa = PBXBuildFile; fileRef = 464C36FD41B69400630031CC /* Assets.xcassets */; };
 		417FE5C5BD146ABEEE265554 = {isa = PBXBuildFile; fileRef = 077F982813F9B4146A326F77 /* LiveDataTests.swift */; };
@@ -36,10 +37,18 @@
 		D4518307D263824B69B45FD5 = {isa = PBXBuildFile; fileRef = 85F3335ABEF256BB16825E3C /* MoreView.swift */; };
 		E31BC0736BF7E23FAC9F760A = {isa = PBXBuildFile; fileRef = B4A5C4557E654E04BBF907F9 /* HomeView.swift */; };
 		E525DB938891BECDB363944B = {isa = PBXBuildFile; fileRef = A4812E4A79E49C1FB99D90FD /* Components.swift */; };
+		50DC879847E369EB71D32C34 = {isa = PBXBuildFile; fileRef = 6F47CFFBF40EEA7D76DE291D /* SoterraUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		431387EB7262E1CFC79B125E = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 90E3C57E29785609EE4533E2;
+			remoteInfo = Soterra;
+		};
+		70086BB5F3E677976AA46195 = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
 			proxyType = 1;
@@ -57,8 +66,11 @@
 		49F3DF8D78CEBA8B2FDD5DCC = {isa = PBXFileReference; lastKnownFileType = file; path = "Outfit-SemiBold.ttf"; sourceTree = "<group>"; };
 		547A45F0405612235B87E78A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantView.swift"; sourceTree = "<group>"; };
 		5E9DCFDA34393CCD5D5121AA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Buttons.swift"; sourceTree = "<group>"; };
+		6F47CFFBF40EEA7D76DE291D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoterraUITests.swift"; sourceTree = "<group>"; };
+		BA2A99F83A760A3BECFE6263 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SoterraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6E0CB483A01F056E69D45F1D = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SoterraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		73661683B95B1100658759E8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DangerSheet.swift"; sourceTree = "<group>"; };
+		60BB2A32316F053780279C68 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SimpleModeView.swift"; sourceTree = "<group>"; };
 		76BF10C9E778F7D1A30C2665 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel.swift"; sourceTree = "<group>"; };
 		7871098247D7110E5A11CF28 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AlertsView.swift"; sourceTree = "<group>"; };
 		85292763BD1274723AC22AB5 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Soterra.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -97,6 +109,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9111D139F0434328B5713E89 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -114,6 +133,7 @@
 			children = (
 				85292763BD1274723AC22AB5 /* Soterra.app */,
 				6E0CB483A01F056E69D45F1D /* SoterraTests.xctest */,
+				BA2A99F83A760A3BECFE6263 /* SoterraUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -158,8 +178,17 @@
 			children = (
 				32FF34489A786A7DA0FF7020 /* Soterra */,
 				5D2232AE7330A98D8523C60E /* SoterraTests */,
+				B528A37E73912A1F000D3C5C /* SoterraUITests */,
 				2AC8BA37DAC32D5437812408 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		B528A37E73912A1F000D3C5C = {
+			isa = PBXGroup;
+			children = (
+				6F47CFFBF40EEA7D76DE291D /* SoterraUITests.swift */,
+			);
+			path = "SoterraUITests";
 			sourceTree = "<group>";
 		};
 		5D2232AE7330A98D8523C60E = {
@@ -195,6 +224,14 @@
 				7871098247D7110E5A11CF28 /* AlertsView.swift */,
 			);
 			path = "Alerts";
+			sourceTree = "<group>";
+		};
+		86C25427E18C7652836C8CFE = {
+			isa = PBXGroup;
+			children = (
+				60BB2A32316F053780279C68 /* SimpleModeView.swift */,
+			);
+			path = "Simple";
 			sourceTree = "<group>";
 		};
 		CBEBDB221DB0C31C43C71146 = {
@@ -261,6 +298,7 @@
 				B001818E74153F803C46305A /* Household */,
 				8197D6212221D48332ADAF3D /* Map */,
 				04CA2517A087841D455C67D2 /* More */,
+				86C25427E18C7652836C8CFE /* Simple */,
 			);
 			path = "Features";
 			sourceTree = "<group>";
@@ -303,6 +341,24 @@
 			productReference = 6E0CB483A01F056E69D45F1D /* SoterraTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		8C305D375F85D467F98CA76B = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C40BCCFFC81940968D5BFC48;
+			buildPhases = (
+				3264B118015F150674AE01FC /* Sources */,
+				9111D139F0434328B5713E89 /* Frameworks */,
+				1CC7B10F235158B4C41BFEAD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D3169962F2E8F45337F5612F /* PBXTargetDependency */,
+			);
+			name = SoterraUITests;
+			productName = SoterraUITests;
+			productReference = BA2A99F83A760A3BECFE6263 /* SoterraUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -317,6 +373,10 @@
 						CreatedOnToolsVersion = 15.2;
 					};
 					B0B87BB3809EEFEA498A5CBF = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = 90E3C57E29785609EE4533E2;
+					};
+					8C305D375F85D467F98CA76B = {
 						CreatedOnToolsVersion = 15.2;
 						TestTargetID = 90E3C57E29785609EE4533E2;
 					};
@@ -337,6 +397,7 @@
 			targets = (
 				90E3C57E29785609EE4533E2 /* Soterra */,
 				B0B87BB3809EEFEA498A5CBF /* SoterraTests */,
+				8C305D375F85D467F98CA76B /* SoterraUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -353,6 +414,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9AECCE067DAFC9E805DC9884 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1CC7B10F235158B4C41BFEAD = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -388,6 +456,7 @@
 				0B9382E905966EAA2E8283C2 /* AlertsView.swift in Sources */,
 				5F389CD2F7127EDDE7933E55 /* AssistantView.swift in Sources */,
 				92E0D4F50C28F4F059C49F8B /* DangerSheet.swift in Sources */,
+				FD20091F2E6060F88FC4DA9F /* SimpleModeView.swift in Sources */,
 				E31BC0736BF7E23FAC9F760A /* HomeView.swift in Sources */,
 				22AC4B2B49E4F71E802412BF /* HouseholdView.swift in Sources */,
 				48124CD49534AFE79B59906A /* MapScreen.swift in Sources */,
@@ -402,6 +471,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3264B118015F150674AE01FC = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				50DC879847E369EB71D32C34 /* SoterraUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -409,6 +486,11 @@
 			isa = PBXTargetDependency;
 			target = 90E3C57E29785609EE4533E2 /* Soterra */;
 			targetProxy = 431387EB7262E1CFC79B125E /* PBXContainerItemProxy */;
+		};
+		D3169962F2E8F45337F5612F = {
+			isa = PBXTargetDependency;
+			target = 90E3C57E29785609EE4533E2 /* Soterra */;
+			targetProxy = 70086BB5F3E677976AA46195 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -622,6 +704,40 @@
 			};
 			name = Debug;
 		};
+		A050CCC665C13A1150DAEAA9 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = "1";
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = "YES";
+				MARKETING_VERSION = "0.1";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.lhurepo.soterra.uitests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = "NO";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_TARGET_NAME = Soterra;
+			};
+			name = Debug;
+		};
+		DF0BE7A051C3F3E378AB1DD3 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = "1";
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = "YES";
+				MARKETING_VERSION = "0.1";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.lhurepo.soterra.uitests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = "NO";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_TARGET_NAME = Soterra;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -648,6 +764,15 @@
 			buildConfigurations = (
 				D48F58F8CA231B2301441318 /* Debug */,
 				6AFE22E70BE079CBB63426F8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C40BCCFFC81940968D5BFC48 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A050CCC665C13A1150DAEAA9 /* Debug */,
+				DF0BE7A051C3F3E378AB1DD3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

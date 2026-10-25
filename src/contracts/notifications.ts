@@ -69,6 +69,7 @@ export const NotificationPurpose = z.enum([
   "update",
   "scheduled_update",
   "verification",
+  "app_code",
   "missed_call_text",
   "call_recap",
   "subscription_confirmation",

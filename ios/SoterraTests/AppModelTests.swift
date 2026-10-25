@@ -9,7 +9,7 @@ final class AppModelTests: XCTestCase {
     func testEmergencyButtonNeverDials911InTheDemoBuild() {
         XCTAssertEqual(DemoConfig.emergencyCallURL.absoluteString, "tel:119")
         XCTAssertFalse(DemoConfig.emergencyCallURL.absoluteString.contains("911"))
-        XCTAssertEqual(DemoConfig.hotlineURL.absoluteString, "tel:+18046066867")
+        XCTAssertEqual(DemoConfig.hotlineURL.absoluteString, "tel:+17126003362")
     }
 
     func testSeverityLevels() {
@@ -61,6 +61,36 @@ final class AppModelTests: XCTestCase {
         model.showShelters()
         XCTAssertEqual(model.selectedTab, .map)
         XCTAssertEqual(model.selectedShelterID, model.meetingPointID)
+    }
+
+    func testShowZonesOnMapClosesThePanelAndReturnsToTheMap() {
+        let model = AppModel()
+        model.mapSelection = .fire
+        model.mapPath = [.alert(DemoData.fireUpdateID)]
+        model.showZonesOnMap()
+        XCTAssertEqual(model.selectedTab, .map)
+        XCTAssertNil(model.mapSelection)
+        XCTAssertTrue(model.mapPath.isEmpty)
+        XCTAssertTrue(model.mapFilters.showsZones)
+    }
+
+    func testOnlyShelterSelectionsHaveAShelterID() {
+        let model = AppModel()
+        model.mapSelection = .zone("SON-3A")
+        XCTAssertNil(model.selectedShelterID)
+        model.mapSelection = .shelter(DemoData.ridgeviewCenterID)
+        XCTAssertEqual(model.selectedShelterID, DemoData.ridgeviewCenterID)
+    }
+
+    func testSimpleModeIsRememberedAcrossLaunches() {
+        let defaults = UserDefaults.standard
+        let saved = defaults.object(forKey: AppModel.simpleModeKey)
+        defer { defaults.set(saved, forKey: AppModel.simpleModeKey) }
+
+        AppModel().isSimpleMode = true
+        XCTAssertTrue(AppModel().isSimpleMode)
+        AppModel().isSimpleMode = false
+        XCTAssertFalse(AppModel().isSimpleMode)
     }
 
     func testFollowToggles() {

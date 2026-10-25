@@ -5,6 +5,7 @@ import { buildCallerContext, toLlmContext } from "../src/memory/callerContext";
 import { MAX_PROFILE_NEEDS, addNeed, looksLikeContactDetail } from "../src/memory/profile";
 import { isConfirmation, isRefusal, profileCommand } from "../src/orchestration/intents";
 import { runTurn } from "../src/orchestration/pipeline";
+import { createMockLlm } from "../src/providers/llm/mock";
 import { NOW, deps, state } from "./helpers";
 
 const turn = (utterance: string, s = state(), language = "en") => runTurn({ utterance, language, startedAt: NOW }, s, deps());
@@ -46,6 +47,17 @@ describe("recognizing a command", () => {
     ["Uh, I just want to understand um the information that you have about me from previous calls.", { kind: "recall" }],
     ["Do what what are all the previous informations you have about me?", { kind: "recall" }],
     ["Have we talked before?", { kind: "recall" }],
+    // From the 3:48 to 3:54 PM calls: delete requests and "updates I set up before".
+    ["Can you, can you give, can you delete all information surrounding my caller ID?", { kind: "forget" }],
+    ["Can you delete my stored details?", { kind: "forget" }],
+    ["Can you delete all the data that you have about me?", { kind: "forget" }],
+    ["Can you delete all that? data? and information?", { kind: "forget" }],
+    ["Can you remove everything that's stored?", { kind: "forget" }],
+    ["Wipe my data please", { kind: "forget" }],
+    ["Um, do you have any updates like that are connected to my?", { kind: "updates" }],
+    ["No, but do you have any updates about like relating to my phone?", { kind: "updates" }],
+    ["I want to know if I set up some updates previously because I want to turn them all off.", { kind: "updates" }],
+    ["What updates you you have about me?", { kind: "updates" }],
     ["What did we talk about last time?", { kind: "recap" }],
     ["Can I get a summary of my last call", { kind: "recap" }],
     ["Forget me", { kind: "forget" }],
@@ -62,6 +74,13 @@ describe("recognizing a command", () => {
     "Are there shelters that take pets?",
     "Save me, the fire is here",
     "Keep me updated on the fire",
+    "Delete the evacuation order from my list",
+    "Remove the road closure alert",
+    "Clear the flood warning",
+    "Any updates for me near San Francisco?",
+    "Give me updates about the fire",
+    "Can you give me any updates on floods?",
+    "Turn the volume down",
     "Call me back if the evacuation changes",
     "Please call me back to confirm the evacuation order for zone 3",
     "Call me back when you know about the shelter",
@@ -216,5 +235,61 @@ describe("asking whether it remembers", () => {
     for (const u of ["Do you remember when the fire started", "Can you recall the evacuation zones", "I called 911 earlier, is that okay"]) {
       expect(profileCommand(u)).toBeNull();
     }
+  });
+});
+
+describe("follow-ups need a request", () => {
+  it("recognizes a real request and rejects a question or a bare yes", async () => {
+    const { explicitFollowUpRequest } = await import("../src/orchestration/intents");
+    for (const yes of ["Can you set a notification for you to call me back if there's any updates?", "Call me if the evacuation changes", "Keep me updated", "Let me know when you hear", "Llámame si cambia"]) {
+      expect(explicitFollowUpRequest(yes), yes).toBe(true);
+    }
+    for (const no of ["Yes.", "Do you have any updates connected to my phone", "I want to know if I set up some updates previously", "No, no. No.", "Can you give me any updates on floods?"]) {
+      expect(explicitFollowUpRequest(no), no).toBe(false);
+    }
+  });
+
+  it("a followup the model chose without a request becomes a clarification and creates nothing", async () => {
+    const llm = createMockLlm();
+    const followup = { kind: "followup" as const, reply: "ok", citedChunkIds: [], endCall: false, followUpRequest: { targetKind: "area" as const, trigger: "any_update" as const } };
+    const wrapped = Object.assign(createMockLlm(), { complete: async () => ({ text: JSON.stringify(followup), structured: followup, model: "m", usage: { inputTokens: 1, outputTokens: 1 } }) });
+    void llm;
+    const out = await runTurn({ utterance: "Yes.", language: "en", startedAt: NOW }, state(), deps({ llm: wrapped as never }));
+    expect(out.kind).toBe("clarify");
+    expect(out.reply).toBe(t("followupUnclear", "en"));
+    expect(out.effects.createSubscription).toBeUndefined();
+    const real = await runTurn({ utterance: "Call me if the evacuation changes", language: "en", startedAt: NOW }, state(), deps({ llm: wrapped as never }));
+    expect(real.kind).not.toBe("clarify");
+  });
+});
+
+describe("update callbacks and a human voice", () => {
+  it("the model is told what an update call is about", async () => {
+    const { buildTurnRequest } = await import("../src/orchestration/prompt");
+    const base = { utterance: "tell me about the new fire", language: "en", retrieved: [], context: { identity: "caller_id" as const, language: "en" }, history: [], now: NOW };
+    const withReason = buildTurnRequest({ ...base, callReason: "Update from the National Interagency Fire Center: JORA Fire, Los Angeles County." }, "m").messages[0].content;
+    expect(withReason).toContain("outbound call");
+    expect(withReason).toContain("JORA Fire, Los Angeles County");
+    expect(buildTurnRequest(base, "m").messages[0].content).not.toContain("outbound call");
+  });
+
+  it("the update message says the incident once", async () => {
+    const { buildUpdateMessage } = await import("../src/notifications/message");
+    const b = { sourceName: "National Interagency Fire Center", title: "JORA Fire", body: "JORA Fire, Los Angeles County.", issuedAt: NOW, primaryState: "CA" };
+    const message = buildUpdateMessage(b, "en");
+    expect(message.match(/JORA Fire/g)).toHaveLength(1);
+    expect(message).toContain("Los Angeles County");
+    // A distinct detail is still spoken after the title.
+    expect(buildUpdateMessage({ ...b, title: "Evacuation Order", body: "An Evacuation Order is in effect for zone SON-3A." }, "en")).toMatch(/Evacuation Order\. An Evacuation Order is in effect/);
+  });
+
+  it("a model-written no-info reply is used only when it states no facts", async () => {
+    const { enforceGrounding } = await import("../src/orchestration/grounding");
+    const noInfo = (reply: string) => ({ kind: "no_info" as const, reply, citedChunkIds: [], endCall: false });
+    const run = (reply: string) => enforceGrounding({ draft: noInfo(reply), retrieved: [], utterance: "is the school open", language: "en", now: NOW });
+    expect(run("I don't have that one yet, but I've saved your question.").reply).toBe("I don't have that one yet, but I've saved your question.");
+    expect(run("The shelter is open with 120 spaces.").reply).toBe(t("noInfo", "en")); // digits and a shelter claim
+    expect(run("").reply).toBe(t("noInfo", "en"));
+    expect(run("word ".repeat(60)).reply).toBe(t("noInfo", "en"));
   });
 });

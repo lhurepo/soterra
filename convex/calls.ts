@@ -6,8 +6,8 @@ import type { AreaRef, CallerContext } from "../src/contracts";
 import { DEFAULTS, isSupportedLanguage, supportedLanguage } from "../src/config/defaults";
 import { buildCallerContext } from "../src/memory/callerContext";
 import { STALE_SESSION_MS } from "../src/memory/retention";
-import type { AreaCandidate } from "../src/orchestration/area";
-import { inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
+import { stateForZip, type AreaCandidate } from "../src/orchestration/area";
+import { appCodeGreeting, appVerifiedGreeting, inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
 import type { LlmMessage } from "../src/providers/llm/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -36,6 +36,12 @@ async function callByProviderId(ctx: QueryCtx, providerCallId: string): Promise<
     .unique();
 }
 
+/** The account's home ZIP as an area, used when the caller has no remembered area. */
+function homeArea(zip: string | undefined): AreaRef | undefined {
+  const state = zip ? stateForZip(zip) : undefined;
+  return zip && state ? { state, zip, label: `ZIP code ${zip}` } : undefined;
+}
+
 function firstSupported(...candidates: (string | undefined)[]): string {
   return supportedLanguage(candidates.find((c) => isSupportedLanguage(c)));
 }
@@ -58,13 +64,27 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
       : null);
   // Outbound callbacks may not carry the dialed number; the notification knows who we called.
   const callerPhone = args.callerPhone ?? (args.direction === "outbound" ? notification?.recipientPhone : undefined);
-  // The callback check: a recent verification notification of ours, answered at the number we dialed. Valid for this call only.
-  const verifiedPhone =
+  // A call WE placed to the number (the callback check, an update, an answer to a saved question): whoever answers holds
+  // the phone, so it is verified for that call. The sign-in code call is not (it only reads a code).
+  const verifiedByCallback =
     args.direction === "outbound" &&
-    notification?.purpose === "verification" &&
+    notification !== null &&
+    (notification.purpose === undefined || notification.purpose === "update" || notification.purpose === "verification") &&
     callerPhone !== undefined &&
     callerPhone === notification.recipientPhone &&
     now - notification.createdAt <= DEFAULTS.verificationValidMs;
+  // "Call Soterra" in the signed-in app armed this number a moment ago: this inbound call is verified, once.
+  let arm: Doc<"appCallArms"> | undefined;
+  if (args.direction === "inbound" && callerPhone) {
+    const arms = await ctx.db
+      .query("appCallArms")
+      .withIndex("by_phone", (q) => q.eq("phone", callerPhone))
+      .order("desc")
+      .take(5);
+    arm = arms.find((a) => a.usedAt === undefined && a.expiresAt > now);
+    if (arm) await ctx.db.patch("appCallArms", arm._id, { usedAt: now });
+  }
+  const verifiedPhone = verifiedByCallback || arm !== undefined;
 
   let caller: Doc<"callers"> | null = null;
   if (callerPhone) {
@@ -88,8 +108,9 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
     callerId: caller?._id,
     accountId: account?._id,
     language,
-    knownArea: caller?.knownArea,
+    knownArea: caller?.knownArea ?? homeArea(account?.homeZip),
     accountNeeds: account?.needs,
+    accountPersonalContext: account?.personalContext,
     verifiedPhone,
     profileNeeds: caller?.profileNeeds,
     lastSummary: lastSummary ? { text: lastSummary.summary, createdAt: lastSummary.createdAt } : undefined,
@@ -103,11 +124,25 @@ async function startSessionImpl(ctx: MutationCtx, args: StartArgs): Promise<{ ca
     })),
     now,
   });
-  const greeting = verifiedPhone
-    ? verificationGreeting(language)
-    : args.direction === "outbound" && notification
-      ? outboundGreeting(language, notification.message)
-      : inboundGreeting(language);
+  // The call that reads the app its sign-in code: the code comes from the challenge this notification belongs to.
+  let appCode: string | null | undefined;
+  if (args.direction === "outbound" && notification?.purpose === "app_code") {
+    const challenge = await ctx.db
+      .query("phoneChallenges")
+      .withIndex("by_notificationId", (q) => q.eq("notificationId", notification._id))
+      .unique();
+    appCode = challenge && challenge.expiresAt > now ? challenge.code : null;
+  }
+  const greeting =
+    appCode !== undefined
+      ? appCodeGreeting(language, appCode)
+      : verifiedByCallback && notification?.purpose === "verification"
+        ? verificationGreeting(language)
+        : args.direction === "outbound" && notification
+          ? outboundGreeting(language, notification.message)
+          : arm
+            ? appVerifiedGreeting(language)
+            : inboundGreeting(language);
 
   const callId = await ctx.db.insert("calls", {
     provider: "cartesia",
@@ -222,6 +257,10 @@ export type BeginTurnResult =
       pendingAction?: "forget";
       verificationsLastHour: number;
       preferredChannel?: "phone_call" | "sms";
+      /** For an update callback: the update we phoned about, so the model knows why it called. */
+      callReason?: string;
+      /** Chunks of the bulletin(s) behind that update; always included in the sources for this call. */
+      pinnedChunkIds?: string[];
     };
 
 /**
@@ -305,12 +344,30 @@ export const beginTurn = internalMutation({
       : 0;
 
     const caller = call.callerId ? await ctx.db.get("callers", call.callerId) : null;
+    // An update callback: remember what we called about, and keep that bulletin in the sources so the caller can ask about it.
+    let callReason: string | undefined;
+    const pinnedChunkIds: string[] = [];
+    if (call.direction === "outbound" && call.notificationId) {
+      const notification = await ctx.db.get("notifications", call.notificationId);
+      if (notification && (notification.purpose === undefined || notification.purpose === "update" || notification.purpose === "scheduled_update")) {
+        callReason = notification.message;
+        for (const bulletinId of notification.bulletinRefs.slice(0, 3)) {
+          const chunks = await ctx.db
+            .query("chunks")
+            .withIndex("by_bulletinId", (q) => q.eq("bulletinId", bulletinId))
+            .take(3);
+          pinnedChunkIds.push(...chunks.map((c) => c._id as string));
+        }
+      }
+    }
 
     return {
       status: "new",
       callId,
       turnId,
       preferredChannel: caller?.preferredChannel,
+      callReason,
+      pinnedChunkIds: pinnedChunkIds.length > 0 ? pinnedChunkIds : undefined,
       pendingAction: call.pendingAction,
       verificationsLastHour,
       hasCallerPhone: call.callerPhone !== undefined,
@@ -444,20 +501,27 @@ export const completeTurn = internalMutation({
 
 /**
  * Queues the callback check: a phone notification to the caller's own number, delivered after a short pause so
- * they can hang up first. Rate limited per number; dedupe per minute. The call it creates is verified, once.
+ * they can hang up first (the app asks for no pause: it has just authorized the call with its token). Rate limited per
+ * number; dedupe per minute. The call it creates is verified, once. Returns false when it was limited or a duplicate.
  */
-async function queueVerificationCall(ctx: MutationCtx, phone: string, language: string, now: number): Promise<void> {
+export async function queueVerificationCall(
+  ctx: MutationCtx,
+  phone: string,
+  language: string,
+  now: number,
+  delayMs: number = DEFAULTS.verificationDelayMs,
+): Promise<boolean> {
   const recent = await ctx.db
     .query("notifications")
     .withIndex("by_recipientPhone_and_createdAt", (q) => q.eq("recipientPhone", phone).gt("createdAt", now - 3_600_000))
     .take(20);
-  if (recent.filter((n) => n.purpose === "verification").length >= DEFAULTS.verificationsPerHour) return;
+  if (recent.filter((n) => n.purpose === "verification").length >= DEFAULTS.verificationsPerHour) return false;
   const dedupeKey = `verify:${phone}:${Math.floor(now / 60_000)}`;
   const dup = await ctx.db
     .query("notifications")
     .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", dedupeKey))
     .first();
-  if (dup) return;
+  if (dup) return false;
   const notificationId = await ctx.db.insert("notifications", {
     recipientPhone: phone,
     channel: "phone_call",
@@ -469,7 +533,8 @@ async function queueVerificationCall(ctx: MutationCtx, phone: string, language: 
     status: "queued",
     createdAt: now,
   });
-  await ctx.scheduler.runAfter(DEFAULTS.verificationDelayMs, internal.notifications.deliver, { notificationId });
+  await ctx.scheduler.runAfter(delayMs, internal.notifications.deliver, { notificationId });
+  return true;
 }
 
 async function endCall(ctx: MutationCtx, call: Doc<"calls">, endedAt: number, reason: NonNullable<Doc<"calls">["endReason"]>) {

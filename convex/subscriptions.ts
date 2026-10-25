@@ -232,6 +232,18 @@ export const matchEvents = internalMutation({
   },
 });
 
+/** Operator tool: cancels one subscription by id (for example one created by mistake). */
+export const cancelById = internalMutation({
+  args: { subscriptionId: v.id("subscriptions") },
+  returns: v.boolean(),
+  handler: async (ctx, { subscriptionId }) => {
+    const sub = await ctx.db.get("subscriptions", subscriptionId);
+    if (!sub || sub.status !== "active") return false;
+    await ctx.db.patch("subscriptions", subscriptionId, { status: "cancelled", cancelledAt: Date.now() });
+    return true;
+  },
+});
+
 /** Cron: marks subscriptions past expiresAt as expired (the matcher already ignores them). */
 export const expireSubscriptions = internalMutation({
   args: {},
