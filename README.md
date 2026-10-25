@@ -4,6 +4,13 @@ An AI disaster-information **phone hotline** (Cal Hacks 13). Call a normal US nu
 
 This repo is the **shared skeleton**: contracts, Convex schema and functions, provider interfaces with mocks, fixtures, docs and tests. One mock path runs end to end. Each owner fills in their module; see [TEAM_PLAN.md](TEAM_PLAN.md).
 
+## How we use Convex
+
+- Every call turn goes to Convex HTTP actions (`convex/http.ts`), which answer from bulletins using a full text search index (`convex/schema.ts`).
+- Crons and scheduled functions fetch official sources, expire old bulletins and send update calls and texts (`convex/crons.ts`).
+- Raw payloads and GeoJSON go to Convex file storage; the iOS app polls the `/app/state` HTTP action every 5 s.
+- Features, evidence and the commit log for the Best Use of Convex prize: [hackathon.md](hackathon.md).
+
 ## Layout
 
 | Path | Owner | What |
