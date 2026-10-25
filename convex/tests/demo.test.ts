@@ -180,3 +180,78 @@ describe("demo start keeps a callback asked for before it", () => {
     expect(status).toEqual(["cancelled", "active"]);
   });
 });
+
+describe("manual demo: wave 1 calm, then wave 1 on the first release, then one wave-2 site per release", () => {
+  it("crawls wave 1's calm pages, waits for calm ready, then releases on Enter in queue order", async () => {
+    const t = newTest();
+    const run = await t.mutation(internal.demo.start, { manual: true });
+    expect(run.escalateAt).toBeUndefined();
+    expect(await t.mutation(internal.demo.escalate, { runId: run.runId! })).toBeNull(); // auto escalation never applies
+    expect(await page(t, "sf/alertsf.html")).toContain("There are no active emergency alerts");
+    expect(await t.query(internal.demo.progress, {})).toMatchObject({ stage: "calm", inProgress: { calm: 5, escalation: 0 }, remaining: { escalation: 13 } });
+
+    // As the pipeline would record them: one ingestion run per started site.
+    const finish = (sourceIds: string[], status: "succeeded" | "failed" | "awaiting_apify", error?: string) =>
+      t.run(async (ctx) => {
+        for (const sourceId of sourceIds) {
+          await ctx.db.insert("ingestionRuns", { sourceId, trigger: "manual", mode: "live", status, startedAt: Date.now(), error });
+        }
+      });
+    const wave1 = ["sfdemo_alerts", "sfdemo_usgs", "sfdemo_sffd", "sfdemo_shelters", "sfdemo_x"];
+
+    // The calm queue: wave 1 only; a limit refusal is queued again.
+    const calm1 = await t.mutation(internal.demo.crawlNext, { runId: run.runId!, phase: "calm" });
+    expect(calm1).toEqual(wave1);
+    vi.setSystemTime(Date.now() + 1_000);
+    await finish(calm1.slice(0, 4), "succeeded");
+    await finish([calm1[4]], "failed", "HTTP 402 concurrent-runs-limit-exceeded");
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId!, phase: "calm" })).toEqual([calm1[4]]);
+    expect(await t.mutation(internal.demo.release, {})).toMatchObject({ ok: false });
+    vi.setSystemTime(Date.now() + 1_000);
+    await finish([calm1[4]], "succeeded");
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId!, phase: "calm" })).toEqual([]);
+    expect(await t.query(internal.demo.acceptsResult, { sourceId: "sfdemo_alerts", startedAt: Date.now() })).toBe(true);
+    const ready = await t.query(internal.demo.progress, {});
+    expect(ready).toMatchObject({ stage: "calm_ready", done: { calm: 5, escalation: 0 }, inProgress: { calm: 0, escalation: 0 }, remaining: { calm: 0, escalation: 13 } });
+    expect(ready.calm.map((s) => s.sourceId)).toEqual(wave1);
+
+    // First Enter: the pages switch to the earthquake and wave 1 is crawled again; the wave-2 counts do not move.
+    vi.setSystemTime(Date.now() + 60_000);
+    expect(await t.mutation(internal.demo.release, {})).toMatchObject({ ok: true, message: expect.stringContaining("wave 1") });
+    expect(await page(t, "sf/alertsf.html")).toContain("Evacuation Order");
+    expect(await t.query(internal.demo.progress, {})).toMatchObject({ stage: "quake", done: { calm: 5, escalation: 0 }, inProgress: { escalation: 5 }, remaining: { escalation: 8 } });
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId!, phase: "calm" })).toEqual([]);
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual(wave1);
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual([]);
+
+    // Next Enter: one wave-2 site. It waits for a slot while wave 1 holds all 5.
+    expect(await t.mutation(internal.demo.release, {})).toEqual({ ok: true, message: "Started: Situation Update." });
+    expect(await t.query(internal.demo.progress, {})).toMatchObject({ inProgress: { escalation: 6 }, remaining: { escalation: 7 } });
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual([]);
+    vi.setSystemTime(Date.now() + 1_000);
+    await finish(wave1, "succeeded");
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual(["sfdemo_situation"]);
+    vi.setSystemTime(Date.now() + 1_000);
+    await finish(["sfdemo_situation"], "succeeded");
+    const p = await t.query(internal.demo.progress, {});
+    // The panel's example: 11 done (5 calm, 6 escalation), 0 in progress, 7 remaining (7 escalation).
+    expect(p).toMatchObject({ done: { calm: 5, escalation: 6 }, inProgress: { calm: 0, escalation: 0 }, remaining: { calm: 0, escalation: 7 } });
+    expect(p.calm.every((s) => s.state === "done")).toBe(true); // calm and earthquake runs are counted apart
+
+    // The rest of wave 2, then nothing more to release.
+    for (let i = 0; i < 7; i++) expect((await t.mutation(internal.demo.release, {})).ok).toBe(true);
+    expect(await t.query(internal.demo.progress, {})).toMatchObject({ done: { escalation: 6 }, inProgress: { escalation: 7 }, remaining: { escalation: 0 } });
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toHaveLength(5);
+    expect(await t.mutation(internal.demo.release, {})).toEqual({ ok: false, message: "Every source has been released." });
+
+    await t.mutation(internal.demo.stop, {});
+    expect(await t.mutation(internal.demo.release, {})).toMatchObject({ ok: false });
+    expect((await t.query(internal.demo.progress, {})).stage).toBe("off");
+  });
+
+  it("auto mode is not driven by release", async () => {
+    const t = newTest();
+    await t.mutation(internal.demo.start, {});
+    expect(await t.mutation(internal.demo.release, {})).toEqual({ ok: false, message: "This run crawls on its own (auto mode)." });
+  });
+});

@@ -7,16 +7,40 @@ enabled and no other bulletin is served. Do not re-enable sources unless the use
 ## Run it
 
 ```bash
-npm run demo:start     # clean slate → calm pages for 5 s → earthquake pages → real Apify crawls
-npm run demo:status    # is it on, and each site's crawl: status, seconds, counts
+npm run demo:start     # clean slate → wave 1 calm crawls → "calm ready" → Enter: wave 1 earthquake, then one wave-2 site each
+npm run demo:control   # reopen the control panel (closing it with q leaves the demo running)
+npm run demo:status    # is it on, the counts, and each site's crawl: status, seconds, counts
 npm run demo:stop      # reset to the beginning (run before every new attempt; start also resets)
 npm run demo:offline   # switch every source off and take every non-demo bulletin out of service
 ```
 
-`npm run demo:start -- --delay 10000` changes the calm period (milliseconds).
+`demo:start` stays open as a control panel, redrawn in place:
 
-Start the demo when the caller dials. The first callback comes once the crawls land, measured with
-`demo:status`. Crawls typically take 15–40 s per site. The 13 sites go through a queue: at most 5 Apify runs at once (the plan's limit), the next one starts as soon as one finishes, and a run Apify refuses for the limit is queued again.
+```
+11 done (5 calm, 6 escalation)
+1 in progress (1 escalation)
+6 sources remaining (6 escalation)
+
+[Enter] next crawl: SFMTA   [q] close (the demo keeps running)
+```
+
+The 13 sites are in two waves (`wave` in `demo/scenario.ts`). Wave 1: Evacuation Order, USGS, SF Fire, shelters, X feed.
+Wave 2: the other 8. Wave 1 is crawled twice (calm, then escalation), so the counts cover 18 crawls: 5 calm + 13 escalation.
+If the panel cannot reach Convex it says "Not updating" with the age of the counts on screen.
+
+1. Run `demo:start` **before** the call and wait for **calm ready**. Wave 1's 5 calm pages are crawled together, which takes
+   about 15–40 s, and the terminal beeps. Calm bulletins that land before the caller asks for a callback cannot trigger it.
+2. Take the call. The agent answers from the calm pages ("no active emergency alerts").
+3. Press **Enter** once: every page switches to the earthquake (times from that moment) and wave 1 is crawled again.
+   The Evacuation Order updates its calm bulletin, and that update triggers the callback.
+4. Each later Enter crawls the next wave-2 site (shown as `next:`). While wave 1 holds all 5 Apify slots, or if you press
+   Enter several times quickly, the extra crawls wait for a free slot (counted as in progress).
+
+Failed crawls count as done and are listed as failed. Crawls typically take 15–40 s per site; at most 5 Apify runs
+at once (the plan's limit), and a run Apify refuses for the limit is queued again.
+
+`npm run demo:start -- --auto` is the old flow with no key presses: no calm crawls, the pages switch after 5 s
+(`--delay 10000` changes it, in milliseconds) and all 13 sites are crawled. The HTTP button also uses it.
 
 ## The story
 
@@ -47,7 +71,13 @@ friend at the hackathon.
     (`DEMO_X_ACCOUNTS`), which become `official_social` bulletins.
 - `convex/demo.ts`:
   - `start`: resets the demo data, runs `takeOffline`, writes the pages to `mockSites` and serves v1 (calm).
-    After the delay, `escalate` switches to v2 and `crawlNext` starts the real Apify runs, 5 at a time (it checks every 2 s for a free slot).
+    `crawlNext` is the queue for real Apify runs, 5 at a time (it checks every 2 s for a free slot).
+    - Manual (`start({ manual: true })`, the terminal): `crawlNext` phase `calm` crawls wave 1's v1 pages. The first
+      `release` (Enter) rewrites the v2 pages with times from that moment, switches to them and releases wave 1; each
+      later release adds one wave-2 site.
+    - Auto (the default for the mutation and the button): after the delay, `escalate` switches to v2 and `crawlNext` crawls every site.
+  - `progress`: every crawl of the run as done / in progress / remaining, split calm and escalation (the control panel
+    polls it).
   - `stop`: resets the demo data, cancels the subscriptions and deletes the update notifications created since
     the run started, sets crisis mode back to normal and the pages back to calm.
   - Unused, but available: `POST /demo/start`, `POST /demo/stop` and `GET /demo/status`, with Bearer `DEMO_SECRET`.
@@ -69,6 +99,7 @@ only people who agreed are subscribed.
 ## Known limits
 
 - Crawl times are not measured yet. Run `demo:start` once and read `demo:status` before demoing.
+- Calm crawls are real Apify runs and Claude extractions too: 5 more per attempt.
 - Stopping while crawls are in flight is safe: results from a stopped or earlier run are dropped when they land
   (`acceptsResult`, shown in `demo:status` as failed "dropped: late result"). Apify itself still finishes those runs, so
   they can hold concurrency slots for up to ~40 s after a restart; the queue just waits for them.
