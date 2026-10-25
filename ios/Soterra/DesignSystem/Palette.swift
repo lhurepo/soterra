@@ -62,6 +62,8 @@ enum Palette {
     /// Text that needs attention but is not an alert (a member who has not checked in, stale capacity).
     static let caution = Color.adaptive(light: 0x8A5A00, dark: 0xE2C044)
     static let offlineBanner = Color.adaptive(light: 0xD5DCDC, dark: 0x2A3A40)
+    /// The wordmark: Deep Teal on light backgrounds, Mist on dark (the brand's on-light and on-dark versions).
+    static let wordmark = Color.adaptive(light: 0x042630, dark: 0xD0D6D6)
     /// The 911 action. Reserved: no other button is red.
     static let emergency = Color(hex: 0xE5484D)
 }

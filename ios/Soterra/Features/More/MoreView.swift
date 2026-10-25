@@ -19,6 +19,15 @@ struct MoreView: View {
             }
 
             Section {
+                Toggle(isOn: $model.isSimpleMode) {
+                    settingLabel("textformat.size", "Simple mode", "Bigger text, only the essentials")
+                }
+                .frame(minHeight: 44)
+                .listRowBackground(Palette.surface)
+            }
+
+            Section {
+                row(.area, "mappin.and.ellipse", "Area", DemoData.areaName)
                 row(.language, "globe", "Language", model.language.label)
                 row(.privacy, "lock", "Privacy", "Transcripts \(model.savesTranscripts ? "on" : "off") · Delete my data")
                 row(.settings, "circle.lefthalf.filled", "Appearance", model.appearance.label)
@@ -74,19 +83,7 @@ struct MoreView: View {
                      badge: Int? = nil) -> some View {
         NavigationLink(value: route) {
             HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .foregroundStyle(Palette.accent)
-                    .frame(width: 24)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).foregroundStyle(Palette.textPrimary)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.footnote)
-                            .foregroundStyle(Palette.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
+                settingLabel(systemImage, title, subtitle)
                 Spacer(minLength: 8)
                 if let badge {
                     Text("\(badge)")
@@ -101,5 +98,23 @@ struct MoreView: View {
             .frame(minHeight: 44)
         }
         .listRowBackground(Palette.surface)
+    }
+
+    private func settingLabel(_ systemImage: String, _ title: String, _ subtitle: String?) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .foregroundStyle(Palette.accent)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).foregroundStyle(Palette.textPrimary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(Palette.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+        }
     }
 }

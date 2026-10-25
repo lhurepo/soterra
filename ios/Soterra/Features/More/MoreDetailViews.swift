@@ -7,7 +7,7 @@ private extension View {
             .screenBackground()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .soterraToolbar(showsArea: false)
+            .soterraToolbar(showsWordmark: false)
     }
 }
 
@@ -118,6 +118,32 @@ struct ChecklistView: View {
             }
         }
         .moreListStyle(title: "Preparedness checklist")
+    }
+}
+
+/// The area Soterra covers for alerts and the map. Rarely changed, so it lives here rather than in the top bar.
+struct AreaView: View {
+    var body: some View {
+        List {
+            Section {
+                HStack {
+                    Text(DemoData.areaName)
+                        .foregroundStyle(Palette.textPrimary)
+                    Spacer()
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Palette.accent)
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: 44)
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isSelected)
+                .listRowBackground(Palette.surface)
+            } footer: {
+                Text("Alerts and the map follow this area. Soterra doesn't use your location for it. More areas after the demo.")
+            }
+        }
+        .moreListStyle(title: "Area")
     }
 }
 
@@ -249,6 +275,6 @@ struct AboutView: View {
         .screenBackground()
         .navigationTitle("About Soterra")
         .navigationBarTitleDisplayMode(.inline)
-        .soterraToolbar(showsArea: false)
+        .soterraToolbar(showsWordmark: false)
     }
 }

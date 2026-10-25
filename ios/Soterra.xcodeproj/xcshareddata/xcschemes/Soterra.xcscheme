@@ -40,6 +40,17 @@
                ReferencedContainer = "container:Soterra.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "8C305D375F85D467F98CA76B"
+               BuildableName = "SoterraUITests.xctest"
+               BlueprintName = "SoterraUITests"
+               ReferencedContainer = "container:Soterra.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

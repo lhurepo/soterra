@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension SeverityLevel {
-    /// Chip and marker fill: high red, medium orange, low yellow.
+    /// Marker and map fill: high red, medium orange, low yellow.
     var fill: Color {
         switch self {
         case .high: Color(hex: 0xE5484D)
@@ -11,13 +11,33 @@ extension SeverityLevel {
         }
     }
 
-    /// Text on top of `fill`.
+    /// Severity chip fill: a soft tint of the level's hue, so the chip reads as a label rather than a siren.
+    var chipFill: Color {
+        switch self {
+        case .high: .adaptive(light: 0xF6D7D9, dark: 0x4C2028)
+        case .medium: .adaptive(light: 0xF7DFCB, dark: 0x4A2F19)
+        case .low: .adaptive(light: 0xF1E5B6, dark: 0x40371A)
+        case .unknown: .adaptive(light: 0xDDE4E4, dark: 0x1B3A44)
+        }
+    }
+
+    /// Text on `chipFill` (at least 6:1 in both appearances).
     var chipInk: Color {
         switch self {
-        case .high: Color(hex: 0x1A0507)
-        case .medium: Color(hex: 0x1D0E02)
-        case .low: Color(hex: 0x1A1503)
-        case .unknown: Color(hex: 0x041421)
+        case .high: .adaptive(light: 0x8C2A31, dark: 0xF5BCC0)
+        case .medium: .adaptive(light: 0x7E420F, dark: 0xF3C69E)
+        case .low: .adaptive(light: 0x604D08, dark: 0xEBD78F)
+        case .unknown: .adaptive(light: 0x3A5254, dark: 0xB8C9CA)
+        }
+    }
+
+    /// The chip's hairline, so it keeps its shape on a card tinted with the same hue.
+    var chipBorder: Color {
+        switch self {
+        case .high: .adaptive(light: 0xE7AEB2, dark: 0x7C3842)
+        case .medium: .adaptive(light: 0xE6B78F, dark: 0x7E5329)
+        case .low: .adaptive(light: 0xD8C37C, dark: 0x6E5F28)
+        case .unknown: .adaptive(light: 0xBFCBCB, dark: 0x2F5560)
         }
     }
 

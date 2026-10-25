@@ -9,7 +9,7 @@ enum AppTab: Hashable {
 enum Route: Hashable {
     case alert(HazardAlert.ID)
     case assistant(topic: String?)
-    case activity, callHistory, following, checklist, language, privacy, settings, about
+    case activity, callHistory, following, checklist, area, language, privacy, settings, about
 }
 
 /// Which Home the demo shows. Switch it in More → Demo controls.
@@ -63,6 +63,14 @@ struct MapFilters: Equatable {
     var showsRoads = true
 }
 
+/// Something tapped on the map, shown in the slide-up panel.
+enum MapPlace: Hashable {
+    case shelter(Shelter.ID)
+    case zone(String)
+    case fire
+    case roadClosure
+}
+
 struct Toast: Identifiable, Equatable {
     let id = UUID()
     let message: String
@@ -76,6 +84,7 @@ final class AppModel {
     var homePath: [Route] = []
     var alertsPath: [Route] = []
     var householdPath: [Route] = []
+    var mapPath: [Route] = []
     var morePath: [Route] = []
     var isShowingDanger = false
     var toast: Toast?
@@ -98,7 +107,7 @@ final class AppModel {
 
     // Map
     var mapFilters = MapFilters()
-    var selectedShelterID: Shelter.ID?
+    var mapSelection: MapPlace?
 
     // Household
     var members: [HouseholdMember] = DemoData.members
@@ -109,6 +118,12 @@ final class AppModel {
     var savesTranscripts = false
     var savedNeeds: [String] = DemoData.savedNeeds
     var checklist: [ChecklistItem] = DemoData.checklist
+    /// One screen with bigger text and only the essentials (More → Simple mode). Kept across launches.
+    var isSimpleMode = UserDefaults.standard.bool(forKey: AppModel.simpleModeKey) {
+        didSet { UserDefaults.standard.set(isSimpleMode, forKey: AppModel.simpleModeKey) }
+    }
+
+    static let simpleModeKey = "SoterraSimpleMode"
 
     init() {
         #if DEBUG
@@ -175,6 +190,10 @@ final class AppModel {
         DemoData.shelters.first { $0.id == meetingPointID } ?? DemoData.shelters[0]
     }
 
+    var selectedShelterID: Shelter.ID? {
+        if case .shelter(let id) = mapSelection { id } else { nil }
+    }
+
     var checkedInCount: Int { members.filter(\.status.isCheckedIn).count }
 
     /// One line for the Household tile and summary.
@@ -218,19 +237,21 @@ final class AppModel {
         case .alerts: alertsPath.append(route)
         case .household: householdPath.append(route)
         case .more: morePath.append(route)
-        case .map: break
+        case .map: mapPath.append(route)
         }
     }
 
     func showShelters() {
         mapFilters.showsShelters = true
-        selectedShelterID = meetingPointID
+        mapSelection = .shelter(meetingPointID)
+        mapPath = []
         selectedTab = .map
     }
 
     func showZonesOnMap() {
         mapFilters.showsZones = true
-        selectedShelterID = nil
+        mapSelection = nil
+        mapPath = []
         selectedTab = .map
     }
 

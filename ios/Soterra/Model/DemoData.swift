@@ -8,6 +8,9 @@ enum DemoData {
     static let weatherService = "National Weather Service (Demo)"
     static let caltrans = "Caltrans District 4 (Demo)"
 
+    /// The one area the demo covers (More → Area).
+    static let areaName = "Sonoma County, CA"
+
     // MARK: Alerts
 
     static let warningID = "ridgeview-evacuation-warning"
