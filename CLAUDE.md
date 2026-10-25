@@ -49,6 +49,14 @@ trial account only texts numbers verified in the Twilio console. With `SMS_NOTIF
 go out from a teammate's iPhone to **any** number while `npm run relay:mac` runs on their Mac. Code without the relay
 does not accept `SMS_NOTIFIER=mac_relay` and fails to load its config, so pull before `npx convex dev`.
 
+## The demo (Marina Earthquake) — current focus
+
+The Cal Hacks demo runs from the terminal: `npm run demo:start`, `npm run demo:status`, `npm run demo:stop`.
+Read `demo/README.md` first (story, call script, how it works, limits). On the dev deployment **everything else
+is offline on purpose**: every source is disabled and every non-demo bulletin is out of service; the pipeline code
+stays. Do not re-enable sources or re-seed the old Ridgeview fixtures unless the user asks (`npm run demo:offline`
+restores the offline state). The demo's callbacks are real calls: only to people who agreed.
+
 ## After you change code
 
 Always first: `npm test && npm run typecheck && npm run test:voice`
