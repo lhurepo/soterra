@@ -52,6 +52,18 @@ const COUNTIES: County[] = CA_COUNTIES.map((name, i) => ({
 
 const COUNTY_BY_FIPS = new Map(COUNTIES.map((c) => [c.countyFips, c]));
 
+/** County names that are also everyday words ("near the lake"): never matched from speech alone. */
+const AMBIGUOUS_COUNTY_NAMES = new Set(["Alpine", "Glenn", "Imperial", "Kings", "Lake", "Mono", "Nevada", "Orange", "Sierra", "Trinity"]);
+
+/** Counties a caller can name by voice ("I'm in San Francisco"), as area labels: "San Francisco County". */
+export function speakableCounties(states: string[]): { label: string; state: string; countyFips: string }[] {
+  return COUNTIES.filter((c) => states.includes(c.state) && !AMBIGUOUS_COUNTY_NAMES.has(c.name)).map((c) => ({
+    label: `${c.name} County`,
+    state: c.state,
+    countyFips: c.countyFips,
+  }));
+}
+
 export function countyByFips(countyFips: string): County | undefined {
   return COUNTY_BY_FIPS.get(countyFips);
 }

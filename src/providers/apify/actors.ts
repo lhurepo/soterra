@@ -42,6 +42,29 @@ export const SHELTER_PAGE_FUNCTION = `async function pageFunction(context) {
   };
 }`;
 
+/**
+ * Runs inside the Cheerio Scraper actor on the mock X feed (demo/scenario.ts): one dataset item with every post,
+ * shaped like Tweet Scraper items. Keep in sync with XFeedPageItem in src/ingestion/adapters/x.ts.
+ */
+export const X_FEED_PAGE_FUNCTION = `async function pageFunction(context) {
+  const { $, request } = context;
+  const clean = (s) => (s || '').replace(/\\s+/g, ' ').trim();
+  const pageUrl = request.loadedUrl || request.url;
+  const posts = [];
+  $('article.post').each((i, el) => {
+    const post = $(el);
+    const id = post.attr('data-id');
+    posts.push({
+      id,
+      url: pageUrl + '#' + id,
+      text: clean(post.find('.text').text()),
+      createdAt: post.find('time').attr('datetime'),
+      author: { userName: post.attr('data-handle'), name: clean(post.find('.name').text()) },
+    });
+  });
+  return { url: pageUrl, posts, loadedAt: new Date().toISOString() };
+}`;
+
 export function actorInput(
   source: Pick<IngestionSource, "apify">,
   pageUrl: string | undefined,
@@ -60,7 +83,11 @@ export function actorInput(
       if (!pageUrl) throw new Error("cheerio-scraper needs a page URL");
       return {
         actorId: ACTOR_IDS[kind],
-        input: { startUrls: [{ url: pageUrl }], pageFunction: SHELTER_PAGE_FUNCTION, maxPagesPerCrawl: 1 },
+        input: {
+          startUrls: [{ url: pageUrl }],
+          pageFunction: source.apify?.pageFunction === "x-feed" ? X_FEED_PAGE_FUNCTION : SHELTER_PAGE_FUNCTION,
+          maxPagesPerCrawl: 1,
+        },
       };
     case "tweet-scraper": {
       const hazards = "(evacuation OR wildfire OR fire OR flood OR earthquake OR tsunami)";

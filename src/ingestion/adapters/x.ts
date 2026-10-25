@@ -94,7 +94,9 @@ export function normalizeTweets(items: unknown[], ctx: NormalizeContext): Normal
       out.skipped++;
       continue;
     }
-    const areas = areasNamedIn(t.text, entry.states.length > 0 ? entry.states : ctx.ingestStates);
+    const named = areasNamedIn(t.text, entry.states.length > 0 ? entry.states : ctx.ingestStates);
+    // A feed with a configured jurisdiction (the demo X feed) covers that area when a post names none.
+    const areas = named.length > 0 || !ctx.source.jurisdiction ? named : [ctx.source.jurisdiction];
     const draft: NormalizedBulletinDraft = {
       sourceId: ctx.source.sourceId,
       sourceName: entry.issuer,
@@ -117,6 +119,29 @@ export function normalizeTweets(items: unknown[], ctx: NormalizeContext): Normal
   }
   return out;
 }
+
+/** Output of X_FEED_PAGE_FUNCTION (src/providers/apify/actors.ts): the mock X feed page, one item with every post. */
+export const XFeedPageItem = z.object({ url: z.string().url(), posts: z.array(z.unknown()) });
+
+/**
+ * The demo's mock X feed, crawled by Cheerio Scraper. Same routing as real X: the source's own fictional
+ * accounts (plus X_ALLOWLIST) become official_social bulletins, every other post is a signal.
+ */
+export const xFeedAdapter = (sourceId: string): ApifyAdapter => ({
+  sourceId,
+  normalizeItems: async (items, ctx) => {
+    const posts: unknown[] = [];
+    const rejected: NormalizeResult["rejected"] = [];
+    for (const raw of items) {
+      const page = XFeedPageItem.safeParse(raw);
+      if (page.success) posts.push(...page.data.posts);
+      else rejected.push({ reason: `invalid X feed page item: ${page.error.issues[0]?.message}`, raw });
+    }
+    const xAllowlist = [...(ctx.source.xAllowlist ?? []), ...ctx.settings.xAllowlist];
+    const result = normalizeTweets(posts, { ...ctx, settings: { ...ctx.settings, xAllowlist } });
+    return { ...result, rejected: [...rejected, ...result.rejected] };
+  },
+});
 
 export const xAdapter: ApifyAdapter = {
   sourceId: "x_posts",

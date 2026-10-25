@@ -1,6 +1,7 @@
 // [S] HTTP router only. Handlers live in their owners' files. Served on the deployment's .convex.site URL.
 import { httpRouter } from "convex/server";
 import { appStateHttp } from "./app";
+import { demoStartHttp, demoStatusHttp, demoStopHttp } from "./demo";
 import { mockSite } from "./mockSites";
 import { relayClaim, relayResult } from "./smsRelay";
 import { health } from "./health";
@@ -26,6 +27,11 @@ http.route({ path: "/twilio/inbound", method: "POST", handler: twilioInbound });
 // [B] Mac Messages relay (SMS_NOTIFIER=mac_relay; convex/smsRelay.ts). Bearer SMS_RELAY_SECRET.
 http.route({ path: "/relay/claim", method: "POST", handler: relayClaim });
 http.route({ path: "/relay/result", method: "POST", handler: relayResult });
+
+// [S] Demo switch for the app's button (convex/demo.ts). Bearer DEMO_SECRET.
+http.route({ path: "/demo/start", method: "POST", handler: demoStartHttp });
+http.route({ path: "/demo/stop", method: "POST", handler: demoStopHttp });
+http.route({ path: "/demo/status", method: "GET", handler: demoStatusHttp });
 
 // [I] Apify run webhook.
 http.route({ path: "/ingest/apify", method: "POST", handler: apifyWebhook });

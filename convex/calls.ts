@@ -6,6 +6,8 @@ import type { AreaRef, CallerContext } from "../src/contracts";
 import { DEFAULTS, isSupportedLanguage, supportedLanguage } from "../src/config/defaults";
 import { buildCallerContext } from "../src/memory/callerContext";
 import { STALE_SESSION_MS } from "../src/memory/retention";
+import { loadConfig } from "../src/config/env";
+import { speakableCounties } from "../src/ingestion/geo";
 import { stateForZip, type AreaCandidate } from "../src/orchestration/area";
 import { appCodeGreeting, appVerifiedGreeting, inboundGreeting, outboundGreeting, verificationGreeting } from "../src/orchestration/greeting";
 import type { LlmMessage } from "../src/providers/llm/types";
@@ -209,7 +211,9 @@ async function loadAreaCandidates(ctx: QueryCtx): Promise<AreaCandidate[]> {
     const key = `${r.state}|${r.label}`;
     if (!seen.has(key)) seen.set(key, { label: r.label, state: r.state, countyFips: r.countyFips, nwsZone: r.nwsZone });
   }
-  return [...seen.values()].slice(0, 150);
+  // Counties of the ingested states, so "I'm in San Francisco" resolves to a county even before any bulletin names it.
+  const counties = speakableCounties(loadConfig(process.env).INGEST_STATES).filter((c) => !seen.has(`${c.state}|${c.label}`));
+  return [...[...seen.values()].slice(0, 150), ...counties];
 }
 
 type StoredResponse = {

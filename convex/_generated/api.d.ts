@@ -13,6 +13,7 @@ import type * as app from "../app.js";
 import type * as callers from "../callers.js";
 import type * as calls from "../calls.js";
 import type * as crons from "../crons.js";
+import type * as demo from "../demo.js";
 import type * as dev from "../dev.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   callers: typeof callers;
   calls: typeof calls;
   crons: typeof crons;
+  demo: typeof demo;
   dev: typeof dev;
   health: typeof health;
   http: typeof http;

@@ -11,6 +11,8 @@ import { SECRET, fetchPath, newTest, seed, setupEnv, voicePost, type TestConvex 
 
 beforeEach(() => {
   vi.useFakeTimers();
+  // Fixed clock: the fixtures are dated 2:10 PM on Oct 24, and a source older than 3 hours is spoken with "as of".
+  vi.setSystemTime(new Date("2026-10-24T22:00:00Z"));
   setupEnv();
 });
 afterEach(() => vi.useRealTimers());
