@@ -153,7 +153,29 @@ export const turn = httpAction(async (ctx, req) => {
     outcome = await runTurn(
       { utterance: tr.utterance, language: tr.language, startedAt },
       begun,
-      { now: Date.now, llm: selectLlm(cfg), model: cfg.CLAUDE_FAST_MODEL, timeoutMs: DEFAULTS.llmTimeoutMs, retrieve: (q) => retrieverFor(ctx, cfg).retrieve(q) },
+      {
+        now: Date.now,
+        llm: selectLlm(cfg),
+        model: cfg.CLAUDE_FAST_MODEL,
+        timeoutMs: DEFAULTS.llmTimeoutMs,
+        retrieve: async (q) => {
+          const result = await retrieverFor(ctx, cfg).retrieve(q);
+          const pinned = begun.pinnedChunkIds ?? [];
+          if (pinned.length === 0) return result;
+          // An update callback: the bulletin we phoned about is always among the sources, first.
+          const extra = await ctx.runQuery(internal.retrieval.hydrateChunks, {
+            chunkIds: pinned,
+            text: q.text,
+            contextText: q.contextText,
+            area: q.area,
+            topK: q.topK,
+            now: q.now,
+            serveFixtures: cfg.SERVE_FIXTURES,
+          });
+          const seen = new Set(extra.map((c) => c.chunkId));
+          return { ...result, chunks: [...extra, ...result.chunks.filter((c) => !seen.has(c.chunkId))].slice(0, DEFAULTS.retrievalMaxChunks) };
+        },
+      },
     );
   } catch (err) {
     console.error("[voice] turn pipeline failed:", err);

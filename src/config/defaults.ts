@@ -20,6 +20,8 @@ export const DEFAULTS = {
   verificationDelayMs: 8_000,
   /** A verification callback must connect within this long of being requested to count. */
   verificationValidMs: 10 * 60_000,
+  /** After "Call Soterra" in the app: how long the next inbound call from that number counts as verified (once). */
+  appCallArmMs: 2 * 60_000,
   subscriptionMaxTtlMs: 72 * HOUR,
   /** Per subscription: at most one notification per window, and at most `notifyMaxPerHour` per hour. */
   notifyMinIntervalMs: 15 * MINUTE,

@@ -43,12 +43,16 @@ export default defineSchema({
     .index("by_phone", ["phone"])
     .index("by_expiresAt", ["expiresAt"]),
 
-  /** Future app users (iOS). Auth is TODO(B). Needs live here, on the account profile, never on callers. */
+  /** App users, linked to calls by phone (phoneLinks). Needs live here, on the account profile, never on callers. */
   accounts: defineTable({
     tokenIdentifier: v.optional(v.string()),
     displayName: v.optional(v.string()),
     preferredLanguage: v.optional(v.string()),
     needs: v.optional(v.array(v.string())),
+    /** Free text from the app: accommodations, history, medical conditions. Reaches the model on linked calls only. */
+    personalContext: v.optional(v.string()),
+    homeZip: v.optional(v.string()),
+    emergencyContact: v.optional(v.object({ name: v.string(), phone: v.string() })),
     createdAt: v.number(),
   }).index("by_tokenIdentifier", ["tokenIdentifier"]),
 
@@ -57,7 +61,42 @@ export default defineSchema({
     accountId: v.id("accounts"),
     phone: v.string(),
     verifiedAt: v.optional(v.number()),
+    /** How the link was proven: "app_code" = a code read out by a call to this number (convex/accounts.ts). */
+    verifiedBy: v.optional(v.union(v.literal("app_code"), v.literal("test"))),
   }).index("by_phone", ["phone"]),
+
+  /** A code Soterra reads out by phone so the app can prove the user holds a number. Short-lived, deleted on success. */
+  phoneChallenges: defineTable({
+    phone: v.string(),
+    code: v.string(),
+    expiresAt: v.number(),
+    attempts: v.number(),
+    createdAt: v.number(),
+    notificationId: v.optional(v.id("notifications")),
+  })
+    .index("by_phone_and_createdAt", ["phone", "createdAt"])
+    .index("by_notificationId", ["notificationId"]),
+
+  /**
+   * "Call Soterra" in the app: the signed-in app arms the user's next call. An inbound call from that number within a
+   * couple of minutes is treated as verified, once. Short-lived and single use.
+   */
+  appCallArms: defineTable({
+    phone: v.string(),
+    accountId: v.id("accounts"),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+  }).index("by_phone", ["phone"]),
+
+  /** The app's private session after a phone code: every profile call needs this token, never a bare phone number. */
+  appSessions: defineTable({
+    token: v.string(),
+    phone: v.string(),
+    accountId: v.id("accounts"),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  }).index("by_token", ["token"]),
 
   // ───────────── [B] Calls ─────────────
   /** The session. */
@@ -430,8 +469,8 @@ export default defineSchema({
     message: v.string(),
     bulletinRefs: v.array(v.id("bulletins")),
     dedupeKey: v.string(),
-    /** "verification" = the callback check that proves a caller holds the phone; otherwise an update callback. */
-    purpose: v.optional(v.union(v.literal("update"), v.literal("verification"))),
+    /** "verification" = the callback check that proves a caller holds the phone; "app_code" = the call that reads the app a code. */
+    purpose: v.optional(v.union(v.literal("update"), v.literal("verification"), v.literal("app_code"))),
     status: notificationStatus,
     providerRef: v.optional(v.string()),
     error: v.optional(v.string()),
