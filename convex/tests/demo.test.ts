@@ -112,6 +112,71 @@ describe("demo switch", () => {
     expect(await page(t, "sf/alertsf.html")).toContain("There are no active emergency alerts");
     const second = await t.mutation(internal.demo.start, {});
     expect(second.runId).not.toBe(first.runId);
-    expect(await t.mutation(internal.demo.crawlWave, { runId: first.runId!, wave: 1 })).toEqual([]);
+    expect(await t.mutation(internal.demo.crawlNext, { runId: first.runId! })).toEqual([]);
+  });
+});
+
+describe("demo crawl queue and late-result gate", () => {
+  it("keeps at most 5 Apify runs in flight, refills as runs finish, and drops results from a stopped run", async () => {
+    const t = newTest();
+    const run = await t.mutation(internal.demo.start, {});
+    await t.mutation(internal.demo.escalate, { runId: run.runId! });
+
+    const first = await t.mutation(internal.demo.crawlNext, { runId: run.runId! });
+    expect(first).toHaveLength(5);
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual([]);
+
+    // Two finish, one is refused for the concurrency limit (queued again), two still running.
+    const now = Date.now() + 1;
+    await t.run(async (ctx) => {
+      const row = (sourceId: string, status: "succeeded" | "failed" | "awaiting_apify", error?: string) =>
+        ctx.db.insert("ingestionRuns", { sourceId, trigger: "escalation", mode: "live", status, startedAt: now, error });
+      await row(first[0], "succeeded");
+      await row(first[1], "succeeded");
+      await row(first[2], "failed", "HTTP 402 concurrent-runs-limit-exceeded");
+      await row(first[3], "awaiting_apify");
+      await row(first[4], "awaiting_apify");
+    });
+    const second = await t.mutation(internal.demo.crawlNext, { runId: run.runId! });
+    expect(second).toHaveLength(3);
+    expect(second).toContain(first[2]);
+
+    expect(await t.query(internal.demo.acceptsResult, { sourceId: first[3], startedAt: now })).toBe(true);
+    expect(await t.query(internal.demo.acceptsResult, { sourceId: first[3], startedAt: run.startedAt! - 1 })).toBe(false);
+    expect(await t.query(internal.demo.acceptsResult, { sourceId: "nws_alerts", startedAt: 0 })).toBe(true);
+    await t.mutation(internal.demo.stop, {});
+    expect(await t.query(internal.demo.acceptsResult, { sourceId: first[3], startedAt: now })).toBe(false);
+    expect(await t.mutation(internal.demo.crawlNext, { runId: run.runId! })).toEqual([]);
+  });
+});
+
+describe("demo start keeps a callback asked for before it", () => {
+  it("a subscription made after stop survives the next start; one made during the run does not", async () => {
+    const t = newTest();
+    const sub = (consentAt: number) =>
+      t.run(async (ctx) =>
+        ctx.db.insert("subscriptions", {
+          recipient: { phone: "+14155550123" },
+          target: { kind: "area", area: { state: "CA", countyFips: "06075", label: "San Francisco" } },
+          trigger: "any_update",
+          channels: ["phone_call"],
+          language: "en",
+          status: "active",
+          consentAt,
+          createdVia: "call",
+          expiresAt: consentAt + 86_400_000,
+        }),
+      );
+    await t.mutation(internal.demo.start, {});
+    vi.advanceTimersByTime(1_000);
+    const during = await sub(Date.now());
+    vi.advanceTimersByTime(1_000);
+    await t.mutation(internal.demo.stop, {});
+    vi.advanceTimersByTime(1_000);
+    const before = await sub(Date.now()); // the caller asks "call me back" while the demo is off
+    vi.advanceTimersByTime(1_000);
+    await t.mutation(internal.demo.start, {});
+    const status = await t.run(async (ctx) => [(await ctx.db.get("subscriptions", during))?.status, (await ctx.db.get("subscriptions", before))?.status]);
+    expect(status).toEqual(["cancelled", "active"]);
   });
 });

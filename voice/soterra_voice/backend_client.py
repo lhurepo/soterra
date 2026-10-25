@@ -193,7 +193,7 @@ class MockBackendClient:
     end_fault: Optional[Fault] = None
     delay_s: float = 0.0
     language: Optional[str] = None
-    greeting: str = "This is Soterra (mock backend). If you are in immediate danger, hang up and dial 911. This call is transcribed. What would you like to know?"
+    greeting: str = "This is Soterra (mock backend). In danger? Hang up and dial 911. This call is transcribed. How can I help?"
     requests: list[object] = field(default_factory=list)
     cancelled_turns: int = 0
 

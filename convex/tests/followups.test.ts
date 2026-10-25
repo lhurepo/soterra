@@ -29,7 +29,7 @@ describe("subscription → update → notification → outbound call", () => {
     const r = await subscribe(t);
     expect(r.kind).toBe("followup");
     expect(r.subscriptionId).toBeDefined();
-    expect(r.reply).toContain(str("stopUpdates", "en"));
+    expect(r.reply).toMatch(/I'll call you/);
     const sub = await t.run(async (ctx) => await ctx.db.get("subscriptions", r.subscriptionId as Id<"subscriptions">));
     expect(sub).toMatchObject({ status: "active", trigger: "evacuation_change", target: { kind: "incident", incidentKey: "ridgeview-fire-demo" }, recipient: { phone: PHONE } });
     expect(sub!.expiresAt - sub!.consentAt).toBe(24 * 3_600_000);
@@ -48,7 +48,6 @@ describe("subscription → update → notification → outbound call", () => {
     const outbound = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: notifications[0]._id });
     expect(outbound.greeting).toContain(str("outboundIntro", "en"));
     expect(outbound.greeting).toContain(notifications[0].message);
-    expect(outbound.greeting).toContain(str("stopUpdates", "en"));
     expect(outbound.greeting).toMatch(/911/);
     // The outbound call knows who it called, so "stop updates" works on it.
     const stop = await say(t, outbound.sessionId, 0, "Stop updates");

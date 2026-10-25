@@ -14,13 +14,12 @@ export function verificationGreeting(language: string): string {
   return [t("verifyIntro", language), t("emergencyLine", language), t("transcriptionNotice", language), t("verifyAsk", language)].join(" ");
 }
 
-/** The update itself, an invitation to ask about it, how to stop updates, the 911 line, and the notice. */
+/** The update itself, an invitation to ask about it, the 911 line, and the notice. */
 export function outboundGreeting(language: string, updateMessage: string): string {
   return [
     t("outboundIntro", language),
     updateMessage,
     t("outboundInvite", language),
-    t("stopUpdates", language),
     t("emergencyLine", language),
     t("transcriptionNotice", language),
   ].join(" ");

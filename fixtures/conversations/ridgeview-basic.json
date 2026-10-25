@@ -12,7 +12,7 @@
     { "utterance": "Is 412 Oak Lane inside the evacuation zone?", "expectKind": "answer", "expectReplyIncludes": "can't confirm" },
     { "utterance": "Are there shelters that take pets?", "expectKind": "answer", "expectReplyIncludes": "pets" },
     { "utterance": "Is Hillcrest Elementary open as a shelter?", "expectKind": "no_info", "expectUnanswered": true },
-    { "utterance": "Please call me if the evacuation changes.", "expectKind": "followup", "expectSubscription": true, "expectReplyIncludes": "stop updates" },
+    { "utterance": "Please call me if the evacuation changes.", "expectKind": "followup", "expectSubscription": true, "expectReplyIncludes": "call you" },
     { "utterance": "Thanks, goodbye.", "expectKind": "goodbye", "expectEndCall": true }
   ]
 }

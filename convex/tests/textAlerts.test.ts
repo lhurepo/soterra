@@ -54,7 +54,7 @@ describe("choosing texts", () => {
     await seedBulletins(t);
     const r = await ask(t, "Can you text me if the evacuation changes?");
     expect(r.kind).toBe("followup");
-    expect(r.reply).toContain(str("stopTexts", "en"));
+    expect(r.reply).toMatch(/text you/);
     expect(await subscription(t, r.subscriptionId)).toMatchObject({ channels: ["sms"], mode: "on_change", trigger: "evacuation_change" });
 
     const [confirmation] = await callTexts(t);

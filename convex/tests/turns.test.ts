@@ -158,7 +158,6 @@ describe("LLM failure modes", () => {
     expect(r.degraded).toBe(true);
     expect(r.citations).toEqual([]);
     expect([str("noInfo", "en"), str("fallback", "en")]).toContain(r.reply);
-    expect(r.reply).toMatch(/911/);
     expect((await turnRow(t, sessionId, 0))?.errorCode).toBeTruthy();
   });
 

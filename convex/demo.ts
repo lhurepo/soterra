@@ -1,7 +1,7 @@
 // [S] The Marina Earthquake demo workflow (demo/scenario.ts). One switch:
 //   start → clean slate, every real source switched off, the 13 mock sites written and serving their calm "before"
 //           pages; after `delayMs` (default 5 s) the pages switch to "after" and real Apify actors crawl them
-//           (wave 1 at once, wave 2 a few seconds later). Callbacks go out through the normal pipeline.
+//           (at most APIFY_CONCURRENCY at a time; the rest start as runs finish). Callbacks go out through the normal pipeline.
 //   stop  → pages back to "before", demo data deleted, demo subscriptions cancelled. Start again = from the beginning.
 // Outside the demo, `takeOffline` keeps the deployment quiet: no source polls and only demo data is ever served.
 // The button: POST /demo/start, POST /demo/stop, GET /demo/status with `Authorization: Bearer <DEMO_SECRET>`.
@@ -17,11 +17,15 @@ import { writeVariant } from "./mockSites";
 
 const RUN_KEY = "demoRun";
 const DEFAULT_DELAY_MS = 5_000;
-const WAVE_GAP_MS = 8_000;
+/** The Apify plan allows 5 concurrent actor runs; more fail with HTTP 402 concurrent-runs-limit-exceeded. */
+const APIFY_CONCURRENCY = 5;
+const CRAWL_POLL_MS = 2_000;
+const IN_FLIGHT = new Set(["running", "awaiting_apify", "processing"]);
+const LIMIT_ERROR = /concurrent-runs-limit-exceeded/;
 /** Older fictional data (the Sonoma "Ridgeview Fire" fixtures): removed so it never mixes with the demo. */
 const LEGACY_FIXTURE_SOURCES = ["demo_county", "demo_fire", "demo_nws", "demo_caltrans", "mock_county_emergency", "mock_shelters", "mock_disaster_assistance", "x_posts"];
 
-type Run = { runId: string; seq?: number; on: boolean; startedAt: number; escalateAt: number };
+type Run = { runId: string; seq?: number; on: boolean; startedAt: number; escalateAt: number; launched?: string[]; stoppedAt?: number };
 
 async function readRun(ctx: QueryCtx): Promise<Run | null> {
   const row = await ctx.db.query("devSettings").withIndex("by_key", (q) => q.eq("key", RUN_KEY)).unique();
@@ -53,7 +57,9 @@ export const start = internalMutation({
     const now = Date.now();
     const delay = Math.max(0, delayMs ?? DEFAULT_DELAY_MS);
     const previous = await readRun(ctx);
-    await resetDemo(ctx, previous?.startedAt);
+    // A stopped run's subscriptions were cancelled at stop. What a caller set up after that ("call me back" before the
+    // earthquake) belongs to this run and is kept: that is the demo's callback.
+    await resetDemo(ctx, previous?.startedAt, previous && !previous.on ? previous.stoppedAt : undefined);
 
     await ctx.runMutation(internal.sources.syncRegistry, {}); // the demo sources need their rows
     await offline(ctx);
@@ -81,24 +87,56 @@ export const escalate = internalMutation({
     const run = await readRun(ctx);
     if (!run?.on || run.runId !== runId) return null;
     await writeVariant(ctx, "v2");
-    await ctx.scheduler.runAfter(0, internal.demo.crawlWave, { runId, wave: 1 });
-    await ctx.scheduler.runAfter(WAVE_GAP_MS, internal.demo.crawlWave, { runId, wave: 2 });
+    await writeRun(ctx, { ...run, escalateAt: Date.now(), launched: [] });
+    await ctx.scheduler.runAfter(0, internal.demo.crawlNext, { runId });
     return null;
   },
 });
 
-/** Starts one real Apify run per site of the wave (skipped if the demo was stopped or restarted meanwhile). */
-export const crawlWave = internalMutation({
-  args: { runId: v.string(), wave: v.union(v.literal(1), v.literal(2)) },
+/**
+ * The crawl queue: keeps at most APIFY_CONCURRENCY demo runs in flight (wave 1 sites first) and starts the next site
+ * as soon as one finishes. A run Apify refused for the concurrency limit is queued again. Polls until every site has
+ * been started; stops on its own when the demo is stopped or restarted. Returns the sources started this tick.
+ */
+export const crawlNext = internalMutation({
+  args: { runId: v.string() },
   returns: v.array(v.string()),
-  handler: async (ctx, { runId, wave }) => {
+  handler: async (ctx, { runId }) => {
     const run = await readRun(ctx);
     if (!run?.on || run.runId !== runId) return [];
-    const sites = DEMO_SITES.filter((s) => s.wave === wave);
-    for (const site of sites) {
-      await ctx.scheduler.runAfter(0, internal.ingestion.runSource, { sourceId: site.sourceId, trigger: "escalation", modeOverride: "live" });
+    const latest = new Map<string, { status: string; error?: string }>();
+    for (const r of await ctx.db.query("ingestionRuns").order("desc").take(100)) {
+      if (r.startedAt < run.escalateAt) break;
+      if (!latest.has(r.sourceId)) latest.set(r.sourceId, r);
     }
-    return sites.map((s) => s.sourceId);
+    // Started but not yet visible as a row (runSource is scheduled) counts as in flight.
+    const launched = (run.launched ?? []).filter((id) => {
+      const r = latest.get(id);
+      return !(r?.status === "failed" && LIMIT_ERROR.test(r.error ?? ""));
+    });
+    const inFlight = launched.filter((id) => !latest.has(id) || IN_FLIGHT.has(latest.get(id)!.status)).length;
+    const queue = [...DEMO_SITES].sort((x, y) => x.wave - y.wave).map((s) => s.sourceId).filter((id) => !launched.includes(id));
+    const next = queue.slice(0, Math.max(0, APIFY_CONCURRENCY - inFlight));
+    for (const sourceId of next) {
+      await ctx.scheduler.runAfter(0, internal.ingestion.runSource, { sourceId, trigger: "escalation", modeOverride: "live" });
+    }
+    await writeRun(ctx, { ...run, launched: [...launched, ...next] });
+    if (queue.length > next.length) await ctx.scheduler.runAfter(CRAWL_POLL_MS, internal.demo.crawlNext, { runId });
+    return next;
+  },
+});
+
+/**
+ * Late-result gate: an Apify result for a demo source is only ingested if it was started by the demo run that is on now.
+ * Results from a stopped or earlier run (crawls still in flight at stop) are dropped.
+ */
+export const acceptsResult = internalQuery({
+  args: { sourceId: v.string(), startedAt: v.number() },
+  returns: v.boolean(),
+  handler: async (ctx, { sourceId, startedAt }) => {
+    if (!DEMO_SOURCE_IDS.includes(sourceId)) return true;
+    const run = await readRun(ctx);
+    return !!run?.on && startedAt >= run.escalateAt;
   },
 });
 
@@ -109,7 +147,7 @@ export const stop = internalMutation({
     const run = await readRun(ctx);
     await resetDemo(ctx, run?.startedAt);
     await writeVariant(ctx, "v1");
-    if (run) await writeRun(ctx, { ...run, on: false });
+    if (run) await writeRun(ctx, { ...run, on: false, stoppedAt: run.on ? Date.now() : (run.stoppedAt ?? Date.now()) });
     return { on: false, runId: run?.runId, startedAt: run?.startedAt, escalateAt: run?.escalateAt };
   },
 });
@@ -164,10 +202,10 @@ async function writePage(ctx: MutationCtx, path: string, variant: "v1" | "v2", b
 
 /**
  * Clean slate. Deletes only fictional data: every bulletin of the demo sources, fixture bulletins of the older demo
- * sources, the mock feed's signals. Since the previous run started (`since`): cancels the subscriptions created and
- * deletes the update notifications sent, so the next run's callback is not blocked or duplicated. Crisis mode → normal.
+ * sources, the mock feed's signals. Between the previous run's start (`since`) and `until` (default now): cancels the
+ * subscriptions created and deletes the update notifications sent, so the next run's callback is not blocked or duplicated. Crisis mode → normal.
  */
-async function resetDemo(ctx: MutationCtx, since: number | undefined): Promise<void> {
+async function resetDemo(ctx: MutationCtx, since: number | undefined, until = Date.now()): Promise<void> {
   for (const sourceId of [...DEMO_SOURCE_IDS, ...LEGACY_FIXTURE_SOURCES]) {
     const rows = await ctx.db
       .query("bulletins")
@@ -193,9 +231,10 @@ async function resetDemo(ctx: MutationCtx, since: number | undefined): Promise<v
       .query("subscriptions")
       .withIndex("by_status_and_expiresAt", (q) => q.eq("status", "active"))
       .take(300);
-    for (const s of subs) if (s.consentAt >= since) await ctx.db.patch("subscriptions", s._id, { status: "cancelled", cancelledAt: Date.now() });
+    for (const s of subs) if (s.consentAt >= since && s.consentAt <= until) await ctx.db.patch("subscriptions", s._id, { status: "cancelled", cancelledAt: Date.now() });
     for (const n of await ctx.db.query("notifications").order("desc").take(200)) {
       if (n.createdAt < since) break;
+      if (n.createdAt > until) continue;
       if (n.purpose !== "verification" && n.purpose !== "app_code") await ctx.db.delete("notifications", n._id);
     }
   }
