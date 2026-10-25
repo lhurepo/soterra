@@ -11,11 +11,10 @@ import { supportedLanguage, type SupportedLanguage } from "./defaults";
 
 const STRINGS = {
   en: {
-    welcome: "This is Soterra, the disaster information line.",
-    emergencyLine: "If you are in immediate danger, hang up and dial 911.",
-    transcriptionNotice:
-      "This call is transcribed; say \"summary only\" to keep just a summary.",
-    askQuestion: "What would you like to know?",
+    welcome: "This is Soterra, the disaster info line.",
+    emergencyLine: "In danger? Hang up and dial 911.",
+    transcriptionNotice: "This call is transcribed.",
+    askQuestion: "How can I help?",
     // Personal commands: only on a call that passed the callback check (docs/backend.md, "Caller memory").
     verifyAnnounce: "For your privacy, I'll call you back at this number to confirm it's you. Please hang up and answer when I call.",
     verifyHidden: "I can't do that because your number is hidden. Please call again without hiding your number.",
@@ -42,18 +41,18 @@ const STRINGS = {
     outboundIntro: "Hi, this is Soterra. I'm calling about the update you asked for.",
     // An update call that reached voicemail: a short message, then hang up (the update follows by text).
     outboundVoicemail: "Hi, this is Soterra, the disaster information line, with the update you asked for on {topic}. We'll text you the details. If you are in danger, call 911. Goodbye.",
-    outboundInvite: "Ask me anything about it, or just hang up if that's all you needed.",
+    outboundInvite: "Any questions about it?",
     stopUpdates: "Say stop updates any time to cancel these calls.",
     safety:
       "If you are in immediate danger, hang up and dial 911 now. I can't send help or contact emergency services for you. Once you are safe, you can call back for information.",
     fallback: "Sorry, I can't find that answer right now. If you are in immediate danger, hang up and dial 911.",
     noInfo:
-      "I don't know that one yet, but I've saved your question. If you're in danger, hang up and dial 911.",
+      "I don't know that one yet, but I've saved your question.",
     consentDeclined: "Okay. I'll keep only a short summary of this call, not the transcript.",
-    followupCreated: "Okay. I'll call this number if there are official updates about {topic}, for the next {hours} hours.",
-    followupCreatedSms: "Okay. I'll text this number if there are official updates about {topic}, for the next {hours} hours.",
-    followupScheduled: "Okay. I'll call this number every {interval} with the latest official information about {topic}, for the next {hours} hours.",
-    followupScheduledSms: "Okay. I'll text this number every {interval} with the latest official information about {topic}, for the next {hours} hours.",
+    followupCreated: "Okay, I'll call you when there's news about {topic}.",
+    followupCreatedSms: "Okay, I'll text you when there's news about {topic}.",
+    followupScheduled: "Okay, I'll call you every {interval} with the latest on {topic}.",
+    followupScheduledSms: "Okay, I'll text you every {interval} with the latest on {topic}.",
     followupMissedCallNote: "If you miss a call, I'll text you the update.",
     stopTexts: "To stop, reply STOP to any text, or say \"stop updates\" on a call to this line.",
     topicIncident: "this incident",
@@ -63,7 +62,7 @@ const STRINGS = {
     topicArea: "{area}",
     callbackDeclined: "I can't call you back because your number is hidden. Please call this line again for updates.",
     updatesStopped: "Okay. I've stopped any updates to this number. You won't get more update calls from Soterra.",
-    goodbye: "Thank you for calling Soterra. Stay safe. If you are in immediate danger, dial 911.",
+    goodbye: "Thank you for calling Soterra. Stay safe.",
     clarifyArea: "What city, county or ZIP code are you asking about?",
     addressRefusal:
       "I can't confirm whether a specific address is inside a zone. Please check the official zone lookup for your address.",
@@ -110,10 +109,9 @@ const STRINGS = {
   },
   es: {
     welcome: "Habla Soterra, la línea de información sobre desastres.",
-    emergencyLine: "Si está en peligro inmediato, cuelgue y marque 911.",
-    transcriptionNotice:
-      "Esta llamada se transcribe; diga \"solo resumen\" para guardar solo un resumen.",
-    askQuestion: "¿Qué le gustaría saber?",
+    emergencyLine: "¿En peligro? Cuelgue y marque 911.",
+    transcriptionNotice: "Esta llamada se transcribe.",
+    askQuestion: "¿En qué le puedo ayudar?",
     verifyAnnounce: "Por su privacidad, le devolveré la llamada a este número para confirmar que es usted. Por favor cuelgue y conteste cuando llame.",
     verifyHidden: "No puedo hacer eso porque su número está oculto. Por favor llame de nuevo sin ocultar su número.",
     verifyLimited: "Ya intenté devolverle la llamada varias veces. Por favor intente de nuevo en un rato.",
@@ -138,18 +136,18 @@ const STRINGS = {
     forgetCancelled: "De acuerdo, conservé todo.",
     outboundIntro: "Hola, habla Soterra. Le llamo por la actualización que pidió.",
     outboundVoicemail: "Hola, habla Soterra, la línea de información sobre desastres, con la actualización que pidió sobre {topic}. Le enviaremos los detalles por mensaje de texto. Si está en peligro, llame al 911. Adiós.",
-    outboundInvite: "Pregúnteme lo que quiera sobre esto, o simplemente cuelgue si eso era todo.",
+    outboundInvite: "¿Tiene alguna pregunta sobre esto?",
     stopUpdates: "Diga parar actualizaciones cuando quiera para cancelar estas llamadas.",
     safety:
       "Si está en peligro inmediato, cuelgue y marque 911 ahora. Yo no puedo enviar ayuda ni comunicarme con los servicios de emergencia por usted. Cuando esté a salvo, puede volver a llamar para información.",
     fallback: "Lo siento, no puedo encontrar esa respuesta en este momento. Si está en peligro inmediato, cuelgue y marque 911.",
     noInfo:
-      "Eso todavía no lo sé, pero guardé su pregunta. Si está en peligro, cuelgue y marque 911.",
+      "Eso todavía no lo sé, pero guardé su pregunta.",
     consentDeclined: "De acuerdo. Guardaré solo un resumen breve de esta llamada, no la transcripción.",
-    followupCreated: "De acuerdo. Llamaré a este número si hay actualizaciones oficiales sobre {topic}, durante las próximas {hours} horas.",
-    followupCreatedSms: "De acuerdo. Enviaré un mensaje de texto a este número si hay actualizaciones oficiales sobre {topic}, durante las próximas {hours} horas.",
-    followupScheduled: "De acuerdo. Llamaré a este número cada {interval} con la información oficial más reciente sobre {topic}, durante las próximas {hours} horas.",
-    followupScheduledSms: "De acuerdo. Enviaré un mensaje de texto a este número cada {interval} con la información oficial más reciente sobre {topic}, durante las próximas {hours} horas.",
+    followupCreated: "De acuerdo, le llamaré cuando haya novedades sobre {topic}.",
+    followupCreatedSms: "De acuerdo, le enviaré un mensaje cuando haya novedades sobre {topic}.",
+    followupScheduled: "De acuerdo, le llamaré cada {interval} con lo último sobre {topic}.",
+    followupScheduledSms: "De acuerdo, le enviaré un mensaje cada {interval} con lo último sobre {topic}.",
     followupMissedCallNote: "Si no contesta una llamada, le enviaré la actualización por mensaje de texto.",
     stopTexts: "Para dejar de recibirlas, responda STOP a cualquier mensaje, o diga \"parar actualizaciones\" en una llamada a esta línea.",
     topicIncident: "este incidente",
@@ -160,7 +158,7 @@ const STRINGS = {
     callbackDeclined:
       "No puedo devolverle la llamada porque su número está oculto. Por favor, vuelva a llamar a esta línea para recibir novedades.",
     updatesStopped: "De acuerdo. Detuve las actualizaciones a este número. No recibirá más llamadas de actualización de Soterra.",
-    goodbye: "Gracias por llamar a Soterra. Cuídese. Si está en peligro inmediato, marque 911.",
+    goodbye: "Gracias por llamar a Soterra. Cuídese.",
     clarifyArea: "¿Sobre qué ciudad, condado o código postal pregunta?",
     addressRefusal:
       "No puedo confirmar si una dirección específica está dentro de una zona. Consulte la búsqueda oficial de zonas para su dirección.",

@@ -16,7 +16,7 @@ npm run demo:offline   # switch every source off and take every non-demo bulleti
 `npm run demo:start -- --delay 10000` changes the calm period (milliseconds).
 
 Start the demo when the caller dials. The first callback comes once the crawls land, measured with
-`demo:status`. Crawls typically take 15–40 s per site and the 13 sites run in two waves.
+`demo:status`. Crawls typically take 15–40 s per site. The 13 sites go through a queue: at most 5 Apify runs at once (the plan's limit), the next one starts as soon as one finishes, and a run Apify refuses for the limit is queued again.
 
 ## The story
 
@@ -47,7 +47,7 @@ friend at the hackathon.
     (`DEMO_X_ACCOUNTS`), which become `official_social` bulletins.
 - `convex/demo.ts`:
   - `start`: resets the demo data, runs `takeOffline`, writes the pages to `mockSites` and serves v1 (calm).
-    After the delay, `escalate` switches to v2 and `crawlWave` starts the real Apify runs in two waves.
+    After the delay, `escalate` switches to v2 and `crawlNext` starts the real Apify runs, 5 at a time (it checks every 2 s for a free slot).
   - `stop`: resets the demo data, cancels the subscriptions and deletes the update notifications created since
     the run started, sets crisis mode back to normal and the pages back to calm.
   - Unused, but available: `POST /demo/start`, `POST /demo/stop` and `GET /demo/status`, with Bearer `DEMO_SECRET`.
@@ -69,7 +69,8 @@ only people who agreed are subscribed.
 ## Known limits
 
 - Crawl times are not measured yet. Run `demo:start` once and read `demo:status` before demoing.
-- Stopping while crawls are in flight: their results can land after the reset. Wait about a minute, or run
-  `demo:stop` again, before the next start.
+- Stopping while crawls are in flight is safe: results from a stopped or earlier run are dropped when they land
+  (`acceptsResult`, shown in `demo:status` as failed "dropped: late result"). Apify itself still finishes those runs, so
+  they can hold concurrency slots for up to ~40 s after a restart; the queue just waits for them.
 - Tests: `tests/demo.test.ts` (every page through the adapters and extraction) and `convex/tests/demo.test.ts`
   (the switch). The Apify page functions themselves are only exercised by a live run.

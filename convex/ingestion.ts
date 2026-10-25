@@ -578,6 +578,10 @@ export const processApifyRun = internalAction({
     const run = await ctx.runQuery(internal.ingestionRuns.getRun, { runId });
     if (!run) return null;
     if (!(await ctx.runMutation(internal.ingestionRuns.claimForProcessing, { runId }))) return null;
+    if (!(await ctx.runQuery(internal.demo.acceptsResult, { sourceId: run.sourceId, startedAt: run.startedAt }))) {
+      await ctx.runMutation(internal.ingestionRuns.finishRun, { runId, status: "failed", error: "dropped: late result from a stopped demo run" });
+      return null;
+    }
     const source = sourceById(run.sourceId);
     const adapter = APIFY_ADAPTERS[run.sourceId];
     try {

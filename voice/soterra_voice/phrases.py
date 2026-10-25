@@ -19,8 +19,8 @@ PHRASES: dict[str, dict[str, str]] = {
     },
     # Session start failed: the call continues and the first turn starts the session lazily.
     "greeting_fallback": {
-        "en": "This is Soterra, the disaster information line. If you are in immediate danger, hang up and dial 911. This call is transcribed. What would you like to know?",
-        "es": "Habla Soterra, la línea de información sobre desastres. Si está en peligro inmediato, cuelgue y marque 911. Esta llamada se transcribe. ¿Qué le gustaría saber?",
+        "en": "This is Soterra, the disaster info line. In danger? Hang up and dial 911. This call is transcribed. How can I help?",
+        "es": "Habla Soterra, la línea de información sobre desastres. ¿En peligro? Cuelgue y marque 911. Esta llamada se transcribe. ¿En qué le puedo ayudar?",
     },
     # Spoken once per turn when the backend has not answered within FILLER_AFTER_S. Neutral on purpose: it plays
     # whatever was asked (a news question, a question about the caller's own saved details, small talk).

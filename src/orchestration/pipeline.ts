@@ -107,7 +107,7 @@ function followUpTopic(request: FollowUpRequest, language: string): string {
   return t("topicIncident", language);
 }
 
-/** "Okay. I'll text this number every 2 hours with …", then how to stop. Hours match the stored lifetime. */
+/** "Okay, I'll text you every 2 hours with the latest on …". */
 function followUpConfirmation(request: FollowUpRequest, language: string): string {
   const intervalMs = request.intervalMinutes === undefined ? undefined : request.intervalMinutes * 60_000;
   const sms = request.channel === "sms";
@@ -117,9 +117,8 @@ function followUpConfirmation(request: FollowUpRequest, language: string): strin
     interval: intervalMs === undefined ? "" : formatInterval(intervalMs, language),
   };
   const key = intervalMs === undefined ? (sms ? "followupCreatedSms" : "followupCreated") : sms ? "followupScheduledSms" : "followupScheduled";
-  return [tf(key, language, vars), sms ? undefined : t("followupMissedCallNote", language), t(sms ? "stopTexts" : "stopUpdates", language)]
-    .filter((p): p is string => p !== undefined)
-    .join(" ");
+  // Kept to one sentence on a call; how to stop is in the confirmation text and "stop updates" works any time.
+  return tf(key, language, vars);
 }
 
 /** Fills in a usable target, or returns null when there is nothing to watch (no incident, area or question). */

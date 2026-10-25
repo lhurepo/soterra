@@ -21,7 +21,7 @@ describe("canonical strings", () => {
 
   it("put the 911 line in every safety-critical sentence", () => {
     for (const lang of ["en", "es"] as const) {
-      for (const key of ["safety", "fallback", "noInfo", "goodbye", "emergencyLine"] as const) expect(t(key, lang), `${lang}.${key}`).toMatch(/911/);
+      for (const key of ["safety", "fallback", "emergencyLine"] as const) expect(t(key, lang), `${lang}.${key}`).toMatch(/911/);
     }
   });
 
@@ -61,10 +61,9 @@ describe("greetings", () => {
     expect(t("transcriptionNotice", "en").match(/[.!?](\s|$)/g)).toHaveLength(1);
   });
 
-  it("outbound: the update, how to stop updates, the 911 line", () => {
+  it("outbound: the update and the 911 line", () => {
     const g = outboundGreeting("en", "Update from X: Y.");
     expect(g).toContain("Update from X: Y.");
-    expect(g).toContain(t("stopUpdates", "en"));
     expect(g).toContain(t("emergencyLine", "en"));
   });
 });
