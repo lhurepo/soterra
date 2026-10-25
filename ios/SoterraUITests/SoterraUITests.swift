@@ -1,6 +1,6 @@
 import XCTest
 
-/// UI checks for the 911 pill, the call confirmation, the map, Simple mode and the Area setting. They run on demo
+/// UI checks for the alerts bell, the map, Simple mode and the Area setting. They run on demo
 /// data (`-SoterraLive NO`), and the large-text test keeps screenshots of the screens whose text wraps the most.
 final class SoterraUITests: XCTestCase {
     private let launchTimeout: TimeInterval = 60
@@ -9,44 +9,47 @@ final class SoterraUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    // MARK: 911
+    // MARK: Alerts bell
 
-    func testEmergencyPillIsTheSameOnEveryScreen() {
+    func testAlertsBellIsTheSameOnEveryScreen() {
         let app = launch()
-        let reference = visiblePill(in: app).frame
-        assertPillFits(reference, in: app)
+        let reference = visibleBell(in: app).frame
+        assertBellFits(reference, in: app)
 
-        for tab in ["Alerts", "Map", "Household", "More"] {
+        for tab in ["Chat", "Map", "Household", "More"] {
             app.tabBars.buttons[tab].tap()
-            let frame = visiblePill(in: app).frame
-            XCTAssertEqual(frame.width, reference.width, accuracy: 0.5, "911 pill width on \(tab)")
-            XCTAssertEqual(frame.height, reference.height, accuracy: 0.5, "911 pill height on \(tab)")
-            assertPillFits(frame, in: app)
+            let frame = visibleBell(in: app).frame
+            XCTAssertEqual(frame.width, reference.width, accuracy: 0.5, "bell width on \(tab)")
+            XCTAssertEqual(frame.height, reference.height, accuracy: 0.5, "bell height on \(tab)")
+            assertBellFits(frame, in: app)
         }
-
-        app.tabBars.buttons["Alerts"].tap()
-        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Be ready to leave'")).firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Evacuation Warning"].waitForExistence(timeout: 30))
-        let pushed = visiblePill(in: app).frame
-        XCTAssertEqual(pushed.width, reference.width, accuracy: 0.5, "911 pill width on a pushed screen")
-        XCTAssertEqual(pushed.height, reference.height, accuracy: 0.5, "911 pill height on a pushed screen")
-        assertPillFits(pushed, in: app)
+        XCTAssertFalse(app.tabBars.buttons["Alerts"].exists, "Alerts is no longer a tab")
     }
 
-    func testCalling911AsksToConfirmBeforeTheCallPrompt() {
+    func testBellOpensTheAlertsList() {
         let app = launch()
-        visiblePill(in: app).tap()
-        let call = app.buttons["Call 911"]
-        XCTAssertTrue(call.waitForExistence(timeout: 30))
+        visibleBell(in: app).tap()
+        XCTAssertTrue(app.navigationBars["Alerts"].waitForExistence(timeout: 30))
+        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Be ready to leave'")).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Evacuation Warning"].waitForExistence(timeout: 30))
+    }
 
-        call.tap()
-        let confirm = app.alerts["Call 911 now?"]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 30))
-        XCTAssertTrue(confirm.buttons["Call 911"].exists)
-        confirm.buttons["Cancel"].tap()
+    func testTheAppHasNoWayToDial911() {
+        let app = launch()
+        XCTAssertFalse(app.buttons["Call 911"].exists)
+        app.terminate()
+        let simple = launch(simpleMode: true)
+        XCTAssertTrue(simple.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Call Soterra'")).firstMatch
+            .waitForExistence(timeout: launchTimeout))
+        XCTAssertFalse(simple.buttons["Call 911"].exists)
+    }
 
-        XCTAssertTrue(waitForDisappearance(of: confirm))
-        XCTAssertTrue(call.exists, "Cancel leaves the danger sheet open")
+    func testHomeKeepsOnlyTheCallSoterraCard() {
+        let app = launch()
+        let calls = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Call Soterra'"))
+        XCTAssertTrue(calls.firstMatch.waitForExistence(timeout: launchTimeout))
+        XCTAssertEqual(calls.count, 1, "no fixed Call Soterra bar above the tabs")
+        XCTAssertFalse(app.buttons["Ask Soterra"].exists)
     }
 
     // MARK: Top bar and settings
@@ -73,7 +76,7 @@ final class SoterraUITests: XCTestCase {
         let map = app.maps.firstMatch
         map.swipeDown()
         XCTAssertTrue(waitForDisappearance(of: search), "search fades while the map moves")
-        XCTAssertTrue(visiblePill(in: app).exists, "911 stays while the search is hidden")
+        XCTAssertTrue(visibleBell(in: app).exists, "the bell stays while the search is hidden")
 
         // North of the zones, after moving the map down, is empty map.
         map.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.3)).tap()
@@ -89,8 +92,12 @@ final class SoterraUITests: XCTestCase {
         let directions = app.buttons["Directions"]
         XCTAssertTrue(directions.waitForExistence(timeout: 30))
         assertInsideWindow(directions, in: app)
+        XCTAssertTrue(waitForDisappearance(of: app.tabBars.firstMatch), "the tab bar fades out while the panel is open")
+        XCTAssertGreaterThanOrEqual(app.buttons["Close"].frame.minY, app.windows.firstMatch.frame.height * 0.45,
+                                    "the panel fills the bottom half")
         app.buttons["Close"].tap()
         XCTAssertTrue(waitForDisappearance(of: directions))
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30), "the tab bar returns")
 
         app.buttons["Zone SON-3A"].tap()
         let seeAlert = app.buttons["See alert"]
@@ -103,17 +110,10 @@ final class SoterraUITests: XCTestCase {
 
     func testSimpleModeShowsTheEssentialsAndSwitchesBack() {
         let app = launch(simpleMode: true)
-        let call = app.buttons["Call 911"]
+        let call = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Call Soterra'")).firstMatch
         XCTAssertTrue(call.waitForExistence(timeout: launchTimeout))
         XCTAssertFalse(app.tabBars.firstMatch.exists, "Simple mode is one screen")
         XCTAssertGreaterThanOrEqual(call.frame.height, 76)
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Call Soterra'")).firstMatch.exists)
-
-        call.tap()
-        let confirm = app.alerts["Call 911 now?"]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 30))
-        confirm.buttons["Cancel"].tap()
-        XCTAssertTrue(waitForDisappearance(of: confirm))
 
         let switchBack = app.buttons["Switch to the full app"].firstMatch
         for _ in 0..<6 where !switchBack.isHittable { app.swipeUp() }
@@ -132,8 +132,8 @@ final class SoterraUITests: XCTestCase {
     /// Checks that the controls stay on screen and keeps screenshots for review.
     func testLayoutAtTheLargestTextSize() {
         let app = launch(["-SoterraScreen", "alert"], textSize: "UICTContentSizeCategoryAccessibilityXXXL")
-        let pill = visiblePill(in: app)
-        assertPillFits(pill.frame, in: app)
+        let bell = visibleBell(in: app)
+        assertBellFits(bell.frame, in: app)
         keepScreenshot(of: app, named: "Alert detail, top")
 
         let source = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Sonoma County Emergency Management'")).firstMatch
@@ -144,8 +144,9 @@ final class SoterraUITests: XCTestCase {
 
         app.terminate()
         let simple = launch(simpleMode: true, textSize: "UICTContentSizeCategoryAccessibilityXXXL")
-        XCTAssertTrue(simple.buttons["Call 911"].waitForExistence(timeout: launchTimeout))
-        assertInsideWindow(simple.buttons["Call 911"], in: simple)
+        let simpleCall = simple.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Call Soterra'")).firstMatch
+        XCTAssertTrue(simpleCall.waitForExistence(timeout: launchTimeout))
+        assertInsideWindow(simpleCall, in: simple)
         keepScreenshot(of: simple, named: "Simple mode")
 
         simple.terminate()
@@ -165,26 +166,25 @@ final class SoterraUITests: XCTestCase {
         return app
     }
 
-    /// The 911 pill on the screen in front (other tabs keep theirs in the hierarchy, off screen).
-    private func visiblePill(in app: XCUIApplication) -> XCUIElement {
-        let pills = app.buttons.matching(identifier: "Emergency, 911")
-        XCTAssertTrue(pills.firstMatch.waitForExistence(timeout: launchTimeout))
+    /// The alerts bell on the screen in front (other tabs keep theirs in the hierarchy, off screen).
+    private func visibleBell(in app: XCUIApplication) -> XCUIElement {
+        let bells = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Alerts, '"))
+        XCTAssertTrue(bells.firstMatch.waitForExistence(timeout: launchTimeout))
         let deadline = Date.now.addingTimeInterval(10)
         repeat {
-            if let pill = pills.allElementsBoundByIndex.first(where: \.isHittable) { return pill }
+            if let bell = bells.allElementsBoundByIndex.first(where: \.isHittable) { return bell }
         } while Date.now < deadline
-        XCTFail("No visible 911 pill")
-        return pills.firstMatch
+        XCTFail("No visible alerts bell")
+        return bells.firstMatch
     }
 
-    private func assertPillFits(_ frame: CGRect, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+    private func assertBellFits(_ frame: CGRect, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let window = app.windows.firstMatch.frame
         XCTAssertGreaterThanOrEqual(frame.height, 30, file: file, line: line)
-        // The button's frame is its 44 pt tap area; the visible pill inside it is 34 pt.
-        XCTAssertLessThanOrEqual(frame.height, 44.5, "pill fits the bar", file: file, line: line)
+        XCTAssertLessThanOrEqual(frame.height, 44.5, "bell fits the bar", file: file, line: line)
         XCTAssertGreaterThanOrEqual(frame.minX, window.minX, file: file, line: line)
-        XCTAssertLessThanOrEqual(frame.maxX, window.maxX - 8, "pill keeps a margin from the screen edge", file: file, line: line)
-        XCTAssertGreaterThan(frame.minY, 40, "pill sits below the status bar", file: file, line: line)
+        XCTAssertLessThanOrEqual(frame.maxX, window.maxX - 8, "bell keeps a margin from the screen edge", file: file, line: line)
+        XCTAssertGreaterThan(frame.minY, 40, "bell sits below the status bar", file: file, line: line)
     }
 
     private func assertInsideWindow(_ element: XCUIElement, in app: XCUIApplication,

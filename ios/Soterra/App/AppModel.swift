@@ -2,7 +2,7 @@ import Observation
 import SwiftUI
 
 enum AppTab: Hashable {
-    case home, alerts, map, household, more
+    case home, chat, map, household, more
 }
 
 /// Screens pushed onto a tab's navigation stack.
@@ -71,23 +71,19 @@ enum MapPlace: Hashable {
     case roadClosure
 }
 
-struct Toast: Identifiable, Equatable {
-    let id = UUID()
-    let message: String
-}
-
 /// App-wide state for the mock. Light mode is the default appearance.
 @Observable
 final class AppModel {
     // Navigation
     var selectedTab: AppTab = .home
     var homePath: [Route] = []
+    var chatPath: [Route] = []
     var alertsPath: [Route] = []
     var householdPath: [Route] = []
     var mapPath: [Route] = []
     var morePath: [Route] = []
     var isShowingDanger = false
-    var toast: Toast?
+    var isShowingAlerts = false
 
     // Live data (GET /app/state). The demo scenarios below are used until a fetch succeeds, or when live is off.
     var useLiveData = true
@@ -136,7 +132,7 @@ final class AppModel {
     /// `-SoterraTab map -SoterraScenario escalated -SoterraAppearance dark -SoterraOffline YES`.
     private func applyLaunchArguments() {
         let defaults = UserDefaults.standard
-        let tabs: [String: AppTab] = ["home": .home, "alerts": .alerts, "map": .map, "household": .household, "more": .more]
+        let tabs: [String: AppTab] = ["home": .home, "chat": .chat, "map": .map, "household": .household, "more": .more]
         if let tab = defaults.string(forKey: "SoterraTab").flatMap({ tabs[$0] }) { selectedTab = tab }
         if let scenario = defaults.string(forKey: "SoterraScenario").flatMap(HomeScenario.init(rawValue:)) {
             self.scenario = scenario
@@ -144,6 +140,7 @@ final class AppModel {
         if let appearance = defaults.string(forKey: "SoterraAppearance").flatMap(Appearance.init(rawValue:)) {
             self.appearance = appearance
         }
+        if defaults.string(forKey: "SoterraTab") == "alerts" { isShowingAlerts = true }
         isOffline = defaults.bool(forKey: "SoterraOffline")
         if defaults.object(forKey: "SoterraLive") != nil { useLiveData = defaults.bool(forKey: "SoterraLive") }
         switch defaults.string(forKey: "SoterraScreen") {
@@ -165,6 +162,8 @@ final class AppModel {
         return DemoData.alerts(for: scenario)
     }
     var topAlert: HazardAlert? { alerts.first }
+    /// True when any active alert is more than info; the bell's badge turns red.
+    var hasUrgentAlert: Bool { alerts.contains { $0.severity.level != .unknown } }
     var todayItems: [TimelineItem] {
         if isShowingLive, let liveState { return LiveAlerts.timeline(from: liveState) }
         return DemoData.today(for: scenario)
@@ -234,7 +233,7 @@ final class AppModel {
         selectedTab = tab
         switch tab {
         case .home: homePath.append(route)
-        case .alerts: alertsPath.append(route)
+        case .chat: chatPath.append(route)
         case .household: householdPath.append(route)
         case .more: morePath.append(route)
         case .map: mapPath.append(route)
@@ -252,41 +251,34 @@ final class AppModel {
         mapFilters.showsZones = true
         mapSelection = nil
         mapPath = []
+        isShowingAlerts = false
         selectedTab = .map
     }
 
     func showFollowing() {
         alertsFilter = .following
-        selectedTab = .alerts
+        isShowingAlerts = true
     }
 
     func isFollowing(_ alert: HazardAlert) -> Bool { followedAlertIDs.contains(alert.id) }
 
     func toggleFollow(_ alert: HazardAlert) {
-        if followedAlertIDs.remove(alert.id) == nil {
-            followedAlertIDs.insert(alert.id)
-            show("Now following \(alert.title.lowercased()) updates")
-        } else {
-            show("Stopped following \(alert.title.lowercased())")
-        }
+        if followedAlertIDs.remove(alert.id) == nil { followedAlertIDs.insert(alert.id) }
     }
 
     func setMyStatus(_ status: MemberStatus) {
         guard let index = members.firstIndex(where: \.isYou) else { return }
         members[index].status = status
         members[index].lastUpdate = "Just now"
-        show("Your status: \(status.label)")
     }
 
     func setMeetingPoint(_ shelter: Shelter) {
         meetingPointID = shelter.id
-        show("Meeting point set to \(shelter.name)")
     }
 
     func stopAllUpdates() {
         for index in followedTopics.indices { followedTopics[index].isActive = false }
         followedAlertIDs.removeAll()
-        show("All updates stopped")
     }
 
     /// "Forget me": deletes saved needs and stops every update, like the voice command.
@@ -294,7 +286,6 @@ final class AppModel {
         savedNeeds.removeAll()
         for index in followedTopics.indices { followedTopics[index].isActive = false }
         followedAlertIDs.removeAll()
-        show("Deleted what Soterra saved and stopped updates")
     }
 
     /// Fetches the latest alerts and crisis state. On failure it keeps whatever was shown before.
@@ -302,14 +293,7 @@ final class AppModel {
         guard useLiveData, !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        do {
-            liveState = try await client.fetchAppState()
-        } catch {
-            if liveState == nil { show("Can't reach Soterra. Showing demo information.") }
-        }
-    }
-
-    func show(_ message: String) {
-        toast = Toast(message: message)
+        // On failure the demo data (or the last live data) stays on screen.
+        liveState = (try? await client.fetchAppState()) ?? liveState
     }
 }

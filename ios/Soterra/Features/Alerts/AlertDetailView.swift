@@ -22,6 +22,35 @@ struct AlertDetailView: View {
         .soterraToolbar(showsWordmark: false)
     }
 
+    /// Every update to this alert, newest first: the Today entries for it, then its own issued and updated times.
+    private func history(for alert: HazardAlert) -> [TimelineItem] {
+        let entries = model.todayItems.filter { $0.alertID == alert.id }
+        let marks = alert.times.reversed().filter { $0.label != "Now" && !entries.map(\.time).contains($0.value) }
+            .map { TimelineItem(id: "\(alert.id)-\($0.label)", time: $0.value, text: "\($0.label): \(alert.title)",
+                                source: alert.source.name, severity: alert.severity, alertID: alert.id) }
+        return entries + marks
+    }
+
+    /// Follow updates and Show on map, right under the alert card.
+    private func actions(for alert: HazardAlert) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                model.toggleFollow(alert)
+            } label: {
+                Label(model.isFollowing(alert) ? "Following" : "Follow updates",
+                      systemImage: model.isFollowing(alert) ? "bell.fill" : "bell")
+            }
+            .buttonStyle(FilledButtonStyle())
+
+            Button {
+                model.showZonesOnMap()
+            } label: {
+                Label("Show on map", systemImage: "map")
+            }
+            .buttonStyle(OutlineButtonStyle())
+        }
+    }
+
     private func content(for alert: HazardAlert) -> some View {
         let tone = CardTone.severity(alert.severity.level)
         return ScrollView {
@@ -44,7 +73,21 @@ struct AlertDetailView: View {
                     TimeStrip(marks: model.displayTimes(for: alert), tone: tone)
                         .padding(.top, 4)
                 }
-                .tintedCard(tone, emphasized: alert.changeNote != nil)
+                .tintedCard(tone)
+
+                actions(for: alert)
+
+                if !history(for: alert).isEmpty {
+                    SectionHeader(title: "Updates")
+                    VStack(spacing: 0) {
+                        ForEach(history(for: alert)) { item in
+                            TimelineRow(item: item)
+                                .padding(.horizontal, 16)
+                            if item.id != history(for: alert).last?.id { Divider().overlay(Palette.separator) }
+                        }
+                    }
+                    .surfaceCard(padding: 0)
+                }
 
                 if !alert.steps.isEmpty {
                     SectionHeader(title: "What to do")
@@ -99,28 +142,13 @@ struct AlertDetailView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
+            // Exactly the screen's width, so nothing wider can make the page drift or wiggle sideways.
+            .containerRelativeFrame(.horizontal)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .screenBackground()
         .navigationTitle(alert.title)
-        .navigationBarTitleDisplayMode(.large)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            BottomActionBar {
-                Button {
-                    model.toggleFollow(alert)
-                } label: {
-                    Label(model.isFollowing(alert) ? "Following" : "Follow updates",
-                          systemImage: model.isFollowing(alert) ? "bell.fill" : "bell")
-                }
-                .buttonStyle(FilledButtonStyle())
-
-                Button {
-                    model.showZonesOnMap()
-                } label: {
-                    Label("Show on map", systemImage: "map")
-                }
-                .buttonStyle(OutlineButtonStyle())
-            }
-        }
+        .navigationBarTitleDisplayMode(.inline)
         .alert("Official zone lookup", isPresented: $isShowingZoneInfo) {
             Button("OK", role: .cancel) {}
         } message: {

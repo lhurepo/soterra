@@ -1,32 +1,29 @@
 import SwiftUI
 
 extension SeverityLevel {
-    /// Marker and map fill: high red, medium orange, low yellow.
+    /// Marker and map fill: bright red for high, bright yellow for medium and low.
     var fill: Color {
         switch self {
-        case .high: Color(hex: 0xE5484D)
-        case .medium: Color(hex: 0xE8833A)
-        case .low: Color(hex: 0xE2C044)
+        case .high: Color(hex: 0xFF3B30)
+        case .medium, .low: Color(hex: 0xFFD60A)
         case .unknown: Color(hex: 0x8FA6A6)
         }
     }
 
-    /// Severity chip fill: a soft tint of the level's hue, so the chip reads as a label rather than a siren.
+    /// Severity chip fill: opaque, one step deeper than the alert card's tint, so it reads as a label, not a siren.
     var chipFill: Color {
         switch self {
-        case .high: .adaptive(light: 0xF6D7D9, dark: 0x4C2028)
-        case .medium: .adaptive(light: 0xF7DFCB, dark: 0x4A2F19)
-        case .low: .adaptive(light: 0xF1E5B6, dark: 0x40371A)
+        case .high: .adaptive(light: 0xFFBDB8, dark: 0x6E1F1A)
+        case .medium, .low: .adaptive(light: 0xFFE27A, dark: 0x5E5000)
         case .unknown: .adaptive(light: 0xDDE4E4, dark: 0x1B3A44)
         }
     }
 
-    /// Text on `chipFill` (at least 6:1 in both appearances).
+    /// Text on `chipFill`.
     var chipInk: Color {
         switch self {
-        case .high: .adaptive(light: 0x8C2A31, dark: 0xF5BCC0)
-        case .medium: .adaptive(light: 0x7E420F, dark: 0xF3C69E)
-        case .low: .adaptive(light: 0x604D08, dark: 0xEBD78F)
+        case .high: .adaptive(light: 0x5A0E09, dark: 0xFFE3E0)
+        case .medium, .low: .adaptive(light: 0x3D3000, dark: 0xFFF3B8)
         case .unknown: .adaptive(light: 0x3A5254, dark: 0xB8C9CA)
         }
     }
@@ -34,19 +31,17 @@ extension SeverityLevel {
     /// The chip's hairline, so it keeps its shape on a card tinted with the same hue.
     var chipBorder: Color {
         switch self {
-        case .high: .adaptive(light: 0xE7AEB2, dark: 0x7C3842)
-        case .medium: .adaptive(light: 0xE6B78F, dark: 0x7E5329)
-        case .low: .adaptive(light: 0xD8C37C, dark: 0x6E5F28)
+        case .high: .adaptive(light: 0xF2958E, dark: 0x9A3A33)
+        case .medium, .low: .adaptive(light: 0xE8C440, dark: 0x8A7600)
         case .unknown: .adaptive(light: 0xBFCBCB, dark: 0x2F5560)
         }
     }
 
-    /// Text in the level's color on the page background (darker in light mode for contrast).
+    /// Text in the level's color on the page background (darker yellow in light mode for contrast).
     var ink: Color {
         switch self {
-        case .high: .adaptive(light: 0xB3262B, dark: 0xE5484D)
-        case .medium: .adaptive(light: 0xA85314, dark: 0xE8833A)
-        case .low: .adaptive(light: 0x7A6410, dark: 0xE2C044)
+        case .high: .adaptive(light: 0xD70015, dark: 0xFF5A52)
+        case .medium, .low: .adaptive(light: 0x8A6D00, dark: 0xFFD60A)
         case .unknown: .adaptive(light: 0x4A6466, dark: 0x8FA6A6)
         }
     }
@@ -66,31 +61,24 @@ struct CardTone {
     static func severity(_ level: SeverityLevel) -> CardTone {
         switch level {
         case .high: high
-        case .medium: medium
-        case .low: low
+        case .medium, .low: low
         case .unknown: neutral
         }
     }
 
     static let high = CardTone(
-        top: .adaptive(light: 0xFDEFF0, dark: 0x3A1720), bottom: .adaptive(light: 0xFAE2E4, dark: 0x220F16),
-        border: .adaptive(light: 0xE9A4A9, dark: 0x8E3540), heading: .adaptive(light: 0x3B0D12, dark: 0xF6E3E4),
-        secondary: .adaptive(light: 0x8A3138, dark: 0xDDAAAE), divider: .adaptive(light: 0xF0C4C8, dark: 0x5C2730),
-        note: .adaptive(light: 0xB3262B, dark: 0xFF8E93)
+        top: .adaptive(light: 0xFFE9E7, dark: 0x4A1713), bottom: .adaptive(light: 0xFFD3CF, dark: 0x2C0D0B),
+        border: .adaptive(light: 0xFF6B62, dark: 0xD93A30), heading: .adaptive(light: 0x4A0A06, dark: 0xFFEDEB),
+        secondary: .adaptive(light: 0x9C1C14, dark: 0xFFB4AE), divider: .adaptive(light: 0xFFB1AB, dark: 0x7A2620),
+        note: .adaptive(light: 0xD70015, dark: 0xFF8E87)
     )
 
-    static let medium = CardTone(
-        top: .adaptive(light: 0xFEF4EA, dark: 0x3A2413), bottom: .adaptive(light: 0xFCE8D6, dark: 0x23160C),
-        border: .adaptive(light: 0xEDB98F, dark: 0x93582A), heading: .adaptive(light: 0x3A1E08, dark: 0xF6E8DA),
-        secondary: .adaptive(light: 0x8A4A14, dark: 0xE0B793), divider: .adaptive(light: 0xF2D4B9, dark: 0x5E3D20),
-        note: .adaptive(light: 0xA85314, dark: 0xF2A766)
-    )
-
+    /// Medium and low: bright yellow.
     static let low = CardTone(
-        top: .adaptive(light: 0xFCF8E6, dark: 0x332B14), bottom: .adaptive(light: 0xF8F0CF, dark: 0x1F1B0D),
-        border: .adaptive(light: 0xE2CD78, dark: 0x80702A), heading: .adaptive(light: 0x2E2604, dark: 0xF4EDD3),
-        secondary: .adaptive(light: 0x6E5A0E, dark: 0xD6C789), divider: .adaptive(light: 0xEDE1AA, dark: 0x53491D),
-        note: .adaptive(light: 0x7A6410, dark: 0xE9CF6A)
+        top: .adaptive(light: 0xFFF8CC, dark: 0x4A4100), bottom: .adaptive(light: 0xFFEE8F, dark: 0x2C2600),
+        border: .adaptive(light: 0xF2CB00, dark: 0xD4AE00), heading: .adaptive(light: 0x2E2604, dark: 0xFFF6C7),
+        secondary: .adaptive(light: 0x6B5500, dark: 0xF0DC7A), divider: .adaptive(light: 0xF2DC5A, dark: 0x7A6A00),
+        note: .adaptive(light: 0x7A5F00, dark: 0xFFE24D)
     )
 
     /// "No active alerts": a quiet sage tint.

@@ -64,6 +64,6 @@ enum Palette {
     static let offlineBanner = Color.adaptive(light: 0xD5DCDC, dark: 0x2A3A40)
     /// The wordmark: Deep Teal on light backgrounds, Mist on dark (the brand's on-light and on-dark versions).
     static let wordmark = Color.adaptive(light: 0x042630, dark: 0xD0D6D6)
-    /// The 911 action. Reserved: no other button is red.
-    static let emergency = Color(hex: 0xE5484D)
+    /// Bright alert red: the bell's badge and the lit edge on a changed alert. Same red as a high-severity alert.
+    static let emergency = Color(hex: 0xFF3B30)
 }

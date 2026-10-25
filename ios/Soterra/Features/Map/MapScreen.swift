@@ -64,20 +64,20 @@ enum DemoGeo {
 }
 
 /// A full-screen map of shelters, evacuation zones and closures. Search and filters float on top and fade while
-/// the person moves the map; tapping a place slides up its panel. Zones are shown only from official shapes, and
-/// the app never says whether an address is inside one.
+/// the person moves the map; tapping a place slides up its card above the tab bar and pans the map (keeping
+/// the zoom) so the place sits above the panel. Zones are shown only from official shapes, and the app never says
+/// whether an address is inside one.
 struct MapScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
     @Namespace private var mapScope
     @State private var position: MapCameraPosition = .region(DemoGeo.initialRegion)
+    /// The camera and visible span after the last move, so framing a place keeps the person's zoom and rotation.
+    @State private var camera: MapCamera?
     @State private var visibleSpan = DemoGeo.initialRegion.span
     @State private var query = ""
     @State private var isChromeHidden = false
-    /// Set while the camera moves for the app's own reasons (first load, framing a place, the panel resizing the
-    /// map), so those moves don't hide the search. Cleared when the move ends, or after a moment if none comes.
-    @State private var appCameraMove: UUID?
     @FocusState private var isSearchFocused: Bool
 
     private var hasActiveIncident: Bool { model.scenario != .calm }
@@ -92,7 +92,10 @@ struct MapScreen: View {
     var body: some View {
         GeometryReader { geometry in
             MapReader { proxy in
+                // The map always fills the screen, so the panel opening never resizes it
+                // (a resize makes MapKit refit the region, which looked like a jump in zoom).
                 map
+                    .ignoresSafeArea(edges: .bottom)
                     .onTapGesture { point in handleTap(at: point, proxy: proxy) }
             }
             .overlay(alignment: .top) {
@@ -101,10 +104,11 @@ struct MapScreen: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) { mapCorner }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            .overlay(alignment: .bottom) {
                 if let place = model.mapSelection {
-                    MapPlacePanel(place: place, maxHeight: geometry.size.height * 0.5) { select(nil) }
-                        .id(place)
+                    let screenHeight = geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                    // No .id(place): switching places updates the open panel instead of sliding a new one in.
+                    MapPlacePanel(place: place, maxHeight: screenHeight / 2) { select(nil) }
                         .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                 }
             }
@@ -114,10 +118,7 @@ struct MapScreen: View {
         .navigationTitle("Map")
         .navigationBarTitleDisplayMode(.inline)
         .soterraToolbar()
-        .onAppear {
-            expectAppCameraMove()
-            frame(model.mapSelection)
-        }
+        .onAppear { frame(model.mapSelection) }
         .onChange(of: model.mapSelection) { _, place in frame(place) }
         .onChange(of: model.mapFilters) { dropHiddenSelection() }
         .onChange(of: model.scenario) { dropHiddenSelection() }
@@ -171,14 +172,14 @@ struct MapScreen: View {
         .mapStyle(.standard(pointsOfInterest: .excludingAll))
         .mapControls {}
         .onMapCameraChange(frequency: .continuous) {
-            // The person is moving the map: get the search and filters out of the way.
-            guard appCameraMove == nil || position.positionedByUser,
+            // Only the person moving the map hides the search and filters, never the app's own camera moves.
+            guard position.positionedByUser,
                   !isSearchFocused, !isVoiceOverOn, !isChromeHidden else { return }
             setChromeHidden(true)
         }
         .onMapCameraChange(frequency: .onEnd) { context in
+            camera = context.camera
             visibleSpan = context.region.span
-            appCameraMove = nil
         }
     }
 
@@ -279,31 +280,23 @@ struct MapScreen: View {
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { isChromeHidden = isHidden }
     }
 
-    private func expectAppCameraMove() {
-        let move = UUID()
-        appCameraMove = move
-        Task {
-            try? await Task.sleep(for: .seconds(1.5))
-            if appCameraMove == move { appCameraMove = nil }
-        }
-    }
-
     private func select(_ place: MapPlace?) {
         isSearchFocused = false
-        expectAppCameraMove()
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.28)) { model.mapSelection = place }
     }
 
-    /// Centers the map on `place` at the current zoom, so it stays in view above the panel.
+    /// Pans to `place` at the current zoom and rotation, a quarter screen above center so it stays clear of the
+    /// panel. Only the center changes, so the move is a smooth pan, never a zoom out and back.
     private func frame(_ place: MapPlace?) {
-        guard let place, let center = DemoGeo.coordinate(of: place) else { return }
-        expectAppCameraMove()
-        let region = MKCoordinateRegion(center: center, span: visibleSpan)
-        if reduceMotion {
-            position = .region(region)
+        guard let place, var center = DemoGeo.coordinate(of: place) else { return }
+        center.latitude -= visibleSpan.latitudeDelta * 0.25
+        let target: MapCameraPosition = if let camera {
+            .camera(MapCamera(centerCoordinate: center, distance: camera.distance,
+                              heading: camera.heading, pitch: camera.pitch))
         } else {
-            withAnimation(.easeOut(duration: 0.45)) { position = .region(region) }
+            .region(MKCoordinateRegion(center: center, span: visibleSpan))
         }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.4)) { position = target }
     }
 
     /// Tapping a place opens its panel; tapping empty map closes the panel and brings the search back.
@@ -393,7 +386,7 @@ private struct ZoneLabel: View {
     var body: some View {
         Text(text)
             .font(.caption.weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Palette.abyss)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(color, in: Capsule())
@@ -424,39 +417,36 @@ private struct ShelterPin: View {
 
 // MARK: - Place panel
 
-/// The panel that slides up over the map for a tapped place. Drag the top edge down, or tap Close, to dismiss.
+/// The rounded card that slides up above the tab bar for a tapped place. It fits its details, up to half the
+/// screen, then scrolls (large text). Drag the top edge down, or tap Close, to dismiss.
 private struct MapPlacePanel: View {
     @Environment(AppModel.self) private var model
     let place: MapPlace
-    /// The tallest the details may get before they scroll (large text, long names).
     let maxHeight: CGFloat
     let onClose: () -> Void
 
     @State private var dragOffset: CGFloat = 0
-    @State private var detailsHeight: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            ScrollView {
+            ViewThatFits(in: .vertical) {
                 details
-                    .background {
-                        GeometryReader { proxy in
-                            Color.clear.preference(key: PanelHeightKey.self, value: proxy.size.height)
-                        }
-                    }
+                ScrollView { details }
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .frame(height: min(detailsHeight, maxHeight))
-            .onPreferenceChange(PanelHeightKey.self) { detailsHeight = $0 }
         }
+        // Switching places crossfades the content while the card stays in place and eases to its new height.
+        .id(place)
+        .transition(.opacity)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Palette.surface,
-            in: UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20, style: .continuous)
-        )
-        .shadow(color: .black.opacity(0.14), radius: 14, y: -2)
+        .frame(maxHeight: maxHeight, alignment: .top)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.14), radius: 14, y: 4)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
         .offset(y: dragOffset)
+        .animation(.easeInOut(duration: 0.25), value: place)
     }
 
     private var header: some View {
@@ -542,11 +532,6 @@ private struct MapPlacePanel: View {
     private func zoneAlert(_ zone: DemoGeo.Zone) -> HazardAlert {
         zone.id == DemoGeo.son3A.id && model.scenario == .escalated ? DemoData.evacuationOrder : DemoData.evacuationWarning
     }
-}
-
-private struct PanelHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 /// Two actions side by side, stacked when the text is too large to fit them on one line.

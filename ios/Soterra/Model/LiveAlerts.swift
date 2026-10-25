@@ -42,8 +42,12 @@ enum LiveAlerts {
             .sorted { ($0.updatedAt ?? $0.issuedAt) > ($1.updatedAt ?? $1.issuedAt) }
             .map { b in
                 let when = Date(timeIntervalSince1970: (timeOf(b)) / 1000)
-                return TimelineItem(id: "t-\(b.id)", time: clock(when, calendar: calendar, now: now), text: b.title,
-                                    source: b.sourceName, severity: Severity(rawValue: b.severity) ?? .unknown, alertID: b.id)
+                let day = day(of: when, calendar: calendar, now: now)
+                let time = day == .earlier
+                    ? when.formatted(.dateTime.month(.abbreviated).day().locale(Locale(identifier: "en_US")))
+                    : when.formatted(.dateTime.hour().minute().locale(Locale(identifier: "en_US")))
+                return TimelineItem(id: "t-\(b.id)", time: time, text: b.title, source: b.sourceName,
+                                    severity: Severity(rawValue: b.severity) ?? .unknown, alertID: b.id, day: day)
             }
     }
 
@@ -59,7 +63,13 @@ enum LiveAlerts {
         return .info
     }
 
-    /// "2:45 PM" for today, "Nov 15, 8 PM" for another day.
+    static func day(of date: Date, calendar: Calendar, now: Date) -> TimelineDay {
+        if calendar.isDate(date, inSameDayAs: now) { return .today }
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now) ?? now
+        return calendar.isDate(date, inSameDayAs: yesterday) ? .yesterday : .earlier
+    }
+
+    /// "2:45 PM" for today, "Nov 15, 8 PM" for another day (alert cards, which have no day headers).
     static func clock(_ date: Date, calendar: Calendar, now: Date) -> String {
         let style: Date.FormatStyle = calendar.isDate(date, inSameDayAs: now)
             ? .dateTime.hour().minute()

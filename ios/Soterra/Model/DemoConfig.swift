@@ -9,12 +9,6 @@ enum DemoConfig {
     /// The Convex HTTP site that serves `GET /app/state`.
     static let backendURL = URL(string: "https://brazen-perch-21.convex.site")!
 
-    /// Demo safety: every "Call 911" button opens the dialer with this number instead of 911, so testing the
-    /// mock never reaches emergency services. iOS still asks before placing the call.
-    /// Note: 119 is an emergency number in some countries (for example Japan and South Korea).
-    static let emergencyDialNumber = "119"
-    static var emergencyCallURL: URL { URL(string: "tel:\(emergencyDialNumber)")! }
-
     /// When the offline state says the shown information was saved.
     static let lastSyncTime = "2:35 PM"
 }

@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// Every active official alert for the area, or only the ones being followed.
+/// Every active official alert for the area, or only the ones being followed. Opens from the bell; an alert opens
+/// on this list's stack, with a back button to return.
 struct AlertsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         @Bindable var model = model
@@ -32,10 +34,16 @@ struct AlertsView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
+            // Exactly the screen's width, so nothing wider can make the page drift or wiggle sideways.
+            .containerRelativeFrame(.horizontal)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .screenBackground()
         .navigationTitle("Alerts")
-        .soterraToolbar()
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
             if model.isOffline { OfflineBanner() }
         }
