@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Midnight",
+    "hex": "#041421",
+    "rgb": [
+      4,
+      20,
+      33
+    ],
+    "cmyk_approx": [
+      88,
+      39,
+      0,
+      87
+    ],
+    "role": "Primary dark, backgrounds, text on light"
+  },
+  {
+    "name": "Deep Teal",
+    "hex": "#042630",
+    "rgb": [
+      4,
+      38,
+      48
+    ],
+    "cmyk_approx": [
+      92,
+      21,
+      0,
+      81
+    ],
+    "role": "Secondary dark, backgrounds"
+  },
+  {
+    "name": "Slate Teal",
+    "hex": "#4c7273",
+    "rgb": [
+      76,
+      114,
+      115
+    ],
+    "cmyk_approx": [
+      34,
+      1,
+      0,
+      55
+    ],
+    "role": "Supporting mid-tone"
+  },
+  {
+    "name": "Seafoam",
+    "hex": "#86b9b0",
+    "rgb": [
+      134,
+      185,
+      176
+    ],
+    "cmyk_approx": [
+      28,
+      0,
+      5,
+      27
+    ],
+    "role": "Brand accent, solid half of the mark"
+  },
+  {
+    "name": "Mist",
+    "hex": "#d0d6d6",
+    "rgb": [
+      208,
+      214,
+      214
+    ],
+    "cmyk_approx": [
+      3,
+      0,
+      0,
+      16
+    ],
+    "role": "Light neutral, text on dark"
+  }
+]
