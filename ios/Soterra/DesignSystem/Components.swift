@@ -477,15 +477,32 @@ struct AlertsBellButton: View {
     }
 }
 
-/// The lowercase "soterra" wordmark, small, in the leading corner of top-level screens.
+/// The Soterra logo (mark and lowercase wordmark) in the leading corner of top-level screens. The asset has the
+/// brand's on-light (Mist) and on-dark (Night) colorways, so it follows the appearance. The size is explicit
+/// because a toolbar item otherwise sizes the vector by its own rules and ignores a height alone.
 struct Wordmark: View {
+    private let height: CGFloat = 22
+    private let aspect: CGFloat = 4515 / 900
+
     var body: some View {
         Image("Wordmark")
             .resizable()
-            .scaledToFit()
-            .frame(height: 20)
-            .foregroundStyle(Palette.wordmark)
+            .frame(width: height * aspect, height: height)
+            .fixedSize()
             .accessibilityLabel("Soterra")
+    }
+}
+
+/// Just the Soterra icon, with no wordmark.
+struct LogoMark: View {
+    var size: CGFloat = 28
+
+    var body: some View {
+        Image("Mark")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
     }
 }
 

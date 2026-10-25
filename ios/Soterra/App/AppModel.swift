@@ -157,9 +157,14 @@ final class AppModel {
 
     /// True when Home, Alerts and Today show the backend's bulletins instead of the demo scenarios.
     var isShowingLive: Bool { useLiveData && liveState != nil }
+    /// Most severe first (Extreme, then Severe, and so on); alerts of the same severity keep their incoming order,
+    /// which is newest first from the backend.
     var alerts: [HazardAlert] {
-        if isShowingLive, let liveState { return LiveAlerts.alerts(from: liveState) }
-        return DemoData.alerts(for: scenario)
+        let unsorted: [HazardAlert]
+        if isShowingLive, let liveState { unsorted = LiveAlerts.alerts(from: liveState) } else { unsorted = DemoData.alerts(for: scenario) }
+        return unsorted.enumerated()
+            .sorted { ($0.element.severity.priority, $0.offset) < ($1.element.severity.priority, $1.offset) }
+            .map(\.element)
     }
     var topAlert: HazardAlert? { alerts.first }
     /// The map draws the incident only while Home shows alerts, so the two never disagree.

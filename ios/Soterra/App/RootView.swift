@@ -27,8 +27,14 @@ struct RootView: View {
         .sheet(isPresented: $model.isShowingDanger) {
             DangerSheet()
         }
+        // Fetches when the app opens, then every few seconds while it is on screen, so new alerts appear without
+        // closing and reopening it. The task is cancelled when the app leaves the foreground.
         .task(id: scenePhase) {
-            if scenePhase == .active { await model.refresh() }
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                await model.refresh()
+                try? await Task.sleep(for: .seconds(DemoConfig.refreshInterval))
+            }
         }
     }
 

@@ -75,7 +75,6 @@ struct MoreView: View {
         }
         .scrollContentBackground(.hidden)
         .screenBackground()
-        .navigationTitle("More")
         .soterraToolbar()
     }
 

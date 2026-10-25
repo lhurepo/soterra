@@ -38,6 +38,8 @@ struct AlertsView: View {
             .containerRelativeFrame(.horizontal)
         }
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .scrollBounceBehavior(.always, axes: .vertical)
+        .refreshable { await model.refresh() }
         .screenBackground()
         .navigationTitle("Alerts")
         .navigationBarTitleDisplayMode(.inline)

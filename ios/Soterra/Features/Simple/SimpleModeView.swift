@@ -47,7 +47,6 @@ struct SimpleModeView: View {
             .padding(.top, 4)
         }
         .screenBackground()
-        .navigationTitle(model.homeTitle)
         .soterraToolbar()
         .safeAreaInset(edge: .top, spacing: 0) {
             if model.isOffline { OfflineBanner() }

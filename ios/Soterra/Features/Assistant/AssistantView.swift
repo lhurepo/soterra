@@ -18,7 +18,6 @@ struct AssistantView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    header
                     ForEach(messages) { message in
                         bubble(for: message).id(message.id)
                     }
@@ -43,9 +42,8 @@ struct AssistantView: View {
             }
         }
         .screenBackground()
-        .navigationTitle("Ask Soterra")
         .navigationBarTitleDisplayMode(.inline)
-        .soterraToolbar(showsWordmark: false)
+        .soterraToolbar(showsWordmark: topic == nil)
         .safeAreaInset(edge: .bottom, spacing: 0) { composer }
         .task {
             guard messages.isEmpty else { return }
@@ -55,23 +53,6 @@ struct AssistantView: View {
     }
 
     // MARK: Pieces
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "bubble.left.and.text.bubble.right")
-                .foregroundStyle(Palette.accent)
-                .frame(width: 36, height: 36)
-                .background(Palette.surfaceRaised, in: Circle())
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Soterra").font(.headline).foregroundStyle(Palette.textPrimary)
-                Text("Answers only from official sources")
-                    .font(.footnote)
-                    .foregroundStyle(Palette.textSecondary)
-            }
-        }
-        .padding(.bottom, 4)
-    }
 
     private var suggestions: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -171,12 +152,13 @@ struct AssistantView: View {
     }
 
     private func reply<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        HStack {
+        HStack(alignment: .top, spacing: 8) {
+            LogoMark(size: 26)
             content()
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            Spacer(minLength: 24)
+            Spacer(minLength: 8)
         }
     }
 

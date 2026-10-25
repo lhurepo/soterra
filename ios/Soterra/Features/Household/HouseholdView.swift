@@ -27,7 +27,6 @@ struct HouseholdView: View {
             .padding(.top, 4)
         }
         .screenBackground()
-        .navigationTitle("Household")
         .soterraToolbar()
         .alert("Add a household member", isPresented: $isShowingAddInfo) {
             Button("OK", role: .cancel) {}

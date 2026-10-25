@@ -13,6 +13,9 @@ enum DemoConfig {
     /// The Convex HTTP site that serves `GET /app/state`.
     static let backendURL = URL(string: "https://brazen-perch-21.convex.site")!
 
+    /// Seconds between automatic fetches of the latest alerts while the app is open.
+    static let refreshInterval = 5.0
+
     /// When the offline state says the shown information was saved.
     static let lastSyncTime = "3:52 PM"
 }

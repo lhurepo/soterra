@@ -70,11 +70,11 @@ notifications, walking routes, languages beyond English and Spanish.
 ## Brand Commitments
 
 - Name **Soterra**; wordmark set lowercase in **Outfit Medium** (SIL OFL), tracking about −2%.
-- Logo: a triangular mountain mark with a winding path, plus wordmark. Assets in `docs/soterra-brand-assets/`
-  (`logo/logos images.png` shows the mark, lockups and app-icon tiles; `logo/wordmark/` has wordmark-only
-  SVG and PNG in on-dark and on-light versions). The current logo is a placeholder; the user will supply an
-  HD version later. There is no standalone mark file yet.
-- Palette (binding, `docs/soterra-brand-assets/palette/`, including `SoterraColors.swift`): Abyss #041421,
+- Logo: the Soterra mark plus lowercase wordmark. Assets in `docs/soterra-brand-package/` (`README.txt` explains
+  it; `logo/<colorway>/` has the icon, horizontal, stacked and wordmark files in 9 colorways, `app-icon/` the
+  1024 px app icons, `favicon/` the favicons). The app uses the horizontal logo (04-mist on light, 01-night on
+  dark) in the top bar and the 01-night app icon.
+- Palette (binding, `docs/soterra-brand-package/colors/`): Abyss #041421,
   Deep Teal #042630, Slate Teal #4C7273, Sage #86B9B0, Mist #D0D6D6, plus #2F5557 for tagline text on light
   backgrounds. Severity colors (red, orange, yellow, blue, grey) and the red 911 pill are semantic and sit
   outside the brand palette.

@@ -18,6 +18,17 @@ enum Severity: String, CaseIterable, Hashable {
         }
     }
 
+    /// Sort key for lists: 0 is the most urgent.
+    var priority: Int {
+        switch self {
+        case .extreme: 0
+        case .severe: 1
+        case .moderate: 2
+        case .minor: 3
+        case .unknown: 4
+        }
+    }
+
     var level: SeverityLevel {
         switch self {
         case .extreme, .severe: .high

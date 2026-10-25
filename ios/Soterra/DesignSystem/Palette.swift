@@ -39,7 +39,7 @@ enum UIPalette {
     static let accent = UIColor.adaptive(light: 0x2F5557, dark: 0x86B9B0)
 }
 
-/// Brand palette (docs/soterra-brand-assets: Abyss, Deep Teal, Slate Teal, Sage, Mist) and the semantic
+/// Brand palette (docs/soterra-brand-package: Abyss, Deep Teal, Slate Teal, Sage, Mist) and the semantic
 /// tones built from it. Severity colors sit outside the brand palette and only carry meaning.
 enum Palette {
     // Brand
@@ -62,8 +62,6 @@ enum Palette {
     /// Text that needs attention but is not an alert (a member who has not checked in, stale capacity).
     static let caution = Color.adaptive(light: 0x8A5A00, dark: 0xE2C044)
     static let offlineBanner = Color.adaptive(light: 0xD5DCDC, dark: 0x2A3A40)
-    /// The wordmark: Deep Teal on light backgrounds, Mist on dark (the brand's on-light and on-dark versions).
-    static let wordmark = Color.adaptive(light: 0x042630, dark: 0xD0D6D6)
     /// Bright alert red: the bell's badge and the lit edge on a changed alert. Same red as a high-severity alert.
     static let emergency = Color(hex: 0xFF3B30)
 }

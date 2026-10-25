@@ -33,6 +33,12 @@ enum DemoGeo {
     static let palaceOfFineArts = CLLocationCoordinate2D(latitude: 37.8029, longitude: -122.4484)
     static let epicenterRadius: CLLocationDistance = 350
 
+    /// How far the shaking reached, from the USGS page: violent in the Marina District, very strong across northern
+    /// San Francisco, strong as far as Oakland and Berkeley. Radii in meters; a ShakeMap-style estimate, not data.
+    static let shakingRings: [(radius: CLLocationDistance, level: SeverityLevel, opacity: Double)] = [
+        (13_000, .medium, 0.08), (5_000, .medium, 0.16), (1_500, .high, 0.24),
+    ]
+
     /// North of Lombard Street, Van Ness Avenue to Lyon Street, including Marina Green and Crissy Field. The west edge is
     /// pushed past Lyon Street so the Palace of Fine Arts sits inside the zone.
     static let sf1 = Zone(id: "SF-1", coordinates: [
@@ -118,7 +124,6 @@ struct MapScreen: View {
         }
         .mapScope(mapScope)
         .screenBackground()
-        .navigationTitle("Map")
         .navigationBarTitleDisplayMode(.inline)
         .soterraToolbar()
         .onAppear { frame(model.mapSelection) }
@@ -137,6 +142,12 @@ struct MapScreen: View {
     private var map: some View {
         Map(position: $position, scope: mapScope) {
             if hasActiveIncident && model.mapFilters.showsZones {
+                ForEach(DemoGeo.shakingRings.indices, id: \.self) { index in
+                    let ring = DemoGeo.shakingRings[index]
+                    MapCircle(center: DemoGeo.palaceOfFineArts, radius: ring.radius)
+                        .foregroundStyle(ring.level.fill.opacity(ring.opacity))
+                        .stroke(ring.level.fill.opacity(0.6), lineWidth: 1)
+                }
                 if hasOrder {
                     zonePolygon(DemoGeo.sf1, color: zoneColor)
                     zoneLabel(DemoGeo.sf1, color: zoneColor)

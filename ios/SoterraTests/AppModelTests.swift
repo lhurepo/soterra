@@ -49,6 +49,15 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.homeTitle, "Home")
     }
 
+    func testAlertsAreOrderedBySeverity() {
+        let model = AppModel()
+        model.scenario = .escalated
+        let priorities = model.alerts.map(\.severity.priority)
+        XCTAssertEqual(priorities, priorities.sorted())
+        XCTAssertEqual(model.alerts.first?.severity, .extreme)
+        XCTAssertEqual(model.alerts.first?.id, DemoData.orderID)
+    }
+
     func testOfflineReplacesNowWithTheSavedTime() {
         let model = AppModel()
         model.isOffline = true

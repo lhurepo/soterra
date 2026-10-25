@@ -31,8 +31,9 @@ struct HomeView: View {
             .containerRelativeFrame(.horizontal)
         }
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .scrollBounceBehavior(.always, axes: .vertical)
+        .refreshable { await model.refresh() }
         .screenBackground()
-        .navigationTitle(model.homeTitle)
         .soterraToolbar()
         .safeAreaInset(edge: .top, spacing: 0) {
             if model.isOffline { OfflineBanner() }
