@@ -158,7 +158,7 @@ struct AssistantView: View {
                         .foregroundStyle(Palette.emergency)
                     Text("Soterra can't send help or contact emergency services for you.")
                         .foregroundStyle(Palette.textPrimary)
-                    Button("Show how to call 911") { model.isShowingDanger = true }
+                    Button("Show what to do now") { model.isShowingDanger = true }
                         .buttonStyle(FilledButtonStyle(fill: Palette.emergency, foreground: .white))
                 }
             }
@@ -190,7 +190,6 @@ struct AssistantView: View {
                 .foregroundStyle(Palette.textPrimary)
             Button {
                 notifiedMessageIDs.insert(messageID)
-                model.show("We'll tell you when officials answer")
             } label: {
                 Label(isSaved ? "We'll tell you" : "Tell me when answered", systemImage: isSaved ? "checkmark" : "bell")
             }

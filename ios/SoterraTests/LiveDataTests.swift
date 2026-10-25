@@ -74,7 +74,6 @@ final class LiveDataTests: XCTestCase {
         await model.refresh()
         XCTAssertFalse(model.isShowingLive)
         XCTAssertEqual(model.alerts, DemoData.alerts(for: model.scenario))
-        XCTAssertNotNil(model.toast)
     }
 
     func testFailedRefreshKeepsLastLiveData() async throws {

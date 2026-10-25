@@ -1,11 +1,10 @@
 import SwiftUI
 
-/// Shown from the 911 pill, or when the assistant hears danger. It never shows a loading state first, and it
-/// never says help is on the way: Soterra cannot send help. Call 911 asks once to confirm, then iOS asks again.
+/// Shown when the assistant hears danger or someone taps "I need help". It never shows a loading state first, and
+/// it never says help is on the way: Soterra cannot send help. The app has no button that dials 911.
 struct DangerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    @State private var isConfirmingCall = false
 
     var body: some View {
         ScrollView {
@@ -26,24 +25,6 @@ struct DangerSheet: View {
                     .foregroundStyle(Palette.textSecondary)
 
                 Button {
-                    isConfirmingCall = true
-                } label: {
-                    Label("Call 911", systemImage: "phone.fill")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 64)
-                        .background(Palette.emergency, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 24)
-                .accessibilityHint("Asks you to confirm, then calls. Demo build: dials \(DemoConfig.emergencyDialNumber).")
-
-                Text("Demo build: this opens the dialer with \(DemoConfig.emergencyDialNumber), not 911.")
-                    .font(.caption)
-                    .foregroundStyle(Palette.textSecondary)
-                    .frame(maxWidth: .infinity)
-
-                Button {
                     openURL(DemoConfig.hotlineURL)
                 } label: {
                     Label("Call Soterra for information", systemImage: "phone")
@@ -61,31 +42,8 @@ struct DangerSheet: View {
             }
             .padding(24)
         }
-        .emergencyCallConfirmation(isPresented: $isConfirmingCall)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationBackground(Palette.surface)
-    }
-}
-
-/// The guardrail before dialing 911: a system alert to confirm, after which iOS shows its own call prompt.
-private struct EmergencyCallConfirmation: ViewModifier {
-    @Binding var isPresented: Bool
-    @Environment(\.openURL) private var openURL
-
-    func body(content: Content) -> some View {
-        content.alert("Call 911 now?", isPresented: $isPresented) {
-            Button("Call 911", role: .destructive) { openURL(DemoConfig.emergencyCallURL) }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Demo build: this dials \(DemoConfig.emergencyDialNumber), not 911.")
-        }
-    }
-}
-
-extension View {
-    /// Shows the "Call 911 now?" confirmation while `isPresented` is true.
-    func emergencyCallConfirmation(isPresented: Binding<Bool>) -> some View {
-        modifier(EmergencyCallConfirmation(isPresented: isPresented))
     }
 }

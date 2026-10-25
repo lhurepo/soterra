@@ -18,6 +18,7 @@ struct FilledButtonStyle: ButtonStyle {
 struct OutlineButtonStyle: ButtonStyle {
     var color: Color = Palette.accent
     var border: Color?
+    var lineWidth: CGFloat = 1.5
 
     func makeBody(configuration: Configuration) -> some View {
         SizedButtonLabel(configuration: configuration) { label, _ in
@@ -25,7 +26,7 @@ struct OutlineButtonStyle: ButtonStyle {
                 .foregroundStyle(color)
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(border ?? color, lineWidth: 1.5)
+                        .strokeBorder(border ?? color, lineWidth: lineWidth)
                 }
         }
     }

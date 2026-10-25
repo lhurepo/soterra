@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Tabs: Home · Alerts · Map · Household · More, or the single Simple mode screen. The danger sheet and toasts
-/// can appear over either.
+/// Tabs: Home · Chat · Map · Household · More, or the single Simple mode screen. The alerts list (the bell), the
+/// danger sheet can appear over either.
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
@@ -16,21 +16,17 @@ struct RootView: View {
                 tabs
             }
         }
+        .sheet(isPresented: $model.isShowingAlerts) {
+            NavigationStack(path: $model.alertsPath) {
+                AlertsView().withRoutes()
+            }
+            .environment(\.isInAlertsList, true)
+            // Solid, so the bell's red badge and the chips never show through as translucent.
+            .presentationBackground(Palette.background)
+        }
         .sheet(isPresented: $model.isShowingDanger) {
             DangerSheet()
         }
-        .overlay(alignment: .top) {
-            if let toast = model.toast {
-                ToastView(message: toast.message)
-                    .padding(.top, 8)
-                    .transition(.opacity)
-                    .task(id: toast.id) {
-                        try? await Task.sleep(for: .seconds(3))
-                        if model.toast?.id == toast.id { model.toast = nil }
-                    }
-            }
-        }
-        .animation(.easeOut(duration: 0.2), value: model.toast)
         .task(id: scenePhase) {
             if scenePhase == .active { await model.refresh() }
         }
@@ -46,11 +42,11 @@ struct RootView: View {
             .tabItem { Label("Home", systemImage: "house") }
             .tag(AppTab.home)
 
-            NavigationStack(path: $model.alertsPath) {
-                AlertsView().withRoutes()
+            NavigationStack(path: $model.chatPath) {
+                AssistantView(topic: nil).withRoutes()
             }
-            .tabItem { Label("Alerts", systemImage: "bell") }
-            .tag(AppTab.alerts)
+            .tabItem { Label("Chat", systemImage: "bubble.left") }
+            .tag(AppTab.chat)
 
             NavigationStack(path: $model.mapPath) {
                 MapScreen().withRoutes()

@@ -1,0 +1,404 @@
+{
+  "version": 1,
+  "historyId": "c4b22429-d3a6-4417-a278-250131dd2964",
+  "currentRevision": "5a4af023-ca88-4b9c-b940-fc9cb486d87d",
+  "pendingChanges": false,
+  "files": {
+    "assets/fonts/Outfit-SemiBold.ttf": {
+      "hash": "7e144241001404cd98cc5894727375c5028c471b1af95b7a832e64b4eb4f746e",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/7e/7e144241001404cd98cc5894727375c5028c471b1af95b7a832e64b4eb4f746e"
+    },
+    "assets/gsap.min.js": {
+      "hash": "28033e449a31ebcc396e5be8b13b63152bf03094288fb5867034321927bce087",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/28/28033e449a31ebcc396e5be8b13b63152bf03094288fb5867034321927bce087"
+    },
+    "assets/img/soterra-wordmark-on-dark.svg": {
+      "hash": "141aa2bd911beaec8fa9dd22cd3a6db0d89093bb6fa238515a7bd2998ac567f3",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/14/141aa2bd911beaec8fa9dd22cd3a6db0d89093bb6fa238515a7bd2998ac567f3"
+    },
+    "assets/sfx/bong_001.ogg": {
+      "hash": "d21d0f0b782445db579d11e2506b24cd1ac9d664ee33aeaf807761aa7b6fd710",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/d2/d21d0f0b782445db579d11e2506b24cd1ac9d664ee33aeaf807761aa7b6fd710"
+    },
+    "assets/sfx/click2.ogg": {
+      "hash": "c394b46bc6737f7f7edfbfa3031ce621b7a43d498d456d6198364eee9cd3e306",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/c3/c394b46bc6737f7f7edfbfa3031ce621b7a43d498d456d6198364eee9cd3e306"
+    },
+    "assets/sfx/click_003.ogg": {
+      "hash": "2fa929138bc3a0f432696588f66eac94b8f6d463905ec8808c6461ce4b054292",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/2f/2fa929138bc3a0f432696588f66eac94b8f6d463905ec8808c6461ce4b054292"
+    },
+    "assets/sfx/impactSoft_medium_001.ogg": {
+      "hash": "7642a4fd43e547afe4f7adfadb3dabb681c0ff512f52c1674bae30a726841faf",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/76/7642a4fd43e547afe4f7adfadb3dabb681c0ff512f52c1674bae30a726841faf"
+    },
+    "assets/sfx/keypress-001.wav": {
+      "hash": "7b873548c399b9aa0efbe63052fe1344c5317a9b23455b8be3523f47d434daf1",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/7b/7b873548c399b9aa0efbe63052fe1344c5317a9b23455b8be3523f47d434daf1"
+    },
+    "assets/sfx/keypress-002.wav": {
+      "hash": "f58f93430c1ad434feb341a89b89740ccad75e7a775d778d91b7f206e0acbe8e",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/f5/f58f93430c1ad434feb341a89b89740ccad75e7a775d778d91b7f206e0acbe8e"
+    },
+    "assets/sfx/keypress-003.wav": {
+      "hash": "d67cf9547d99fc65c815c4c68fa9181e0af71419761cbb1d1f0a10eb8491a8d2",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/d6/d67cf9547d99fc65c815c4c68fa9181e0af71419761cbb1d1f0a10eb8491a8d2"
+    },
+    "assets/sfx/keypress-004.wav": {
+      "hash": "29e1aea1fb841a0663ce75e9d83e675ddc7ae5cef00c623bdda65a72604fde7e",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/29/29e1aea1fb841a0663ce75e9d83e675ddc7ae5cef00c623bdda65a72604fde7e"
+    },
+    "index.html": {
+      "hash": "110fab2d1705a3882ecc9762a142cc3b5dff71fb4a0dea3c11decc80a6116cd4",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/11/110fab2d1705a3882ecc9762a142cc3b5dff71fb4a0dea3c11decc80a6116cd4"
+    },
+    "assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3": {
+      "hash": "f5793597e520aa8fa9cce91086816fc1e15e3aac0128bcf375df51ba70c0dc63",
+      "content": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/f5/f5793597e520aa8fa9cce91086816fc1e15e3aac0128bcf375df51ba70c0dc63"
+    }
+  },
+  "revisions": {
+    "f61c3baf-87aa-4004-b8c8-2fbe8199f538": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792904548176,
+      "endedAt": 1792904548176,
+      "files": {
+        "index.html": {
+          "before": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/c3/c30aa37c41d8d878bf4428282817cc0edcc53c675bceb9cdb55377f35d6746c6",
+          "after": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/bb/bb3f43a333f61ff793531afa31a8bbeebeea39c2a4c20b05b4f4f8af2003a74a"
+        }
+      }
+    },
+    "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792904564511,
+      "endedAt": 1792904564511,
+      "files": {
+        "index.html": {
+          "before": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/bb/bb3f43a333f61ff793531afa31a8bbeebeea39c2a4c20b05b4f4f8af2003a74a",
+          "after": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/c4/c4a854154e78d76a7a9fe52e3c82a0c7bad77f1a6982efad09f71cfa0ba264f7"
+        }
+      }
+    },
+    "5a4af023-ca88-4b9c-b940-fc9cb486d87d": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792904594924,
+      "endedAt": 1792904594925,
+      "files": {
+        "index.html": {
+          "before": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/c4/c4a854154e78d76a7a9fe52e3c82a0c7bad77f1a6982efad09f71cfa0ba264f7",
+          "after": "/Users/abastida/.cache/hyperframes/history/c4b22429-d3a6-4417-a278-250131dd2964/blobs/11/110fab2d1705a3882ecc9762a142cc3b5dff71fb4a0dea3c11decc80a6116cd4"
+        }
+      }
+    }
+  },
+  "checks": {
+    "latest": {
+      "revision": "5a4af023-ca88-4b9c-b940-fc9cb486d87d",
+      "id": "1c97f09b-9c0b-4a72-b054-ef77a12f3c85"
+    },
+    "revisions": {
+      "f61c3baf-87aa-4004-b8c8-2fbe8199f538": [
+        {
+          "id": "a062b1b3-50ed-429a-940b-6249eae19d03",
+          "scope": "project",
+          "metadata": {
+            "ok": true,
+            "browserSkipped": false,
+            "options": {
+              "samples": 9,
+              "atTransitions": false,
+              "maxIssues": 80,
+              "collapseStatic": true,
+              "tolerance": 2,
+              "timeout": 3000,
+              "contrast": true,
+              "strict": false,
+              "snapshots": false,
+              "browserGpuMode": "auto"
+            }
+          },
+          "createdAt": 1792904551469,
+          "contentHash": "fc0ea5ba2aad3585ff220bbf07c9a68df41ca0ecaab44a613ffbc9e83d7ccbab",
+          "revision": "f61c3baf-87aa-4004-b8c8-2fbe8199f538",
+          "inputFingerprint": "14a2bc99fdbaf9cc440425b3d5257dd6830b628a25a391e5e1a658193a357a97",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision",
+          "status": "cleaned",
+          "cleanedAfterRender": "39b72d09-28b2-4a32-94b4-0894d0c5d5ca"
+        }
+      ],
+      "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4": [
+        {
+          "id": "e7c5c77e-7562-4398-8de1-bd7e0f8fbe5f",
+          "scope": "project",
+          "metadata": {
+            "ok": true,
+            "browserSkipped": false,
+            "options": {
+              "samples": 9,
+              "atTransitions": false,
+              "maxIssues": 80,
+              "collapseStatic": true,
+              "tolerance": 2,
+              "timeout": 3000,
+              "contrast": true,
+              "strict": false,
+              "snapshots": false,
+              "browserGpuMode": "auto"
+            }
+          },
+          "createdAt": 1792904567659,
+          "contentHash": "cdab93c99f5c2004214f67391fceba7646a941804c757fe2a3c4e3114e4a781c",
+          "revision": "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4",
+          "inputFingerprint": "8cd575ef63f2c81267c4ee693988ac1d320d50b1ab1e51bbf9fc18a10ab1a88a",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision",
+          "status": "cleaned",
+          "cleanedAfterRender": "39b72d09-28b2-4a32-94b4-0894d0c5d5ca"
+        }
+      ],
+      "5a4af023-ca88-4b9c-b940-fc9cb486d87d": [
+        {
+          "id": "1c97f09b-9c0b-4a72-b054-ef77a12f3c85",
+          "scope": "project",
+          "report": "/Users/abastida/Documents/GitHub/soterra/brag-output/composition/.hyperframes/artifacts/checks/1c97f09b-9c0b-4a72-b054-ef77a12f3c85.json",
+          "metadata": {
+            "ok": true,
+            "browserSkipped": false,
+            "options": {
+              "samples": 9,
+              "atTransitions": false,
+              "maxIssues": 80,
+              "collapseStatic": true,
+              "tolerance": 2,
+              "timeout": 3000,
+              "contrast": true,
+              "strict": false,
+              "snapshots": false,
+              "browserGpuMode": "auto"
+            }
+          },
+          "createdAt": 1792904598079,
+          "contentHash": "8aca8f0c6176101aec78adbca816fc9e29d3c08798debbbf17c90c5fc3f0131e",
+          "revision": "5a4af023-ca88-4b9c-b940-fc9cb486d87d",
+          "inputFingerprint": "b4b14b586d664f1a68e4144d9d01e462d9a0624f1b8b52a7d70ef5c6215cc5b6",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        }
+      ]
+    },
+    "unversioned": [
+      {
+        "id": "b36b539f-9bf8-4103-beda-47ed86dc0aef",
+        "scope": "project",
+        "report": "/Users/abastida/Documents/GitHub/soterra/brag-output/composition/.hyperframes/artifacts/checks/b36b539f-9bf8-4103-beda-47ed86dc0aef.json",
+        "metadata": {
+          "ok": true,
+          "browserSkipped": false,
+          "options": {
+            "samples": 9,
+            "atTransitions": false,
+            "maxIssues": 80,
+            "collapseStatic": true,
+            "tolerance": 2,
+            "timeout": 3000,
+            "contrast": true,
+            "strict": false,
+            "snapshots": false,
+            "browserGpuMode": "auto"
+          }
+        },
+        "createdAt": 1792904533484,
+        "contentHash": "0cfe3b15df10163f00daf1fa2b6df4591c8732a5ddf133d2ac2bb2e5c4030aef",
+        "revision": null,
+        "inputFingerprint": "8510965cc367f80e3ed2bf7b70c9c5f819b2233600f11c511a2820f6f0a9cb5c",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      },
+      {
+        "id": "637c61fb-1bcb-41d9-b023-1fa599602222",
+        "scope": "project",
+        "report": "/Users/abastida/Documents/GitHub/soterra/brag-output/composition/.hyperframes/artifacts/checks/637c61fb-1bcb-41d9-b023-1fa599602222.json",
+        "metadata": {
+          "ok": true,
+          "browserSkipped": false,
+          "options": {
+            "samples": 9,
+            "atTransitions": false,
+            "maxIssues": 80,
+            "collapseStatic": true,
+            "tolerance": 2,
+            "timeout": 3000,
+            "contrast": true,
+            "strict": false,
+            "snapshots": false,
+            "browserGpuMode": "auto"
+          }
+        },
+        "createdAt": 1792904540206,
+        "contentHash": "0cfe3b15df10163f00daf1fa2b6df4591c8732a5ddf133d2ac2bb2e5c4030aef",
+        "revision": null,
+        "inputFingerprint": "8510965cc367f80e3ed2bf7b70c9c5f819b2233600f11c511a2820f6f0a9cb5c",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      }
+    ]
+  },
+  "snapshots": {
+    "latest": {
+      "revision": "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4",
+      "id": "7bba03a4-fbc6-48b7-a437-073a5bff3569-5"
+    },
+    "revisions": {
+      "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4": [
+        {
+          "scope": "full",
+          "id": "7bba03a4-fbc6-48b7-a437-073a5bff3569-0",
+          "image": "/private/tmp/claude-501/-Users-abastida-Documents-GitHub-soterra/31912bce-8609-4e50-b15b-65d4619dbec7/scratchpad/snaps/frame-00-at-0s.png",
+          "time": 0,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792904581050,
+          "contentHash": "e76c90e879e591807361b36fc4587e6a5b850d5553960a62d6de7900eddbf0c2",
+          "revision": "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4",
+          "inputFingerprint": "8cd575ef63f2c81267c4ee693988ac1d320d50b1ab1e51bbf9fc18a10ab1a88a",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "7bba03a4-fbc6-48b7-a437-073a5bff3569-1",
+          "image": "/private/tmp/claude-501/-Users-abastida-Documents-GitHub-soterra/31912bce-8609-4e50-b15b-65d4619dbec7/scratchpad/snaps/frame-01-at-3s.png",
+          "time": 3,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792904581050,
+          "contentHash": "6aad20e50021ea9730601854f7966fe324b1d18ce71d159ffae50634759744b3",
+          "revision": "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4",
+          "inputFingerprint": "8cd575ef63f2c81267c4ee693988ac1d320d50b1ab1e51bbf9fc18a10ab1a88a",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "7bba03a4-fbc6-48b7-a437-073a5bff3569-2",
+          "image": "/private/tmp/claude-501/-Users-abastida-Documents-GitHub-soterra/31912bce-8609-4e50-b15b-65d4619dbec7/scratchpad/snaps/frame-02-at-7s.png",
+          "time": 7,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792904581050,
+          "contentHash": "847430e0075857b880dfde488192032647ab9bba498bce93f7bad3b5bcca4979",
+          "revision": "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4",
+          "inputFingerprint": "8cd575ef63f2c81267c4ee693988ac1d320d50b1ab1e51bbf9fc18a10ab1a88a",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "7bba03a4-fbc6-48b7-a437-073a5bff3569-3",
+          "image": "/private/tmp/claude-501/-Users-abastida-Documents-GitHub-soterra/31912bce-8609-4e50-b15b-65d4619dbec7/scratchpad/snaps/frame-03-at-12.8s.png",
+          "time": 12.8,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792904581050,
+          "contentHash": "7bac6db60b616a672aebc8fd4b55f934f02dfd65a6d3b8c0e6955ff2b160bdbe",
+          "revision": "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4",
+          "inputFingerprint": "8cd575ef63f2c81267c4ee693988ac1d320d50b1ab1e51bbf9fc18a10ab1a88a",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "7bba03a4-fbc6-48b7-a437-073a5bff3569-4",
+          "image": "/private/tmp/claude-501/-Users-abastida-Documents-GitHub-soterra/31912bce-8609-4e50-b15b-65d4619dbec7/scratchpad/snaps/frame-04-at-17s.png",
+          "time": 17,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792904581050,
+          "contentHash": "4ebceb262375807c0f3abaf6527f8679dccb39b8f6d8340dccc240461627b1ff",
+          "revision": "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4",
+          "inputFingerprint": "8cd575ef63f2c81267c4ee693988ac1d320d50b1ab1e51bbf9fc18a10ab1a88a",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        },
+        {
+          "scope": "full",
+          "id": "7bba03a4-fbc6-48b7-a437-073a5bff3569-5",
+          "image": "/private/tmp/claude-501/-Users-abastida-Documents-GitHub-soterra/31912bce-8609-4e50-b15b-65d4619dbec7/scratchpad/snaps/frame-05-at-22s.png",
+          "time": 22,
+          "metadata": {
+            "width": 1080,
+            "height": 1920,
+            "zoomScale": 1,
+            "browserGpuMode": "auto",
+            "warnings": [],
+            "partial": false
+          },
+          "createdAt": 1792904581050,
+          "contentHash": "8be8cc6c1cb25d16b746f380ba4ae66c3a74c635e19ee2396504241b154094e0",
+          "revision": "55e2d7ec-0fb5-47cb-abc1-37b6a7f86cb4",
+          "inputFingerprint": "8cd575ef63f2c81267c4ee693988ac1d320d50b1ab1e51bbf9fc18a10ab1a88a",
+          "inputScope": "local-project-files",
+          "attribution": "recorded-revision"
+        }
+      ]
+    },
+    "unversioned": []
+  },
+  "renders": {
+    "latest": {
+      "id": "39b72d09-28b2-4a32-94b4-0894d0c5d5ca",
+      "completedAt": 1792904733547,
+      "output": "/Users/abastida/Documents/GitHub/soterra/brag-output/brag.mp4",
+      "status": "completed",
+      "revision": "5a4af023-ca88-4b9c-b940-fc9cb486d87d"
+    },
+    "retainedRevisions": [
+      "5a4af023-ca88-4b9c-b940-fc9cb486d87d"
+    ]
+  },
+  "pendingArtifactCleanup": []
+}

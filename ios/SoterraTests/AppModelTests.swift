@@ -6,17 +6,34 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(AppModel().appearance, .light)
     }
 
-    func testEmergencyButtonNeverDials911InTheDemoBuild() {
-        XCTAssertEqual(DemoConfig.emergencyCallURL.absoluteString, "tel:119")
-        XCTAssertFalse(DemoConfig.emergencyCallURL.absoluteString.contains("911"))
+    func testTheHotlineIsTheOnlyNumberTheAppDials() {
         XCTAssertEqual(DemoConfig.hotlineURL.absoluteString, "tel:+17126003362")
     }
 
     func testSeverityLevels() {
         XCTAssertEqual(Severity.extreme.level, .high)
-        XCTAssertEqual(Severity.severe.level, .medium)
-        XCTAssertEqual(Severity.moderate.level, .low)
+        XCTAssertEqual(Severity.severe.level, .high)
+        XCTAssertEqual(Severity.moderate.level, .medium)
         XCTAssertEqual(Severity.minor.level, .low)
+        XCTAssertEqual(Severity.unknown.level, .unknown)
+        XCTAssertEqual(Severity.unknown.label, "Info")
+    }
+
+    func testTheBellIsUrgentUnlessEveryAlertIsInfo() {
+        let model = AppModel()
+        XCTAssertTrue(model.hasUrgentAlert)
+        model.scenario = .calm
+        XCTAssertTrue(model.alerts.isEmpty)
+        XCTAssertFalse(model.hasUrgentAlert)
+    }
+
+    func testShowFollowingOpensTheAlertsList() {
+        let model = AppModel()
+        model.showFollowing()
+        XCTAssertTrue(model.isShowingAlerts)
+        XCTAssertEqual(model.alertsFilter, .following)
+        model.showZonesOnMap()
+        XCTAssertFalse(model.isShowingAlerts)
     }
 
     func testScenariosDriveTheTopAlert() {
@@ -53,7 +70,6 @@ final class AppModelTests: XCTestCase {
         XCTAssertTrue(model.savedNeeds.isEmpty)
         XCTAssertTrue(model.followedAlertIDs.isEmpty)
         XCTAssertFalse(model.followedTopics.contains(where: \.isActive))
-        XCTAssertNotNil(model.toast)
     }
 
     func testShowSheltersOpensTheMapOnTheMeetingPoint() {

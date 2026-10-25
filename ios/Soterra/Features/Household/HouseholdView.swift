@@ -3,7 +3,6 @@ import SwiftUI
 /// Who has checked in, the shared meeting point, and a message to send the family.
 struct HouseholdView: View {
     @Environment(AppModel.self) private var model
-    @State private var isChoosingStatus = false
     @State private var isShowingAddInfo = false
 
     var body: some View {
@@ -18,6 +17,10 @@ struct HouseholdView: View {
                     .foregroundStyle(Palette.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .surfaceCard()
+                ShareLink(item: model.householdMessage) {
+                    Label("Share message", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(OutlineButtonStyle())
                 TrustFooter()
             }
             .padding(.horizontal, 16)
@@ -26,22 +29,6 @@ struct HouseholdView: View {
         .screenBackground()
         .navigationTitle("Household")
         .soterraToolbar()
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            BottomActionBar {
-                Button("Update my status") { isChoosingStatus = true }
-                    .buttonStyle(FilledButtonStyle())
-                ShareLink(item: model.householdMessage) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                .buttonStyle(OutlineButtonStyle())
-            }
-        }
-        .confirmationDialog("Update my status", isPresented: $isChoosingStatus, titleVisibility: .visible) {
-            ForEach(MemberStatus.selectable) { status in
-                Button(status.label) { model.setMyStatus(status) }
-            }
-            Button("I need help") { model.isShowingDanger = true }
-        }
         .alert("Add a household member", isPresented: $isShowingAddInfo) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -85,7 +72,11 @@ struct HouseholdView: View {
                             .foregroundStyle(Palette.textSecondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    statusLabel(member.status)
+                    if member.isYou {
+                        statusMenu(member.status)
+                    } else {
+                        statusLabel(member.status)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .frame(minHeight: 56)
@@ -94,6 +85,25 @@ struct HouseholdView: View {
             }
         }
         .surfaceCard(padding: 0)
+    }
+
+    /// Your own status opens a drop-down to change it.
+    private func statusMenu(_ current: MemberStatus) -> some View {
+        Menu {
+            ForEach(MemberStatus.selectable) { status in
+                Button(status.label) { model.setMyStatus(status) }
+            }
+            Button("I need help") { model.isShowingDanger = true }
+        } label: {
+            HStack(spacing: 4) {
+                statusLabel(current)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Palette.accent)
+            }
+            .frame(minHeight: 44)
+        }
+        .accessibilityHint("Update your status")
     }
 
     @ViewBuilder

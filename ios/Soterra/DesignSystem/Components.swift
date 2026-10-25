@@ -125,7 +125,6 @@ struct SourceLine: View {
 
 private struct TintedCardModifier: ViewModifier {
     let tone: CardTone
-    let isEmphasized: Bool
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -133,18 +132,7 @@ private struct TintedCardModifier: ViewModifier {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(LinearGradient(colors: [tone.top, tone.bottom], startPoint: .top, endPoint: .bottom), in: shape)
-            .overlay {
-                shape.strokeBorder(isEmphasized ? Palette.emergency : tone.border, lineWidth: isEmphasized ? 1.5 : 1)
-            }
-            .overlay {
-                // A changed alert stays lit until the person has seen it.
-                if isEmphasized {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Palette.emergency.opacity(0.22), lineWidth: 4)
-                        .padding(-4)
-                }
-            }
-            .shadow(color: isEmphasized ? Palette.emergency.opacity(0.18) : .clear, radius: 14, y: 8)
+            .overlay { shape.strokeBorder(tone.border, lineWidth: 1) }
             .foregroundStyle(tone.heading)
     }
 }
@@ -161,9 +149,9 @@ private struct SurfaceCardModifier: ViewModifier {
 }
 
 extension View {
-    /// A card tinted with `tone`; `emphasized` adds the lit red edge for a just-changed alert.
-    func tintedCard(_ tone: CardTone, emphasized: Bool = false) -> some View {
-        modifier(TintedCardModifier(tone: tone, isEmphasized: emphasized))
+    /// A card tinted with `tone`, with a thin border in the same hue.
+    func tintedCard(_ tone: CardTone) -> some View {
+        modifier(TintedCardModifier(tone: tone))
     }
 
     func surfaceCard(padding: CGFloat = 14) -> some View {
@@ -171,12 +159,10 @@ extension View {
     }
 }
 
-/// The top alert card on Home and in lists: chip, headline, area, time strip, source and actions.
+/// The top alert card on Home and in lists: chip, headline, area, time strip, source and "Ask about this".
 struct AlertCard: View {
     let alert: HazardAlert
     let times: [TimeMark]
-    var isEmphasized = false
-    var onWhatToDo: (() -> Void)?
     var onAsk: (() -> Void)?
 
     var body: some View {
@@ -199,21 +185,13 @@ struct AlertCard: View {
             TimeStrip(marks: times, tone: tone)
                 .padding(.top, 4)
             SourceLine(source: alert.source, color: tone.secondary)
-            if onWhatToDo != nil || onAsk != nil {
-                HStack(spacing: 8) {
-                    if let onWhatToDo {
-                        Button("What to do", action: onWhatToDo)
-                            .buttonStyle(FilledButtonStyle())
-                    }
-                    if let onAsk {
-                        Button("Ask about this", action: onAsk)
-                            .buttonStyle(OutlineButtonStyle(color: tone.heading, border: tone.border))
-                    }
-                }
-                .padding(.top, 4)
+            if let onAsk {
+                Button("Ask about this", action: onAsk)
+                    .buttonStyle(OutlineButtonStyle(color: tone.heading, border: tone.secondary, lineWidth: 1))
+                    .padding(.top, 4)
             }
         }
-        .tintedCard(tone, emphasized: isEmphasized)
+        .tintedCard(tone)
     }
 }
 
@@ -385,44 +363,6 @@ struct ListRow: View {
 
 // MARK: - Bars and banners
 
-/// A bar of one or two actions pinned above the tab bar.
-struct BottomActionBar<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        HStack(spacing: 8) { content }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Palette.surface)
-            .overlay(alignment: .top) { Rectangle().fill(Palette.separator).frame(height: 1) }
-    }
-}
-
-/// Call Soterra and Ask Soterra, always one tap away. Calling works offline because it uses the dialer.
-struct CallBar: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.openURL) private var openURL
-    let onAsk: () -> Void
-
-    var body: some View {
-        BottomActionBar {
-            Button {
-                openURL(DemoConfig.hotlineURL)
-            } label: {
-                Label("Call Soterra", systemImage: "phone")
-            }
-            .buttonStyle(FilledButtonStyle())
-            .accessibilityHint("Calls the Soterra hotline, \(DemoConfig.hotlineDisplay)")
-
-            Button(action: onAsk) {
-                Label(model.isOffline ? "Ask (offline)" : "Ask Soterra", systemImage: "bubble.left")
-            }
-            .buttonStyle(OutlineButtonStyle())
-            .disabled(model.isOffline)
-        }
-    }
-}
-
 /// A large, labelled way to phone the hotline from Home. It uses the dialer, so it works offline.
 struct CallSoterraCard: View {
     @Environment(\.openURL) private var openURL
@@ -480,53 +420,60 @@ struct TrustFooter: View {
     }
 }
 
-struct ToastView: View {
-    let message: String
+// MARK: - Toolbar
 
-    var body: some View {
-        Text(message)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Palette.onAccent)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Palette.accent, in: Capsule())
-            .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
-            .padding(.horizontal, 16)
-            .accessibilityAddTraits(.isStaticText)
+private struct InAlertsListKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True for screens shown inside the bell's alerts list, which hide the bell.
+    var isInAlertsList: Bool {
+        get { self[InAlertsListKey.self] }
+        set { self[InAlertsListKey.self] = newValue }
     }
 }
 
-// MARK: - Toolbar
-
-/// The 911 pill: in every screen's navigation bar, one tap to the danger sheet. It is the same size on every
-/// screen: a fixed height, and text that stops growing at the bar's limit (long press shows it larger).
-struct EmergencyButton: View {
+/// The alerts bell: in every screen's navigation bar, one tap to the list of alerts. The badge counts the active
+/// alerts, red when any is more than info and the normal color when all are info. Not shown inside the alerts list
+/// itself, where the back button returns to the list instead.
+struct AlertsBellButton: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.isInAlertsList) private var isInAlertsList
 
     var body: some View {
-        Button {
-            model.isShowingDanger = true
+        if !isInAlertsList { button }
+    }
+
+    private var button: some View {
+        let count = model.alerts.count
+        return Button {
+            model.isShowingAlerts = true
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "phone.fill")
-                    .font(.footnote.weight(.bold))
-                Text("911")
-                    .font(.subheadline.weight(.bold))
-                    .monospacedDigit()
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .frame(height: 34)
-            .background(Palette.emergency, in: Capsule())
-            .fixedSize()
-            .frame(minWidth: 44, minHeight: 44)
-            .contentShape(Rectangle())
+            Image(systemName: count > 0 ? "bell.fill" : "bell")
+                .font(.title3)
+                .foregroundStyle(Palette.accent)
+                .frame(width: 44, height: 44)
+                .overlay(alignment: .topTrailing) {
+                    if count > 0 { badge(count) }
+                }
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
-        .accessibilityShowsLargeContentViewer()
-        .accessibilityLabel("Emergency, 911")
-        .accessibilityHint("Shows how to call 911")
+        .accessibilityLabel(count == 0 ? "Alerts, none active" : "Alerts, \(count) active")
+        .accessibilityHint("Shows the active alerts")
+    }
+
+    private func badge(_ count: Int) -> some View {
+        Text("\(count)")
+            .font(.caption2.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(model.hasUrgentAlert ? .white : Palette.onAccent)
+            .padding(.horizontal, 5)
+            .frame(minWidth: 18, minHeight: 18)
+            .background(model.hasUrgentAlert ? Palette.emergency : Palette.accent, in: Capsule())
+            .offset(x: -2, y: 2)
     }
 }
 
@@ -546,16 +493,22 @@ private struct SoterraToolbarModifier: ViewModifier {
     let showsWordmark: Bool
 
     func body(content: Content) -> some View {
+        // Inline titles keep the bar compact, so content starts right under the wordmark and bell.
+        bar(content).navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private func bar(_ content: Content) -> some View {
         #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
-            // iOS 26 wraps every bar item in a shared glass capsule, which clipped the pill and changed its size
-            // from screen to screen. Both items draw their own shape, so they opt out of it.
+            // iOS 26 wraps every bar item in a shared glass capsule, which would clip the bell's badge. Both items
+            // draw their own shape, so they opt out of it.
             content.toolbar {
                 if showsWordmark {
                     ToolbarItem(placement: .topBarLeading) { Wordmark() }
                         .sharedBackgroundVisibility(.hidden)
                 }
-                ToolbarItem(placement: .topBarTrailing) { EmergencyButton() }
+                ToolbarItem(placement: .topBarTrailing) { AlertsBellButton() }
                     .sharedBackgroundVisibility(.hidden)
             }
         } else {
@@ -571,13 +524,13 @@ private struct SoterraToolbarModifier: ViewModifier {
             if showsWordmark {
                 ToolbarItem(placement: .topBarLeading) { Wordmark() }
             }
-            ToolbarItem(placement: .topBarTrailing) { EmergencyButton() }
+            ToolbarItem(placement: .topBarTrailing) { AlertsBellButton() }
         }
     }
 }
 
 extension View {
-    /// The standard bar: the wordmark (top-level screens) and the 911 pill (every screen).
+    /// The standard bar: the wordmark (top-level screens) and the alerts bell (every screen).
     func soterraToolbar(showsWordmark: Bool = true) -> some View {
         modifier(SoterraToolbarModifier(showsWordmark: showsWordmark))
     }

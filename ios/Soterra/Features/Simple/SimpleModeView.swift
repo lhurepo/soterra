@@ -2,12 +2,11 @@ import MapKit
 import SwiftUI
 
 /// Simple mode (More → Simple mode): one screen with bigger text and buttons and only the essentials. What is
-/// happening (with its source and time), calling 911 or Soterra, telling the household you're safe, and the way
+/// happening (with its source and time), calling Soterra, telling the household you're safe, and the way
 /// to the meeting point. Everything else is in the full app.
 struct SimpleModeView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openURL) private var openURL
-    @State private var isConfirmingCall = false
     @State private var isConfirmingFullApp = false
 
     private var isMarkedSafe: Bool {
@@ -36,6 +35,11 @@ struct SimpleModeView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .confirmationDialog("Switch to the full app?", isPresented: $isConfirmingFullApp, titleVisibility: .visible) {
+                    Button("Switch to the full app") { model.isSimpleMode = false }
+                } message: {
+                    Text("You can turn Simple mode back on in More.")
+                }
                 .padding(.top, 8)
                 TrustFooter()
             }
@@ -47,12 +51,6 @@ struct SimpleModeView: View {
         .soterraToolbar()
         .safeAreaInset(edge: .top, spacing: 0) {
             if model.isOffline { OfflineBanner() }
-        }
-        .emergencyCallConfirmation(isPresented: $isConfirmingCall)
-        .confirmationDialog("Switch to the full app?", isPresented: $isConfirmingFullApp, titleVisibility: .visible) {
-            Button("Switch to the full app") { model.isSimpleMode = false }
-        } message: {
-            Text("You can turn Simple mode back on in More.")
         }
     }
 
@@ -82,7 +80,7 @@ struct SimpleModeView: View {
                 .foregroundStyle(tone.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .tintedCard(tone, emphasized: alert.changeNote != nil)
+        .tintedCard(tone)
     }
 
     private var calmCard: some View {
@@ -105,14 +103,6 @@ struct SimpleModeView: View {
 
     private var actions: some View {
         VStack(spacing: 12) {
-            Button {
-                isConfirmingCall = true
-            } label: {
-                BigButtonLabel(title: "Call 911", systemImage: "phone.fill")
-            }
-            .buttonStyle(BigButtonStyle(fill: Palette.emergency, ink: .white))
-            .accessibilityHint("Asks you to confirm, then calls. Demo build: dials \(DemoConfig.emergencyDialNumber).")
-
             Button {
                 openURL(DemoConfig.hotlineURL)
             } label: {

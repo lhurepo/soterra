@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080, height=1920">
+<title>Soterra</title>
+<style>
+  @font-face { font-family: "Outfit"; src: url("assets/fonts/Outfit-SemiBold.ttf"); font-weight: 600; }
+  :root {
+    --abyss: #041421; --deep: #042630; --slate: #4C7273; --sage: #86B9B0; --mist: #D0D6D6;
+    --accent: #2F5557; --ink: #041421; --ink2: #4A6466; --surface: #FFFFFF; --page: #E4E9E9;
+    --red: #FF3B30; --yellow: #FFD60A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; background: var(--abyss); overflow: hidden; }
+  body { font-family: -apple-system, "SF Pro Text", system-ui, sans-serif; color: var(--mist); }
+  #root { position: relative; width: 1080px; height: 1920px; overflow: hidden;
+    background: radial-gradient(1200px 1000px at 50% 30%, #07303c 0%, var(--abyss) 70%); }
+  .scene { position: absolute; inset: 0; opacity: 0; }
+  .display { font-family: "Outfit", sans-serif; font-weight: 600; letter-spacing: -0.02em; }
+  .caption { position: absolute; left: 80px; right: 80px; top: 250px; font-size: 92px; line-height: 1.02; color: var(--mist); }
+  .caption span { color: var(--sage); }
+  #cap3 { top: 230px; font-size: 76px; }
+
+  /* Scene 1 */
+  #hook { position: absolute; left: 80px; right: 80px; top: 640px; font-size: 168px; line-height: 1; color: var(--mist); }
+  #hook .w { display: block; opacity: 0; }
+  #hook .w:last-child { color: var(--sage); }
+
+  /* Alert card (severity high tint, as in the app) */
+  #alert { position: absolute; left: 80px; right: 80px; top: 600px; padding: 52px; border-radius: 48px; opacity: 0;
+    background: linear-gradient(#FFE9E7, #FFD3CF); border: 3px solid #FF6B62; color: #4A0A06; }
+  .chip { display: inline-flex; align-items: center; gap: 14px; padding: 14px 28px; border-radius: 999px; font-weight: 700; font-size: 34px;
+    background: #FFBDB8; color: #5A0E09; border: 2px solid #F2958E; }
+  .chip svg { width: 34px; height: 34px; }
+  #alert h2 { font-size: 78px; line-height: 1.04; margin-top: 30px; color: #4A0A06; }
+  #alert .area { font-size: 36px; margin-top: 22px; color: #9C1C14; }
+  .strip { margin-top: 36px; padding-top: 28px; border-top: 3px solid #FFB1AB; display: flex; gap: 40px; }
+  .strip div { flex: 1; font-size: 28px; color: #9C1C14; }
+  .strip b { display: block; margin-top: 6px; font-size: 44px; font-weight: 600; color: #4A0A06; font-family: "Outfit", sans-serif; }
+  .src { margin-top: 34px; font-size: 30px; color: #9C1C14; line-height: 1.35; }
+  .src .row { display: flex; align-items: center; gap: 16px; }
+  .official { font-size: 28px; font-weight: 700; padding: 3px 12px; border: 2px solid #9C1C14; border-radius: 8px; white-space: nowrap; }
+  .ask { margin-top: 36px; height: 108px; border-radius: 24px; border: 2px solid #9C1C14; display: flex; align-items: center; justify-content: center;
+    font-size: 38px; font-weight: 600; color: #4A0A06; }
+
+  /* Map */
+  #mapframe { position: absolute; left: 60px; top: 560px; width: 960px; height: 1150px; border-radius: 48px; overflow: hidden; opacity: 0; background: #E6EBE6;
+    box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+  #mapframe svg.map { position: absolute; inset: 0; width: 960px; height: 1150px; }
+  .search { position: absolute; left: 28px; right: 28px; top: 28px; height: 96px; border-radius: 28px; background: #fff; display: flex; align-items: center; gap: 18px;
+    padding: 0 30px; font-size: 36px; color: var(--ink2); box-shadow: 0 6px 20px rgba(0,0,0,.14); }
+  .search svg { width: 36px; height: 36px; }
+  .chips { position: absolute; left: 28px; top: 144px; display: flex; gap: 14px; }
+  .fc { height: 64px; padding: 0 28px; border-radius: 999px; display: flex; align-items: center; font-size: 28px; font-weight: 600;
+    background: var(--accent); color: #fff; }
+  .fc.off { background: #fff; color: var(--ink); }
+  .zl { position: absolute; padding: 6px 18px; border-radius: 999px; font-size: 28px; font-weight: 700; color: var(--abyss); opacity: 0; }
+  .pin { position: absolute; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; background: var(--sage); border: 6px solid #fff;
+    display: flex; align-items: center; justify-content: center; opacity: 0; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+  .pin svg { width: 40px; height: 40px; }
+  .flame { position: absolute; left: 700px; top: 400px; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; background: var(--red);
+    display: flex; align-items: center; justify-content: center; opacity: 0; }
+  .flame svg { width: 44px; height: 44px; }
+  #panel { position: absolute; left: 24px; right: 24px; bottom: 24px; padding: 40px; border-radius: 40px; background: #fff; color: var(--ink); opacity: 0;
+    box-shadow: 0 -6px 40px rgba(0,0,0,.2); }
+  #panel h3 { font-size: 54px; line-height: 1.05; }
+  #panel .sub { font-size: 30px; color: var(--ink2); margin-top: 14px; }
+  #panel .st { margin-top: 24px; display: flex; align-items: center; gap: 20px; font-size: 32px; }
+  .open { background: var(--sage); color: var(--abyss); font-weight: 700; padding: 8px 22px; border-radius: 999px; font-size: 28px; }
+  .btns { margin-top: 30px; display: flex; gap: 18px; }
+  .btn { flex: 1; height: 100px; border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 600; }
+  .btn.f { background: var(--accent); color: #fff; }
+  .btn.o { border: 3px solid var(--accent); color: var(--accent); }
+  .demo { position: absolute; left: 80px; right: 80px; top: 1744px; font-size: 30px; color: #8FA6A6; text-align: center; opacity: 0; }
+
+  /* Chat */
+  #user { position: absolute; right: 80px; top: 680px; max-width: 800px; padding: 34px 40px; border-radius: 44px; background: var(--accent); color: #fff;
+    font-size: 46px; line-height: 1.25; opacity: 0; }
+  #user .ch { opacity: 0; white-space: pre-wrap; }
+  #reply { position: absolute; left: 80px; top: 1060px; width: 880px; padding: 48px; border-radius: 44px; background: #fff; color: var(--ink); opacity: 0; }
+  #reply .h { display: flex; align-items: center; gap: 20px; font-size: 56px; font-weight: 700; color: var(--accent); }
+  #reply .h svg { width: 52px; height: 52px; }
+  #reply p { margin-top: 20px; font-size: 42px; line-height: 1.3; }
+  #reply .tell { margin-top: 34px; height: 104px; border-radius: 24px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; gap: 16px; font-size: 38px; font-weight: 600; }
+  #reply .tell svg { width: 40px; height: 40px; }
+
+  /* Outro */
+  #or { position: absolute; left: 80px; right: 80px; top: 400px; font-size: 150px; line-height: 1; opacity: 0; }
+  #num { position: absolute; left: 80px; right: 80px; top: 720px; font-size: 118px; color: var(--sage); opacity: 0; white-space: nowrap; }
+  #langs { position: absolute; left: 80px; right: 80px; top: 880px; font-size: 52px; color: var(--mist); opacity: 0; }
+  #wm { position: absolute; left: 80px; top: 1180px; width: 640px; opacity: 0; }
+  #credit { position: absolute; left: 80px; right: 80px; bottom: 90px; font-size: 28px; color: #8FA6A6; opacity: 0; }
+  #fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 50; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="root" data-width="1080" data-height="1920" data-start="0" data-duration="24">
+
+  <!-- Scene 1: hook -->
+  <div id="s1" class="scene clip" data-start="0" data-duration="4.5">
+    <div id="hook" class="display">
+      <span class="w">What's</span><span class="w">happening</span><span class="w">near you?</span>
+    </div>
+  </div>
+
+  <!-- Scene 2: the alert -->
+  <div id="s2" class="scene clip" data-start="4" data-duration="5.8">
+    <div class="caption display" id="cap2">Official sources.<br><span>Timestamped.</span></div>
+    <div id="alert">
+      <div class="chip">
+        <svg viewBox="0 0 24 24" fill="#5A0E09"><path d="M12 2 1 21h22L12 2Zm1 14h-2v-2h2v2Zm0-4h-2V8h2v4Z"/></svg>
+        Severe · Warning
+      </div>
+      <h2 class="display">Evacuation Warning. Be ready to leave.</h2>
+      <div class="area">Zones SON-3A and SON-3B, east of Santa Rosa</div>
+      <div class="strip"><div>Issued<b>1:45 PM</b></div><div>Now<b>2:42 PM</b></div></div>
+      <div class="src">
+        <div class="row"><span>Sonoma County Emergency Management (Demo)</span><span class="official">Official</span></div>
+        <div>Also reported by Sonoma County Fire Information (Demo)</div>
+      </div>
+      <div class="ask">Ask about this</div>
+    </div>
+  </div>
+
+  <!-- Scene 3: the map -->
+  <div id="s3" class="scene clip" data-start="9.3" data-duration="5.4">
+    <div class="caption display" id="cap3">Shelters, zones and closures.<br><span>One map.</span></div>
+    <div id="mapframe">
+      <svg class="map" viewBox="0 0 960 1150" xmlns="http://www.w3.org/2000/svg">
+        <rect width="960" height="1150" fill="#E6EBE6"/>
+        <path d="M0 760 C200 700 360 820 560 760 S860 700 960 740" stroke="#fff" stroke-width="26" fill="none"/>
+        <path d="M120 0 C150 300 100 600 180 1150" stroke="#fff" stroke-width="18" fill="none"/>
+        <path d="M640 0 C600 300 700 600 640 1150" stroke="#fff" stroke-width="18" fill="none"/>
+        <path d="M0 330 C300 360 600 300 960 340" stroke="#F4F6F0" stroke-width="14" fill="none"/>
+        <path d="M0 980 C300 940 600 1010 960 960" stroke="#B9D5E3" stroke-width="30" fill="none" opacity=".7"/>
+        <polygon id="zoneA" points="70,330 420,280 450,520 90,600" fill="#FF3B30" fill-opacity=".24" stroke="#FF3B30" stroke-width="5" opacity="0"/>
+        <polygon id="zoneB" points="440,270 860,250 900,560 450,520" fill="#FFD60A" fill-opacity=".30" stroke="#E6B800" stroke-width="5" opacity="0"/>
+        <circle id="fire" cx="700" cy="400" r="120" fill="#FF3B30" fill-opacity=".35" stroke="#FF3B30" stroke-width="4" opacity="0"/>
+        <polyline id="road" points="30,430 250,520 420,650" fill="none" stroke="#FF3B30" stroke-width="10" stroke-dasharray="22 16" stroke-linecap="round" opacity="0"/>
+      </svg>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#4A6466" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+        Search shelters
+      </div>
+      <div class="chips"><div class="fc">Shelters</div><div class="fc off">Pet-friendly</div><div class="fc">Zones</div><div class="fc">Roads</div></div>
+      <div class="zl" id="zlA" style="left:150px;top:410px;background:#FF3B30">SON-3A</div>
+      <div class="zl" id="zlB" style="left:560px;top:490px;background:#FFD60A">SON-3B</div>
+      <div class="flame" id="flame"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10Z"/></svg></div>
+      <div class="pin" id="pin1" style="left:330px;top:600px"><svg viewBox="0 0 24 24" fill="#041421"><path d="M12 3 2 12h3v8h5v-5h4v5h5v-8h3L12 3Z"/></svg></div>
+      <div class="pin" id="pin2" style="left:720px;top:620px"><svg viewBox="0 0 24 24" fill="#041421"><path d="M12 3 2 12h3v8h5v-5h4v5h5v-8h3L12 3Z"/></svg></div>
+      <div id="panel">
+        <h3 class="display">Ridgeview Community Center</h3>
+        <div class="sub">500 Elm Street · Shelter · Pets in crates</div>
+        <div class="st"><span class="open">Open</span><span>120 of 200 spaces</span></div>
+        <div class="btns"><div class="btn f">Directions</div><div class="btn o">Set meeting point</div></div>
+      </div>
+    </div>
+    <div class="demo" id="demo">Demo zones · not real boundaries</div>
+  </div>
+
+  <!-- Scene 4: I don't know yet -->
+  <div id="s4" class="scene clip" data-start="14.3" data-duration="5.1">
+    <div class="caption display" id="cap4">No official answer?<br><span>It says so.</span></div>
+    <div id="user"></div>
+    <div id="reply">
+      <div class="h"><svg viewBox="0 0 24 24" fill="none" stroke="#2F5557" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>I don't know yet</div>
+      <p>No official source has answered this yet.</p>
+      <div class="tell"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>Tell me when answered</div>
+    </div>
+  </div>
+
+  <!-- Scene 5: call -->
+  <div id="s5" class="scene clip" data-start="19" data-duration="5">
+    <div id="or" class="display">Or just call.</div>
+    <div id="num" class="display">+1 712 600 3362</div>
+    <div id="langs">English · Español · 24/7</div>
+    <img id="wm" src="assets/img/soterra-wordmark-on-dark.svg" alt="Soterra">
+    <div id="credit">Music: Sascha Ende, ende.app (CC BY 4.0)</div>
+  </div>
+
+  <div id="fade"></div>
+
+  <!-- Audio -->
+  <audio id="music" data-start="0" data-duration="24" data-track-index="0" data-volume="0.45" data-fade-in="0.6" data-fade-out="1.8" src="assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3"></audio>
+  <audio id="sx1" data-start="4.23" data-duration="0.19" data-track-index="1" data-volume="0.7" src="assets/sfx/impactSoft_medium_001.ogg"></audio>
+  <audio id="sx2" data-start="10.01" data-duration="0.01" data-track-index="1" data-volume="0.6" src="assets/sfx/click_003.ogg"></audio>
+  <audio id="sx3" data-start="10.54" data-duration="0.01" data-track-index="1" data-volume="0.6" src="assets/sfx/click_003.ogg"></audio>
+  <audio id="sx4" data-start="11.6" data-duration="0.19" data-track-index="1" data-volume="0.6" src="assets/sfx/impactSoft_medium_001.ogg"></audio>
+  <audio id="k1" data-start="14.75" data-duration="0.16" data-track-index="2" data-volume="0.35" src="assets/sfx/keypress-001.wav"></audio>
+  <audio id="k2" data-start="14.93" data-duration="0.16" data-track-index="2" data-volume="0.35" src="assets/sfx/keypress-002.wav"></audio>
+  <audio id="k3" data-start="15.11" data-duration="0.16" data-track-index="2" data-volume="0.35" src="assets/sfx/keypress-003.wav"></audio>
+  <audio id="k4" data-start="15.29" data-duration="0.16" data-track-index="2" data-volume="0.35" src="assets/sfx/keypress-004.wav"></audio>
+  <audio id="k5" data-start="15.47" data-duration="0.16" data-track-index="2" data-volume="0.35" src="assets/sfx/keypress-001.wav"></audio>
+  <audio id="sx5" data-start="15.81" data-duration="0.13" data-track-index="1" data-volume="0.55" src="assets/sfx/bong_001.ogg"></audio>
+  <audio id="sx6" data-start="20.02" data-duration="0.06" data-track-index="1" data-volume="0.5" src="assets/sfx/click2.ogg"></audio>
+
+  <script src="assets/gsap.min.js"></script>
+  <script>
+    // Typed question (scene 4): one span per character so the seek-safe timeline can reveal them.
+    const question = "Is Hillcrest Elementary open as a shelter?";
+    const user = document.getElementById("user");
+    const chars = [...question].map((c) => {
+      const s = document.createElement("span");
+      s.className = "ch";
+      s.textContent = c;
+      user.appendChild(s);
+      return s;
+    });
+
+    const tl = gsap.timeline({ paused: true });
+    const ease = "power3.out";
+
+    // Scene crossfades
+    const fade = (id, inAt, outAt) => {
+      tl.to(id, { opacity: 1, duration: 0.4 }, inAt);
+      if (outAt != null) tl.to(id, { opacity: 0, duration: 0.4 }, outAt);
+    };
+    gsap.set("#s1", { opacity: 1 }); // the hook is on screen at frame 0 (it is the thumbnail)
+    tl.to("#s1", { opacity: 0, duration: 0.4 }, 4.0);
+    fade("#s2", 4.0, 9.3);
+    fade("#s3", 9.3, 14.3);
+    fade("#s4", 14.3, 19.0);
+    fade("#s5", 19.0, null);
+
+    // Scene 1: hook, a word at a time, then held
+    const words = document.querySelectorAll("#hook .w");
+    gsap.set(words, { opacity: 1 });
+    gsap.set(words[2], { opacity: 0, y: 30 });
+    tl.to(words[2], { opacity: 1, y: 0, duration: 0.7, ease }, 0.6);
+    tl.fromTo("#hook", { y: 0 }, { y: -24, duration: 3.6, ease: "none" }, 0.4);
+
+    // Scene 2: caption, then the alert card lands on the strong cue
+    gsap.set("#cap2", { opacity: 0, y: 24 });
+    gsap.set("#alert", { y: 140 });
+    tl.to("#cap2", { opacity: 1, y: 0, duration: 0.6, ease }, 4.1);
+    // beat-locked: 4.23s
+    tl.to("#alert", { opacity: 1, y: 0, duration: 0.7, ease }, 4.23);
+    tl.to("#alert", { scale: 1.025, duration: 4.5, ease: "none" }, 4.95); // slow push-in while it is read
+
+    // Scene 3: map, zones, pins on consecutive beats, shelter card on the strong cue
+    gsap.set(["#cap3", "#demo"], { opacity: 0, y: 24 });
+    gsap.set("#mapframe", { scale: 0.97 });
+    gsap.set(["#pin1", "#pin2"], { scale: 0.2 });
+    gsap.set("#panel", { y: 520 });
+    tl.to("#cap3", { opacity: 1, y: 0, duration: 0.6, ease }, 9.4);
+    tl.to("#mapframe", { opacity: 1, scale: 1, duration: 0.6, ease }, 9.4);
+    tl.to("#zoneA", { opacity: 1, duration: 0.4 }, 9.8);
+    tl.to("#zlA", { opacity: 1, duration: 0.4 }, 9.8);
+    tl.to("#zoneB", { opacity: 1, duration: 0.4 }, 9.9);
+    tl.to("#zlB", { opacity: 1, duration: 0.4 }, 9.9);
+    tl.to(["#fire", "#flame", "#road"], { opacity: 1, duration: 0.4 }, 10.0);
+    tl.to("#demo", { opacity: 1, y: 0, duration: 0.5, ease }, 10.2);
+    // beat-grid: pin 1 at 10.01s, pin 2 at 10.54s
+    tl.to("#pin1", { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 10.01);
+    tl.to("#pin2", { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 10.54);
+    // beat-locked: 11.60s
+    tl.to("#panel", { opacity: 1, y: 0, duration: 0.7, ease }, 11.6);
+    tl.to("#pin1", { scale: 1.25, duration: 0.4, ease }, 11.6);
+
+    // Scene 4: typed question, then the honest answer
+    gsap.set("#cap4", { opacity: 0, y: 24 });
+    gsap.set("#user", { y: 30 });
+    gsap.set("#reply", { y: 40 });
+    tl.to("#cap4", { opacity: 1, y: 0, duration: 0.6, ease }, 14.4);
+    tl.to("#user", { opacity: 1, y: 0, duration: 0.4, ease }, 14.6);
+    chars.forEach((c, i) => tl.set(c, { opacity: 1 }, 14.75 + i * 0.024));
+    // beat-grid: reply at 15.81s
+    tl.to("#reply", { opacity: 1, y: 0, duration: 0.6, ease }, 15.81);
+
+    // Scene 5: the call
+    gsap.set(["#or", "#num", "#langs", "#wm", "#credit"], { y: 26 });
+    tl.to("#or", { opacity: 1, y: 0, duration: 0.7, ease }, 19.3);
+    // beat-grid: number at 20.02s, languages at 20.54s, wordmark at 21.59s
+    tl.to("#num", { opacity: 1, y: 0, duration: 0.7, ease }, 20.02);
+    tl.to("#langs", { opacity: 1, y: 0, duration: 0.6, ease }, 20.54);
+    tl.to("#wm", { opacity: 1, y: 0, duration: 0.8, ease }, 21.59);
+    tl.to("#credit", { opacity: 1, y: 0, duration: 0.6, ease }, 21.0);
+    tl.to("#fade", { opacity: 1, duration: 0.5 }, 23.5);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines["root"] = tl;
+  </script>
+</div>
+</body>
+</html>

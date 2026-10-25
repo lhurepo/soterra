@@ -4,7 +4,7 @@ import Foundation
 // Value types for the demo app. They mirror the backend's data (convex/schema.ts, src/contracts) closely
 // enough that a later Convex client can fill them in without changing the views.
 
-/// The data's five severities collapse to three visible levels: high (red), medium (orange), low (yellow).
+/// The data's five severities collapse to three visible levels: high (red), medium and low (both yellow), and info.
 enum Severity: String, CaseIterable, Hashable {
     case extreme, severe, moderate, minor, unknown
 
@@ -14,15 +14,15 @@ enum Severity: String, CaseIterable, Hashable {
         case .severe: "Severe"
         case .moderate: "Moderate"
         case .minor: "Minor"
-        case .unknown: "Unknown"
+        case .unknown: "Info"
         }
     }
 
     var level: SeverityLevel {
         switch self {
-        case .extreme: .high
-        case .severe: .medium
-        case .moderate, .minor: .low
+        case .extreme, .severe: .high
+        case .moderate: .medium
+        case .minor: .low
         case .unknown: .unknown
         }
     }
@@ -46,7 +46,7 @@ enum SeverityLevel: String, CaseIterable, Hashable {
         case .high: "High severity"
         case .medium: "Medium severity"
         case .low: "Low severity"
-        case .unknown: "Severity unknown"
+        case .unknown: "Information"
         }
     }
 }
@@ -151,7 +151,21 @@ struct HazardAlert: Identifiable, Hashable {
     var chipText: String { "\(severity.label) · \(kind.label)" }
 }
 
-/// A row in Home's "Today" list: one official update on the time column.
+/// Which group a timeline row is listed under on Home.
+enum TimelineDay: CaseIterable, Hashable {
+    case today, yesterday, earlier
+
+    var title: String {
+        switch self {
+        case .today: "Today"
+        case .yesterday: "Yesterday"
+        case .earlier: "Earlier"
+        }
+    }
+}
+
+/// A row in Home's update list: one official update on the time column. `time` is the clock time for today and
+/// yesterday, and the date alone for earlier days.
 struct TimelineItem: Identifiable, Hashable {
     let id: String
     let time: String
@@ -159,6 +173,7 @@ struct TimelineItem: Identifiable, Hashable {
     let source: String
     let severity: Severity
     var alertID: HazardAlert.ID?
+    var day: TimelineDay = .today
 }
 
 struct Shelter: Identifiable, Hashable {

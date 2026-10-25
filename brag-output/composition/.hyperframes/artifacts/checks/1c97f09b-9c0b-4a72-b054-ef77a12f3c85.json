@@ -1,0 +1,324 @@
+{
+  "ok": true,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 5,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"s1\"> is a timeline element that contains nested <div id=\"hook\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s1",
+        "dataAttributes": {},
+        "sourceFile": "/Users/abastida/Documents/GitHub/soterra/brag-output/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"s1\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"s2\"> is a timeline element that contains nested <div id=\"cap2\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s2",
+        "dataAttributes": {},
+        "sourceFile": "/Users/abastida/Documents/GitHub/soterra/brag-output/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"s2\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"s3\"> is a timeline element that contains nested <div id=\"cap3\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s3",
+        "dataAttributes": {},
+        "sourceFile": "/Users/abastida/Documents/GitHub/soterra/brag-output/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"s3\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"s4\"> is a timeline element that contains nested <div id=\"cap4\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s4",
+        "dataAttributes": {},
+        "sourceFile": "/Users/abastida/Documents/GitHub/soterra/brag-output/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"s4\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"s5\"> is a timeline element that contains nested <div id=\"or\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s5",
+        "dataAttributes": {},
+        "sourceFile": "/Users/abastida/Documents/GitHub/soterra/brag-output/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"s5\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      }
+    ],
+    "filesScanned": 1
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 4,
+    "findings": [
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 9.52,
+        "selector": "#cap2",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 80,
+          "top": 238,
+          "right": 723.36,
+          "bottom": 354,
+          "width": 643.36,
+          "height": 116
+        },
+        "containerSelector": "#cap3",
+        "text": "Official sources. Timestamped.",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 80,
+          "y": 238,
+          "width": 643.36,
+          "height": 116
+        },
+        "firstSeen": 9.52,
+        "lastSeen": 9.52,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          9.52
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 9.52,
+        "selector": "#cap2 > span:nth-of-type(1)",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 80,
+          "top": 331.83,
+          "right": 662.64,
+          "bottom": 447.83,
+          "width": 582.64,
+          "height": 116
+        },
+        "containerSelector": "#cap3",
+        "text": "Timestamped.",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 80,
+          "y": 331.83,
+          "width": 582.64,
+          "height": 116
+        },
+        "firstSeen": 9.52,
+        "lastSeen": 9.52,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          9.52
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 14.48,
+        "selector": "#cap3",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 80,
+          "top": 220,
+          "right": 709.52,
+          "bottom": 393.52,
+          "width": 629.52,
+          "height": 173.52
+        },
+        "containerSelector": "#cap4",
+        "text": "Shelters, zones and closures. One map.",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 80,
+          "y": 220,
+          "width": 629.52,
+          "height": 173.52
+        },
+        "firstSeen": 14.48,
+        "lastSeen": 14.48,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          14.48
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 14.48,
+        "selector": "#cap3 > span:nth-of-type(1)",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 80,
+          "top": 375.03,
+          "right": 403.92,
+          "bottom": 471.03,
+          "width": 323.92,
+          "height": 96
+        },
+        "containerSelector": "#cap4 > span:nth-of-type(1)",
+        "text": "One map.",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 80,
+          "y": 375.03,
+          "width": 323.92,
+          "height": 96
+        },
+        "firstSeen": 14.48,
+        "lastSeen": 14.48,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          14.48
+        ]
+      }
+    ],
+    "duration": 24,
+    "samples": [
+      1.333,
+      4,
+      6.667,
+      9.333,
+      12,
+      14.667,
+      17.333,
+      20,
+      22.667
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 4,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      1.333,
+      6.667,
+      12,
+      17.333,
+      22.667
+    ],
+    "checked": 77,
+    "passed": 77
+  },
+  "craft": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 1,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "line_unread",
+        "severity": "warning",
+        "message": "\"I s H i l l c r e s t E l e m e n t a r y o p e n a s a s...\" (35 words) is on screen 4.37 s (±0.01 s), under its 8.25 s floor: hold it about 0.5 s + 0.3 s a word (11.00 s here) before it leaves or changes; see references/motion.md.",
+        "text": "I s H i l l c r e s t E l e m e n t a r y o p e n a s a s h e l t e r",
+        "selector": "#user",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 240,
+          "y": 714.37,
+          "width": 94.90999999999997,
+          "height": 56
+        },
+        "time": 14.773,
+        "words": 35,
+        "seconds": 4.367,
+        "floorSeconds": 8.25
+      }
+    ],
+    "enabled": true,
+    "step": 0.125,
+    "samples": 192
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  }
+}

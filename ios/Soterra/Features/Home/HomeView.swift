@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Home: in one glance, what is happening, how fresh it is, and the next step. Calling or asking Soterra is
-/// always one tap away in the bar above the tabs.
+/// Home: in one glance, what is happening, how fresh it is, and the next step. Calling Soterra has its own card;
+/// the Chat tab asks.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
 
@@ -12,8 +12,6 @@ struct HomeView: View {
                     AlertCard(
                         alert: alert,
                         times: model.displayTimes(for: alert),
-                        isEmphasized: alert.changeNote != nil,
-                        onWhatToDo: { model.homePath.append(.alert(alert.id)) },
                         onAsk: askAction(about: alert)
                     )
                     CallSoterraCard()
@@ -29,19 +27,19 @@ struct HomeView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
+            // Exactly the screen's width, so nothing wider can make the page drift or wiggle sideways.
+            .containerRelativeFrame(.horizontal)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .screenBackground()
         .navigationTitle(model.homeTitle)
         .soterraToolbar()
         .safeAreaInset(edge: .top, spacing: 0) {
             if model.isOffline { OfflineBanner() }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            CallBar { model.homePath.append(.assistant(topic: nil)) }
-        }
     }
 
-    /// Asking needs a connection; offline, the card offers only "What to do" and the call bar.
+    /// Asking needs a connection; offline, the card has no button.
     private func askAction(about alert: HazardAlert) -> (() -> Void)? {
         guard !model.isOffline else { return nil }
         return { model.homePath.append(.assistant(topic: alert.title)) }
@@ -61,21 +59,33 @@ struct HomeView: View {
         }
     }
 
+    /// Updates under Today and Yesterday headers (times only), then Earlier (dates only).
     private var today: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(title: model.isOffline ? "Saved at \(DemoConfig.lastSyncTime)" : "Today",
+            SectionHeader(title: model.isOffline ? "Saved at \(DemoConfig.lastSyncTime)" : "Updates",
                           actionTitle: "Following · \(model.newUpdateCount) new") {
                 model.showFollowing()
             }
-            Divider().overlay(Palette.separator)
-            ForEach(model.todayItems) { item in
-                Button {
-                    if let id = item.alertID { model.homePath.append(.alert(id)) }
-                } label: {
-                    TimelineRow(item: item)
+            ForEach(TimelineDay.allCases, id: \.self) { day in
+                let items = model.todayItems.filter { $0.day == day }
+                if !items.isEmpty {
+                    Text(day.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Palette.textSecondary)
+                        .padding(.top, 12)
+                        .padding(.bottom, 4)
+                        .accessibilityAddTraits(.isHeader)
+                    Divider().overlay(Palette.separator)
+                    ForEach(items) { item in
+                        Button {
+                            if let id = item.alertID { model.homePath.append(.alert(id)) }
+                        } label: {
+                            TimelineRow(item: item)
+                        }
+                        .buttonStyle(.plain)
+                        Divider().overlay(Palette.separator)
+                    }
                 }
-                .buttonStyle(.plain)
-                Divider().overlay(Palette.separator)
             }
         }
     }
