@@ -280,3 +280,31 @@ Still unverified: a real inbound call end to end (latency, barge-in, keypad), a 
 | 2026-10-24 | A text the number cannot receive (21614, 30006) switches the subscription and `preferredChannel` to calls, and that update is called. Texts about a call (recap, missed call, confirmation) are never called. | User decision. Avoids loops. |
 | 2026-10-24 | Time-based updates: "every 2 hours", "hourly", "daily", "cada hora"… The interval is clamped to 1–24 hours. A subscription lasts at least three updates (24 h by default, 72 h at most). A cron sends due updates every minute, even when nothing changed ("No new official updates since…"). Scheduled subscriptions never fire on bulletin events. No quiet hours. | User decision: an emergency line should not hold back updates at night. |
 | 2026-10-24 | Rate limits and the per-number burst rule count only update notifications (on change or scheduled), not the verification call or texts about a call. | Found in testing: a confirmation text was blocking the first real update for 15 minutes. |
+
+## Mac Messages relay (2026-10-24, branch `Leia/text-alerts`)
+
+Setup and limits: [mac-relay.md](mac-relay.md).
+
+### Decisions
+
+| Date | Decision | Why |
+| --- | --- | --- |
+| 2026-10-24 | New `SMS_NOTIFIER=mac_relay`: texts go out from a teammate's iPhone through a Mac (same Apple ID, Text Message Forwarding) with Messages.app via `osascript`. Twilio stays as it is. | A Twilio trial can't text US/Canada numbers without compliance registration (A2P 10DLC / toll-free verification), which takes longer than the demo allows. |
+| 2026-10-24 | Pull, not push: `npm run relay:mac` polls `POST /relay/claim` about every 2 s over HTTPS (Bearer `SMS_RELAY_SECRET`) and reports to `POST /relay/result`. No tunnel, no local server. | Nothing on the Mac is exposed; it works on any network. |
+| 2026-10-24 | `deliver` marks the text `relayState: "pending"` and calls no Notifier; the result goes through the same `applyResult` as every other notifier. Claims hand out at most 5 texts with a claim token; the Mac sends one at a time, at least 3 s apart. | One code path for what follows a result; a result with the wrong token is rejected (409). |
+| 2026-10-24 | Expiry: pending over 30 min → failed `relay_stale`; claimed with no result over 5 min → failed `relay_lost` (a late "sent" corrects it); a subscription stopped in the meantime → failed `subscription_inactive`. | An old alert must never go out late; a crashed relay must not leave texts hanging. |
+| 2026-10-24 | The relay texts any number the backend sends. `RELAY_ALLOWLIST` is optional: when set, other numbers fail `not_allowlisted`. | User decision for the demo: anyone who calls the hotline and asks for texts gets them (judges included), with no list to keep up to date. Texts come from the teammate's personal number. |
+| 2026-10-24 | No inbound handling: no `chat.db`, no Full Disk Access. STOP replies land on the teammate's phone and are handled by hand (`notifications:stopByText`) or by calling the hotline. | Keeps the relay small and the Mac's permissions minimal. |
+| 2026-10-24 | `/health`: `sms` is `live` when `SMS_NOTIFIER=mac_relay` and `SMS_RELAY_SECRET` is set; new flag `smsRelayOnline` (a relay claimed in the last 60 s, from `smsRelayHeartbeats`). | Shows at a glance whether the Mac is polling. |
+
+### Verified (2026-10-24, dev deployment `brazen-perch-21`)
+
+- End to end with `npx convex run smsRelay:queueTest '{"phone":"+1…"}'`: queued in Convex, claimed by `npm run relay:mac` on Leia's Mac, sent by Messages over SMS (Text Message Forwarding from the iPhone), result `sent` / `handed_to_messages`, and received on a teammate's phone. The AppleScript (`1st account whose service type = SMS`, `send … to participant …`) works as written.
+- A dry run (`RELAY_DRY_RUN=1`) claims texts and reports them `relay_dry_run`; nothing is sent.
+
+### Still unverified (relay)
+
+- A real hotline call → confirmation text, and `inject:update` → update text, through the relay (covered by `convex/tests/smsRelay.test.ts`; same `deliver` path as `queueTest`).
+- The exact AppleScript errors for a missing SMS account (we match -1728/-1719 and "service type = SMS") and a denied Automation prompt (-1743).
+- How Messages splits a 450-character text over SMS, and whether the recipient sees one message.
+- "sent" only means handed to Messages; delivery failures are not reported back.

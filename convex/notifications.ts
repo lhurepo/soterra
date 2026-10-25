@@ -6,6 +6,7 @@
 // - an answered update call → the update by text when it ends ("call_recap"; nothing said on the call is texted);
 // - a call that set up updates → one confirmation text when it ends ("subscription_confirmation");
 // - a text the number can't receive (a landline) → the subscription switches to calls, and an update is called instead.
+// With SMS_NOTIFIER=mac_relay, deliver queues texts for the Mac relay instead (convex/smsRelay.ts).
 import { v } from "convex/values";
 import { DEFAULTS } from "../src/config/defaults";
 import { loadConfig } from "../src/config/env";
@@ -36,11 +37,11 @@ function hotline(): string | undefined {
 }
 
 /** The text version of an update (rows from before texts had their own format: the spoken message with a footer). */
-function updateText(n: Doc<"notifications">): string {
+export function smsBody(n: Doc<"notifications">): string {
   return n.text ?? fitText(n.message, smsFooter(n.language, hotline()));
 }
 
-async function subscriptionActive(ctx: MutationCtx, subscriptionId: Id<"subscriptions"> | undefined, now: number): Promise<boolean> {
+export async function subscriptionActive(ctx: MutationCtx, subscriptionId: Id<"subscriptions"> | undefined, now: number): Promise<boolean> {
   if (!subscriptionId) return true;
   const sub = await ctx.db.get("subscriptions", subscriptionId);
   return sub?.status === "active" && sub.expiresAt > now;
@@ -90,7 +91,7 @@ async function markCallMissed(ctx: MutationCtx, n: Doc<"notifications">, now: nu
   await queueText(ctx, {
     phone: n.recipientPhone,
     language: n.language,
-    message: withMissedCallLead(updateText(n), n.language),
+    message: withMissedCallLead(smsBody(n), n.language),
     purpose: "missed_call_text",
     dedupeKey: `${n._id}:missed`,
     subscriptionId: n.subscriptionId,
@@ -152,7 +153,7 @@ export async function sendAfterCallTexts(ctx: MutationCtx, call: Doc<"calls">, n
           await queueText(ctx, {
             phone: n.recipientPhone,
             language: n.language,
-            message: updateText(n),
+            message: smsBody(n),
             purpose: "call_recap",
             dedupeKey: `${n._id}:recap`,
             subscriptionId: n.subscriptionId,
@@ -196,6 +197,31 @@ export const get = internalQuery({
   handler: async (ctx, { notificationId }) => await ctx.db.get("notifications", notificationId),
 });
 
+/** Stores a delivery result, then what follows from it (see the top of this file). Shared with convex/smsRelay.ts. */
+export async function applyResult(
+  ctx: MutationCtx,
+  notificationId: Id<"notifications">,
+  result: { status: Doc<"notifications">["status"]; providerRef?: string; error?: string; providerStatus?: string },
+  now: number,
+): Promise<void> {
+  await ctx.db.patch("notifications", notificationId, {
+    ...result,
+    deliveredAt: result.status === "sent" || result.status === "mock" || result.status === "queued" ? now : undefined,
+  });
+  const n = await ctx.db.get("notifications", notificationId);
+  if (!n || result.error === "subscription_inactive") return;
+  if (n.channel === "phone_call" && isUpdateNotification(n)) {
+    if (result.status === "failed" || result.status === "unconfigured") {
+      // The call could not even be placed: text the update now.
+      await markCallMissed(ctx, n, now);
+    } else {
+      await ctx.scheduler.runAfter(DEFAULTS.callOutcomeCheckMs, internal.notifications.checkCallOutcome, { notificationId });
+    }
+  } else if (n.channel === "sms" && result.status === "failed" && isLandlineError(result.error)) {
+    await textUndeliverable(ctx, n, now);
+  }
+}
+
 /** Stores the notifier's result, then what follows from it (see the top of this file). */
 export const recordResult = internalMutation({
   args: {
@@ -206,23 +232,7 @@ export const recordResult = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, { notificationId, ...result }) => {
-    const now = Date.now();
-    await ctx.db.patch("notifications", notificationId, {
-      ...result,
-      deliveredAt: result.status === "sent" || result.status === "mock" || result.status === "queued" ? now : undefined,
-    });
-    const n = await ctx.db.get("notifications", notificationId);
-    if (!n || result.error === "subscription_inactive") return null;
-    if (n.channel === "phone_call" && isUpdateNotification(n)) {
-      if (result.status === "failed" || result.status === "unconfigured") {
-        // The call could not even be placed: text the update now.
-        await markCallMissed(ctx, n, now);
-      } else {
-        await ctx.scheduler.runAfter(DEFAULTS.callOutcomeCheckMs, internal.notifications.checkCallOutcome, { notificationId });
-      }
-    } else if (n.channel === "sms" && result.status === "failed" && isLandlineError(result.error)) {
-      await textUndeliverable(ctx, n, now);
-    }
+    await applyResult(ctx, notificationId, result, Date.now());
     return null;
   },
 });
@@ -242,15 +252,21 @@ export const deliver = internalAction({
       }
     }
     try {
+      const cfg = loadConfig(process.env);
+      if (n.channel === "sms" && cfg.SMS_NOTIFIER === "mac_relay") {
+        // The Mac relay pulls it (convex/smsRelay.ts) and reports the result; nothing is sent from here.
+        await ctx.runMutation(internal.smsRelay.enqueue, { notificationId });
+        return null;
+      }
       const siteUrl = process.env.CONVEX_SITE_URL;
-      const notifier = selectNotifier(loadConfig(process.env), n.channel, fetch, {
+      const notifier = selectNotifier(cfg, n.channel, fetch, {
         smsStatusCallbackUrl: siteUrl ? `${siteUrl.replace(/\/$/, "")}/twilio/status` : undefined,
       });
       const result = await notifier.send({
         recipientPhone: n.recipientPhone,
         channel: n.channel,
         language: n.language,
-        message: n.channel === "sms" ? updateText(n) : n.message,
+        message: n.channel === "sms" ? smsBody(n) : n.message,
         bulletinRefs: n.bulletinRefs,
         dedupeKey: n.dedupeKey,
         subscriptionId: n.subscriptionId,

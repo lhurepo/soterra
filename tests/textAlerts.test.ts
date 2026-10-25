@@ -262,6 +262,8 @@ describe("Twilio adapter", () => {
     expect(selectNotifier(loadConfig({}), "sms", fetch)).toBeInstanceOf(MockSmsNotifier);
     expect(selectNotifier(cfg, "sms", fetch)).toBeInstanceOf(TwilioSmsNotifier);
     expect(selectNotifier(loadConfig({ SMS_NOTIFIER: "unconfigured" }), "sms", fetch)).toBeInstanceOf(UnconfiguredSmsNotifier);
+    // mac_relay texts never reach a Notifier (deliver queues them for convex/smsRelay.ts); if one did, it sends nothing.
+    expect(selectNotifier(loadConfig({ SMS_NOTIFIER: "mac_relay", SMS_RELAY_SECRET: "r" }), "sms", fetch)).toBeInstanceOf(UnconfiguredSmsNotifier);
     expect(await new MockSmsNotifier().send({ recipientPhone: "+1", channel: "sms", language: "en", message: "m", bulletinRefs: [], dedupeKey: "k" })).toEqual({ status: "mock", providerRef: "mock-sms:k" });
   });
 });

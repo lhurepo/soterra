@@ -16,12 +16,15 @@ export function errorResponse(status: number, code: ErrorResponse["error"]["code
   return json({ error: { code, message } } satisfies ErrorResponse, status);
 }
 
+/** Returns a 401 Response unless the request carries `Authorization: Bearer <secret>`. Fails closed when `secret` is unset. */
+export function requireBearer(req: Request, secret: string | undefined, name: string): Response | null {
+  if (!secret) return errorResponse(401, "unauthorized", `${name} is not configured on the backend`);
+  return checkBearer(req.headers.get("Authorization"), secret) ? null : errorResponse(401, "unauthorized", "missing or invalid bearer token");
+}
+
 /** Returns a 401 Response unless the request carries `Authorization: Bearer <VOICE_API_SECRET>`. */
 export function requireVoiceAuth(req: Request, cfg: Config): Response | null {
-  if (!cfg.VOICE_API_SECRET) return errorResponse(401, "unauthorized", "VOICE_API_SECRET is not configured on the backend");
-  return checkBearer(req.headers.get("Authorization"), cfg.VOICE_API_SECRET)
-    ? null
-    : errorResponse(401, "unauthorized", "missing or invalid bearer token");
+  return requireBearer(req, cfg.VOICE_API_SECRET, "VOICE_API_SECRET");
 }
 
 /** Parses the body with a zod schema and checks the contract major version. */

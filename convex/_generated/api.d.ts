@@ -26,6 +26,7 @@ import type * as mossNode from "../mossNode.js";
 import type * as notifications from "../notifications.js";
 import type * as retrieval from "../retrieval.js";
 import type * as signals from "../signals.js";
+import type * as smsRelay from "../smsRelay.js";
 import type * as sources from "../sources.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as systemState from "../systemState.js";
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   retrieval: typeof retrieval;
   signals: typeof signals;
+  smsRelay: typeof smsRelay;
   sources: typeof sources;
   subscriptions: typeof subscriptions;
   systemState: typeof systemState;

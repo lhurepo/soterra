@@ -498,11 +498,24 @@ export default defineSchema({
     error: v.optional(v.string()),
     createdAt: v.number(),
     deliveredAt: v.optional(v.number()),
+    /** SMS_NOTIFIER=mac_relay only (convex/smsRelay.ts): waiting for the Mac, handed to it, or finished. */
+    relayState: v.optional(v.union(v.literal("pending"), v.literal("claimed"), v.literal("done"))),
+    /** The token the Mac must send back with the result; one per claim. */
+    relayClaimToken: v.optional(v.string()),
+    relayClaimedAt: v.optional(v.number()),
   })
     .index("by_dedupeKey", ["dedupeKey"])
     .index("by_subscriptionId_and_createdAt", ["subscriptionId", "createdAt"])
     .index("by_providerRef", ["providerRef"])
-    .index("by_recipientPhone_and_createdAt", ["recipientPhone", "createdAt"]),
+    .index("by_recipientPhone_and_createdAt", ["recipientPhone", "createdAt"])
+    .index("by_relayState_and_createdAt", ["relayState", "createdAt"])
+    .index("by_relayState_and_relayClaimedAt", ["relayState", "relayClaimedAt"]),
+
+  /** Mac relays seen polling POST /relay/claim (one row per host), for /health's smsRelayOnline. */
+  smsRelayHeartbeats: defineTable({
+    relayId: v.string(),
+    lastSeenAt: v.number(),
+  }).index("by_relayId", ["relayId"]),
 
   // ───────────── [S] Dev only ─────────────
   /** Mock HTML pages served at /mock-sites/* when ENABLE_MOCK_SITES=true, so Apify can scrape a real URL. */

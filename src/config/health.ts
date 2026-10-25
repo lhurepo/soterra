@@ -29,7 +29,11 @@ export function integrationStatus(config: Config): Record<string, IntegrationSta
     sms:
       config.SMS_NOTIFIER === "unconfigured"
         ? "unconfigured"
-        : liveIf(config.SMS_NOTIFIER === "twilio", has(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN) && has(config.TWILIO_FROM_NUMBER ?? config.TWILIO_MESSAGING_SERVICE_SID)),
+        : config.SMS_NOTIFIER === "mac_relay"
+          ? has(config.SMS_RELAY_SECRET)
+            ? "live"
+            : "unconfigured"
+          : liveIf(config.SMS_NOTIFIER === "twilio", has(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN) && has(config.TWILIO_FROM_NUMBER ?? config.TWILIO_MESSAGING_SERVICE_SID)),
   };
 }
 
