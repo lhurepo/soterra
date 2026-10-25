@@ -1,0 +1,5 @@
+Midnight    #041421   RGB 4,20,33   CMYK(approx) 88,39,0,87   Primary dark, backgrounds, text on light
+Deep Teal   #042630   RGB 4,38,48   CMYK(approx) 92,21,0,81   Secondary dark, backgrounds
+Slate Teal  #4c7273   RGB 76,114,115   CMYK(approx) 34,1,0,55   Supporting mid-tone
+Seafoam     #86b9b0   RGB 134,185,176   CMYK(approx) 28,0,5,27   Brand accent, solid half of the mark
+Mist        #d0d6d6   RGB 208,214,214   CMYK(approx) 3,0,0,16   Light neutral, text on dark
