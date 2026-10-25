@@ -94,7 +94,7 @@ struct HomeView: View {
         let tone = CardTone.calm
         return VStack(alignment: .leading, spacing: 10) {
             StatusChip(text: "No active alerts", systemImage: "checkmark", fill: Palette.sage, ink: Palette.abyss)
-            Text("No active official alerts for Sonoma County.")
+            Text("No active official alerts for San Francisco.")
                 .font(.display(24, relativeTo: .title2))
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -103,7 +103,7 @@ struct HomeView: View {
                 TimeMark(label: "Sources", value: "4 official"),
             ], tone: tone)
             .padding(.top, 4)
-            Text("National Weather Service · Sonoma County EM · Caltrans D4 · CAL FIRE")
+            Text("SF Emergency Management · USGS · SF Fire · SFMTA")
                 .font(.caption)
                 .foregroundStyle(tone.secondary)
         }

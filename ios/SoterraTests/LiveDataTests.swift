@@ -5,7 +5,7 @@ final class LiveDataTests: XCTestCase {
     private let json = """
     {"contractVersion":"1","now":1792000000000,"mode":"crisis","crisisReason":"Evacuation Warning",
      "alerts":[
-      {"id":"a1","sourceName":"Sonoma County Emergency Management (Demo)","url":"https://example.org/a1",
+      {"id":"a1","sourceName":"San Francisco Department of Emergency Management (Demo)","url":"https://example.org/a1",
        "title":"Evacuation Warning","body":"Be ready to leave. Zones SON-3A and SON-3B.","hazardType":"evacuation",
        "severity":"severe","issuedAt":1791999000000,"updatedAt":1791999900000,"version":2,
        "areaLabels":["Zone SON-3A","Zone SON-3B"],"isFixture":true},

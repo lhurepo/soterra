@@ -38,7 +38,9 @@ final class AppModelTests: XCTestCase {
 
     func testScenariosDriveTheTopAlert() {
         let model = AppModel()
-        XCTAssertEqual(model.topAlert?.id, DemoData.warningID)
+        XCTAssertEqual(model.topAlert?.id, DemoData.orderID)
+        model.scenario = .crisis
+        XCTAssertEqual(model.topAlert?.id, DemoData.quakeID)
         model.scenario = .escalated
         XCTAssertEqual(model.topAlert?.id, DemoData.orderID)
         XCTAssertNotNil(model.topAlert?.changeNote)
@@ -50,7 +52,7 @@ final class AppModelTests: XCTestCase {
     func testOfflineReplacesNowWithTheSavedTime() {
         let model = AppModel()
         model.isOffline = true
-        let times = model.displayTimes(for: DemoData.evacuationWarning)
+        let times = model.displayTimes(for: DemoData.evacuationOrder)
         XCTAssertFalse(times.contains { $0.label == "Now" })
         XCTAssertTrue(times.contains { $0.label == "Saved" && $0.value == DemoConfig.lastSyncTime })
     }
@@ -81,8 +83,8 @@ final class AppModelTests: XCTestCase {
 
     func testShowZonesOnMapClosesThePanelAndReturnsToTheMap() {
         let model = AppModel()
-        model.mapSelection = .fire
-        model.mapPath = [.alert(DemoData.fireUpdateID)]
+        model.mapSelection = .epicenter
+        model.mapPath = [.alert(DemoData.collapseID)]
         model.showZonesOnMap()
         XCTAssertEqual(model.selectedTab, .map)
         XCTAssertNil(model.mapSelection)
@@ -92,10 +94,10 @@ final class AppModelTests: XCTestCase {
 
     func testOnlyShelterSelectionsHaveAShelterID() {
         let model = AppModel()
-        model.mapSelection = .zone("SON-3A")
+        model.mapSelection = .zone("SF-1")
         XCTAssertNil(model.selectedShelterID)
-        model.mapSelection = .shelter(DemoData.ridgeviewCenterID)
-        XCTAssertEqual(model.selectedShelterID, DemoData.ridgeviewCenterID)
+        model.mapSelection = .shelter(DemoData.hamiltonID)
+        XCTAssertEqual(model.selectedShelterID, DemoData.hamiltonID)
     }
 
     func testSimpleModeIsRememberedAcrossLaunches() {
@@ -111,7 +113,7 @@ final class AppModelTests: XCTestCase {
 
     func testFollowToggles() {
         let model = AppModel()
-        let alert = DemoData.fireUpdate
+        let alert = DemoData.palaceCollapse
         XCTAssertFalse(model.isFollowing(alert))
         model.toggleFollow(alert)
         XCTAssertTrue(model.isFollowing(alert))

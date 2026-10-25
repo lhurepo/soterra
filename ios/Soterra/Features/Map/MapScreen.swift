@@ -1,7 +1,7 @@
 import MapKit
 import SwiftUI
 
-/// Fictional demo geometry around the Ridgeview Fire, east of Santa Rosa. Not real evacuation boundaries.
+/// Fictional demo geometry for the Marina Earthquake in San Francisco. Not real evacuation boundaries.
 enum DemoGeo {
     struct Zone: Identifiable {
         let id: String
@@ -26,38 +26,41 @@ enum DemoGeo {
         }
     }
 
-    static let son3A = Zone(id: "SON-3A", coordinates: [
-        .init(latitude: 38.4520, longitude: -122.6600), .init(latitude: 38.4550, longitude: -122.6300),
-        .init(latitude: 38.4400, longitude: -122.6280), .init(latitude: 38.4370, longitude: -122.6580),
-    ], label: .init(latitude: 38.4460, longitude: -122.6440),
-    covers: "Zone SON-3A covers Ridgeview Road from Highway 12 to Bennett Valley Road.")
+    /// Where the demo person is: the Marina Branch Library, 1890 Chestnut Street (inside Zone SF-1).
+    static let home = CLLocationCoordinate2D(latitude: 37.8004, longitude: -122.4339)
 
-    static let son3B = Zone(id: "SON-3B", coordinates: [
-        .init(latitude: 38.4550, longitude: -122.6300), .init(latitude: 38.4580, longitude: -122.6000),
-        .init(latitude: 38.4320, longitude: -122.5980), .init(latitude: 38.4400, longitude: -122.6280),
-    ], label: .init(latitude: 38.4460, longitude: -122.6140),
-    covers: "Zone SON-3B covers the Matanzas Creek area.")
+    /// The epicenter and the partial collapse, about 1.2 km west of the library.
+    static let palaceOfFineArts = CLLocationCoordinate2D(latitude: 37.8029, longitude: -122.4484)
+    static let epicenterRadius: CLLocationDistance = 350
 
-    static let zones = [son3A, son3B]
+    /// North of Lombard Street, Van Ness Avenue to Lyon Street, including Marina Green and Crissy Field. The west edge is
+    /// pushed past Lyon Street so the Palace of Fine Arts sits inside the zone.
+    static let sf1 = Zone(id: "SF-1", coordinates: [
+        .init(latitude: 37.7993, longitude: -122.4495), .init(latitude: 37.7993, longitude: -122.4245),
+        .init(latitude: 37.8062, longitude: -122.4245), .init(latitude: 37.8082, longitude: -122.4330),
+        .init(latitude: 37.8088, longitude: -122.4420), .init(latitude: 37.8075, longitude: -122.4495),
+    ], label: .init(latitude: 37.8040, longitude: -122.4390),
+    covers: "Zone SF-1 covers the Marina District north of Lombard Street, from Van Ness Avenue to Lyon Street, including Marina Green and Crissy Field.")
 
-    static let fireCenter = CLLocationCoordinate2D(latitude: 38.4520, longitude: -122.6050)
-    static let fireRadius: CLLocationDistance = 900
+    static let zones = [sf1]
 
+    /// Marina Boulevard, Lyon Street to Laguna Street.
     static let roadClosure: [CLLocationCoordinate2D] = [
-        .init(latitude: 38.4490, longitude: -122.6680), .init(latitude: 38.4440, longitude: -122.6450),
-        .init(latitude: 38.4380, longitude: -122.6320),
+        .init(latitude: 37.8053, longitude: -122.4465), .init(latitude: 37.8060, longitude: -122.4390),
+        .init(latitude: 37.8058, longitude: -122.4310),
     ]
 
+    /// Centered between the library and the Palace of Fine Arts, so both and the zone are on screen.
     static let initialRegion = MKCoordinateRegion(
-        center: .init(latitude: 38.4440, longitude: -122.6500),
-        span: .init(latitudeDelta: 0.06, longitudeDelta: 0.13)
+        center: .init(latitude: 37.8022, longitude: -122.4412),
+        span: .init(latitudeDelta: 0.026, longitudeDelta: 0.034)
     )
 
     static func coordinate(of place: MapPlace) -> CLLocationCoordinate2D? {
         switch place {
         case .shelter(let id): DemoData.shelters.first { $0.id == id }?.coordinate
         case .zone(let id): zones.first { $0.id == id }?.label
-        case .fire: fireCenter
+        case .epicenter: palaceOfFineArts
         case .roadClosure: roadClosure[1]
         }
     }
@@ -80,7 +83,7 @@ struct MapScreen: View {
     @State private var isChromeHidden = false
     @FocusState private var isSearchFocused: Bool
 
-    private var hasActiveIncident: Bool { model.scenario != .calm }
+    private var hasActiveIncident: Bool { model.hasActiveIncident }
 
     private var visibleShelters: [Shelter] {
         DemoData.shelters.filter { shelter in
@@ -121,28 +124,29 @@ struct MapScreen: View {
         .onAppear { frame(model.mapSelection) }
         .onChange(of: model.mapSelection) { _, place in frame(place) }
         .onChange(of: model.mapFilters) { dropHiddenSelection() }
-        .onChange(of: model.scenario) { dropHiddenSelection() }
+        .onChange(of: model.alerts) { dropHiddenSelection() }
     }
 
     // MARK: Map
 
-    private var zoneColorA: Color {
-        model.scenario == .escalated ? SeverityLevel.high.fill : SeverityLevel.medium.fill
-    }
+    /// The evacuation zone exists only once the Order is out.
+    private var hasOrder: Bool { model.hasEvacuationOrder }
+
+    private var zoneColor: Color { SeverityLevel.high.fill }
 
     private var map: some View {
         Map(position: $position, scope: mapScope) {
             if hasActiveIncident && model.mapFilters.showsZones {
-                zonePolygon(DemoGeo.son3A, color: zoneColorA)
-                zonePolygon(DemoGeo.son3B, color: SeverityLevel.medium.fill)
-                zoneLabel(DemoGeo.son3A, color: zoneColorA)
-                zoneLabel(DemoGeo.son3B, color: SeverityLevel.medium.fill)
-                MapCircle(center: DemoGeo.fireCenter, radius: DemoGeo.fireRadius)
+                if hasOrder {
+                    zonePolygon(DemoGeo.sf1, color: zoneColor)
+                    zoneLabel(DemoGeo.sf1, color: zoneColor)
+                }
+                MapCircle(center: DemoGeo.palaceOfFineArts, radius: DemoGeo.epicenterRadius)
                     .foregroundStyle(SeverityLevel.high.fill.opacity(0.35))
-                    .stroke(SeverityLevel.high.fill, lineWidth: model.mapSelection == .fire ? 3 : 1.5)
-                Annotation("Ridgeview Fire", coordinate: DemoGeo.fireCenter, anchor: .center) {
-                    Button { select(.fire) } label: {
-                        Image(systemName: "flame.fill")
+                    .stroke(SeverityLevel.high.fill, lineWidth: model.mapSelection == .epicenter ? 3 : 1.5)
+                Annotation("Palace of Fine Arts", coordinate: DemoGeo.palaceOfFineArts, anchor: .center) {
+                    Button { select(.epicenter) } label: {
+                        Image(systemName: "waveform.path.ecg")
                             .foregroundStyle(.white)
                             .padding(6)
                             .background(SeverityLevel.high.fill, in: Circle())
@@ -150,7 +154,7 @@ struct MapScreen: View {
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Ridgeview Fire")
+                    .accessibilityLabel("Palace of Fine Arts, earthquake epicenter")
                 }
                 .annotationTitles(.hidden)
             }
@@ -159,7 +163,13 @@ struct MapScreen: View {
                     .stroke(SeverityLevel.high.fill,
                             style: StrokeStyle(lineWidth: model.mapSelection == .roadClosure ? 6 : 4, lineCap: .round, dash: [8, 6]))
             }
-            if model.mapFilters.showsShelters {
+            Annotation(DemoConfig.homeName, coordinate: DemoGeo.home, anchor: .center) {
+                YouAreHereDot()
+                    .accessibilityElement()
+                    .accessibilityLabel("You are here, \(DemoConfig.homeName)")
+            }
+            .annotationTitles(.hidden)
+            if hasActiveIncident && model.mapFilters.showsShelters {
                 ForEach(visibleShelters) { shelter in
                     Annotation(shelter.name, coordinate: shelter.coordinate) {
                         ShelterPin(name: shelter.name, isSelected: shelter.id == model.selectedShelterID) {
@@ -325,7 +335,7 @@ struct MapScreen: View {
             offset(to: coordinate).map { hypot($0.width, $0.height) } ?? .infinity
         }
 
-        if model.mapFilters.showsShelters,
+        if hasActiveIncident, model.mapFilters.showsShelters,
            let shelter = visibleShelters.min(by: { distance(to: $0.coordinate) < distance(to: $1.coordinate) }),
            distance(to: shelter.coordinate) <= reach {
             return .shelter(shelter.id)
@@ -333,25 +343,22 @@ struct MapScreen: View {
         guard hasActiveIncident else { return nil }
 
         if model.mapFilters.showsZones {
-            if let zone = DemoGeo.zones.first(where: { zone in
+            if hasOrder, let zone = DemoGeo.zones.first(where: { zone in
                 offset(to: zone.label).map { abs($0.width) <= 36 && abs($0.height) <= 22 } ?? false
             }) {
                 return .zone(zone.id)
             }
-            if distance(to: DemoGeo.fireCenter) <= reach { return .fire }
-        }
-        if model.mapFilters.showsZones {
-            let edge = CLLocationCoordinate2D(latitude: DemoGeo.fireCenter.latitude + DemoGeo.fireRadius / 111_320,
-                                              longitude: DemoGeo.fireCenter.longitude)
-            let radius = distance(to: edge) - distance(to: DemoGeo.fireCenter)
-            if distance(to: DemoGeo.fireCenter) <= max(reach, abs(radius)) { return .fire }
+            let edge = CLLocationCoordinate2D(latitude: DemoGeo.palaceOfFineArts.latitude + DemoGeo.epicenterRadius / 111_320,
+                                              longitude: DemoGeo.palaceOfFineArts.longitude)
+            let radius = distance(to: edge) - distance(to: DemoGeo.palaceOfFineArts)
+            if distance(to: DemoGeo.palaceOfFineArts) <= max(reach, abs(radius)) { return .epicenter }
         }
         if model.mapFilters.showsRoads {
             let points = DemoGeo.roadClosure.compactMap { proxy.convert($0, to: .local) }
             let nearest = zip(points, points.dropFirst()).map { segmentDistance(from: point, $0, $1) }.min() ?? .infinity
             if nearest <= 18 { return .roadClosure }
         }
-        if model.mapFilters.showsZones, let coordinate = proxy.convert(point, from: .local),
+        if hasOrder, model.mapFilters.showsZones, let coordinate = proxy.convert(point, from: .local),
            let zone = DemoGeo.zones.first(where: { $0.contains(coordinate) }) {
             return .zone(zone.id)
         }
@@ -370,12 +377,26 @@ struct MapScreen: View {
     private func dropHiddenSelection() {
         let filters = model.mapFilters
         let isVisible: Bool = switch model.mapSelection {
-        case .shelter(let id): filters.showsShelters && visibleShelters.contains { $0.id == id }
-        case .zone, .fire: hasActiveIncident && filters.showsZones
+        case .shelter(let id): hasActiveIncident && filters.showsShelters && visibleShelters.contains { $0.id == id }
+        case .zone: hasOrder && filters.showsZones
+        case .epicenter: hasActiveIncident && filters.showsZones
         case .roadClosure: hasActiveIncident && filters.showsRoads
         case nil: true
         }
         if !isVisible { select(nil) }
+    }
+}
+
+/// The blue dot Maps apps use for the person's own position: a soft halo, a white ring and a blue center.
+private struct YouAreHereDot: View {
+    var body: some View {
+        ZStack {
+            Circle().fill(Color.blue.opacity(0.2)).frame(width: 44, height: 44)
+            Circle().fill(.white).frame(width: 20, height: 20)
+                .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+            Circle().fill(Color.blue).frame(width: 14, height: 14)
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -497,8 +518,8 @@ private struct MapPlacePanel: View {
         switch place {
         case .shelter(let id): DemoData.shelters.first { $0.id == id }?.name ?? "Shelter"
         case .zone(let id): "Zone \(id)"
-        case .fire: "Ridgeview Fire"
-        case .roadClosure: "Ridgeview Road"
+        case .epicenter: "Palace of Fine Arts"
+        case .roadClosure: "Marina Boulevard"
         }
     }
 
@@ -517,8 +538,8 @@ private struct MapPlacePanel: View {
                         "Soterra can't tell you if an address is inside this zone. Demo shape, not a real boundary.",
                     ])
                 }
-            case .fire:
-                AlertPlaceDetails(alert: DemoData.fireUpdate, notes: [DemoData.fireUpdate.instruction])
+            case .epicenter:
+                AlertPlaceDetails(alert: DemoData.palaceCollapse, notes: [DemoData.palaceCollapse.instruction])
             case .roadClosure:
                 AlertPlaceDetails(alert: DemoData.roadClosure, notes: [DemoData.roadClosure.instruction])
             }
@@ -528,10 +549,8 @@ private struct MapPlacePanel: View {
         .padding(.bottom, 16)
     }
 
-    /// The bulletin in force for a zone: in the "Order" scenario SON-3A is under the Order, SON-3B still a Warning.
-    private func zoneAlert(_ zone: DemoGeo.Zone) -> HazardAlert {
-        zone.id == DemoGeo.son3A.id && model.scenario == .escalated ? DemoData.evacuationOrder : DemoData.evacuationWarning
-    }
+    /// The bulletin in force for a zone: Zone SF-1 is under the Evacuation Order.
+    private func zoneAlert(_ zone: DemoGeo.Zone) -> HazardAlert { DemoData.evacuationOrder }
 }
 
 /// Two actions side by side, stacked when the text is too large to fit them on one line.
@@ -596,9 +615,11 @@ private struct ShelterDetails: View {
 
 private extension ShelterDetails {
     @ViewBuilder var status: some View {
-        StatusChip(text: "Open", systemImage: "checkmark", fill: Palette.sage, ink: Palette.abyss)
+        StatusChip(text: shelter.statusText, systemImage: shelter.isOpen ? "checkmark" : "clock",
+                   fill: shelter.isOpen ? Palette.sage : Palette.surfaceRaised,
+                   ink: shelter.isOpen ? Palette.abyss : Palette.textPrimary)
             .fixedSize()
-        Text("\(shelter.spacesAvailable) of \(shelter.capacity) spaces")
+        Text(shelter.isOpen ? "\(shelter.spacesAvailable) of \(shelter.capacity) spaces" : "\(shelter.capacity) spaces")
             .font(.subheadline)
             .foregroundStyle(Palette.textPrimary)
             .fixedSize(horizontal: false, vertical: true)

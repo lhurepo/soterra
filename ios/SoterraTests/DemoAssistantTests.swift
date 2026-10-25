@@ -3,26 +3,26 @@ import XCTest
 
 final class DemoAssistantTests: XCTestCase {
     func testDangerComesFirstEvenWithOtherTopics() {
-        let reply = DemoAssistant.reply(to: "I'm trapped, the fire is at my house on Ridgeview Road",
+        let reply = DemoAssistant.reply(to: "I'm trapped, the building is on fire and I'm bleeding",
                                         previous: nil, scenario: .crisis)
         XCTAssertEqual(reply, .danger)
     }
 
-    func testRidgeviewQuestionGetsASourcedAnswer() {
-        let reply = DemoAssistant.reply(to: "What's going on with the Ridgeview Fire?", previous: nil, scenario: .crisis)
+    func testEarthquakeQuestionGetsASourcedAnswer() {
+        let reply = DemoAssistant.reply(to: "What happened in the Marina?", previous: nil, scenario: .crisis)
         guard case .answer(let answer) = reply else { return XCTFail("Expected a sourced answer, got \(reply)") }
-        XCTAssertEqual(answer.source.name, DemoData.fireInformation)
-        XCTAssertTrue(answer.text.contains("1,200 acres"))
+        XCTAssertEqual(answer.source.name, DemoData.usgs)
+        XCTAssertTrue(answer.text.contains("6.4"))
         XCTAssertFalse(answer.source.corroboratedBy.isEmpty)
     }
 
     func testEscalatedScenarioAnswersWithTheOrder() {
-        let reply = DemoAssistant.reply(to: "What's going on with the Ridgeview Fire?", previous: nil, scenario: .escalated)
+        let reply = DemoAssistant.reply(to: "Am I in an evacuation zone?", previous: nil, scenario: .escalated)
         XCTAssertEqual(reply, .answer(DemoAssistant.orderAnswer))
     }
 
     func testUnansweredQuestionIsIDontKnowYet() {
-        let question = "Is Hillcrest Elementary open as a shelter?"
+        let question = "Is the Marina Branch Library damaged?"
         XCTAssertEqual(DemoAssistant.reply(to: question, previous: nil, scenario: .crisis), .unknown(question: question))
     }
 
@@ -32,7 +32,7 @@ final class DemoAssistantTests: XCTestCase {
     }
 
     func testCallMeAfterAnUnknownSavesTheQuestion() {
-        let previous = ChatMessage.Content.unknown(question: "Is Hillcrest Elementary open as a shelter?")
+        let previous = ChatMessage.Content.unknown(question: "Is the Marina Branch Library damaged?")
         let reply = DemoAssistant.reply(to: "Call me when you know.", previous: previous, scenario: .crisis)
         guard case .confirmation(let text) = reply else { return XCTFail("Expected a confirmation, got \(reply)") }
         XCTAssertTrue(text.hasPrefix("Saved."))
@@ -43,5 +43,10 @@ final class DemoAssistantTests: XCTestCase {
                        .answer(DemoAssistant.shelterAnswer))
         XCTAssertEqual(DemoAssistant.reply(to: "Which roads are closed?", previous: nil, scenario: .crisis),
                        .answer(DemoAssistant.roadAnswer))
+    }
+
+    func testPalaceQuestionIsAnsweredByTheFireDepartment() {
+        let reply = DemoAssistant.reply(to: "Is everyone at the Palace of Fine Arts OK?", previous: nil, scenario: .escalated)
+        XCTAssertEqual(reply, .answer(DemoAssistant.palaceAnswer))
     }
 }

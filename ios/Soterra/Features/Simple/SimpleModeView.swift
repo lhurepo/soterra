@@ -87,7 +87,7 @@ struct SimpleModeView: View {
         let tone = CardTone.calm
         return VStack(alignment: .leading, spacing: 12) {
             StatusChip(text: "No active alerts", systemImage: "checkmark", fill: Palette.sage, ink: Palette.abyss)
-            Text("No active official alerts for Sonoma County.")
+            Text("No active official alerts for San Francisco.")
                 .font(.display(32, relativeTo: .largeTitle))
                 .foregroundStyle(tone.heading)
                 .fixedSize(horizontal: false, vertical: true)

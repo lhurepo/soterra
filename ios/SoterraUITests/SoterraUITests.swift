@@ -30,8 +30,8 @@ final class SoterraUITests: XCTestCase {
         let app = launch()
         visibleBell(in: app).tap()
         XCTAssertTrue(app.navigationBars["Alerts"].waitForExistence(timeout: 30))
-        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Be ready to leave'")).firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Evacuation Warning"].waitForExistence(timeout: 30))
+        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Leave now'")).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Evacuation Order"].waitForExistence(timeout: 30))
     }
 
     func testTheAppHasNoWayToDial911() {
@@ -63,7 +63,7 @@ final class SoterraUITests: XCTestCase {
         XCTAssertTrue(area.waitForExistence(timeout: 30))
         area.tap()
         XCTAssertTrue(app.navigationBars["Area"].waitForExistence(timeout: 30))
-        XCTAssertTrue(app.staticTexts["Sonoma County, CA"].exists)
+        XCTAssertTrue(app.staticTexts["San Francisco, CA"].exists)
     }
 
     // MARK: Map
@@ -85,7 +85,7 @@ final class SoterraUITests: XCTestCase {
 
     func testTappingPlacesSlidesUpTheirPanel() {
         let app = launch(["-SoterraTab", "map"])
-        let pin = app.buttons["Ridgeview Community Center"]
+        let pin = app.buttons["Hamilton Recreation Center"]
         XCTAssertTrue(pin.waitForExistence(timeout: launchTimeout))
 
         pin.tap()
@@ -99,11 +99,11 @@ final class SoterraUITests: XCTestCase {
         XCTAssertTrue(waitForDisappearance(of: directions))
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30), "the tab bar returns")
 
-        app.buttons["Zone SON-3A"].tap()
+        app.buttons["Zone SF-1"].tap()
         let seeAlert = app.buttons["See alert"]
         XCTAssertTrue(seeAlert.waitForExistence(timeout: 30))
         seeAlert.tap()
-        XCTAssertTrue(app.navigationBars["Evacuation Warning"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.navigationBars["Evacuation Order"].waitForExistence(timeout: 30))
     }
 
     // MARK: Simple mode
@@ -136,7 +136,7 @@ final class SoterraUITests: XCTestCase {
         assertBellFits(bell.frame, in: app)
         keepScreenshot(of: app, named: "Alert detail, top")
 
-        let source = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Sonoma County Emergency Management'")).firstMatch
+        let source = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'San Francisco Department of Emergency Management'")).firstMatch
         for _ in 0..<12 where !source.isHittable { app.swipeUp() }
         XCTAssertTrue(source.isHittable)
         assertInsideWindow(source, in: app)

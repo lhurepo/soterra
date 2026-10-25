@@ -28,18 +28,19 @@ struct ChatMessage: Identifiable, Hashable {
 /// The demo's stand-in for the backend assistant. It answers only from DemoData and says "I don't know yet"
 /// otherwise, the same rules the real orchestrator follows.
 enum DemoAssistant {
-    static let greeting = "Ask about the emergency. I answer only from official sources, and I say when I don't know yet."
+    static let greeting = "Ask about the Marina Earthquake. I answer only from official sources, and I say when I don't know yet."
 
     static let suggestions = [
-        "What's going on with the Ridgeview Fire?",
-        "Where are the shelters?",
-        "Which roads are closed?",
-        "Is Hillcrest Elementary open as a shelter?",
+        "What happened in the Marina?",
+        "Am I in an evacuation zone?",
+        "Where is the nearest shelter?",
+        "Is everyone at the Palace of Fine Arts OK?",
+        "Is the Marina Branch Library damaged?",
     ]
 
     private static let dangerPhrases = [
         "trapped", "danger", "can't get out", "cant get out", "help me", "hurt", "injured", "bleeding",
-        "fire is at my", "flames", "smoke in my", "can't breathe", "cant breathe",
+        "fire is at my", "smell gas", "flames", "smoke in my", "can't breathe", "cant breathe",
     ]
     private static let followUpPhrases = ["call me", "tell me when", "let me know", "notify me", "when you know"]
 
@@ -58,46 +59,61 @@ enum DemoAssistant {
             if case .unknown = previous {
                 return .confirmation("Saved. We'll tell you here when officials answer. Say \"stop updates\" any time.")
             }
-            return .confirmation("You're following the Ridgeview Fire evacuations. We'll call you if they change.")
+            return .confirmation("You're following the Marina District evacuations. We'll call you if they change.")
         }
-        if question.contains("hillcrest") { return .unknown(question: text) }
+        if question.contains("library") && question.contains("damage") { return .unknown(question: text) }
+        if question.contains("palace") || question.contains("cal hacks") || question.contains("everyone") {
+            return .answer(palaceAnswer)
+        }
         if question.contains("shelter") { return .answer(shelterAnswer) }
         if question.contains("road") || question.contains("closed") || question.contains("closure") {
             return .answer(roadAnswer)
         }
-        if question.contains("ridgeview") || question.contains("fire") || question.contains("going on")
-            || question.contains("evacuat") || question.contains("zone") {
-            return .answer(scenario == .escalated ? orderAnswer : fireAnswer)
+        if question.contains("evacuat") || question.contains("zone") {
+            return .answer(scenario == .escalated ? orderAnswer : quakeAnswer)
+        }
+        if question.contains("earthquake") || question.contains("quake") || question.contains("happen")
+            || question.contains("going on") || question.contains("marina") {
+            return .answer(scenario == .escalated ? orderAnswer : quakeAnswer)
         }
         return .unknown(question: text)
     }
 
-    static let fireAnswer = SourcedAnswer(
-        text: "The Ridgeview Fire is about **1,200 acres** and **10% contained**. Zones SON-3A and SON-3B are under an "
-            + "Evacuation Warning: be ready to leave.",
-        timeLabel: "Updated", time: "2:10 PM",
-        source: SourceInfo(name: DemoData.fireInformation, corroboratedBy: [DemoData.emergencyManagement])
+    static let quakeAnswer = SourcedAnswer(
+        text: "A **magnitude 6.4 earthquake** struck at 3:41 PM, centered at the Palace of Fine Arts in the Marina District. "
+            + "Aftershocks are likely. No evacuation order has been issued yet.",
+        timeLabel: "Issued", time: "3:43 PM",
+        source: SourceInfo(name: DemoData.usgs, corroboratedBy: [DemoData.fireDepartment])
     )
 
     static let orderAnswer = SourcedAnswer(
-        text: "Zone SON-3A is now under an **Evacuation Order: leave now**. Zone SON-3B is still under a Warning. "
-            + "The fire is about 1,200 acres and 10% contained.",
-        timeLabel: "Changed", time: "6:20 PM",
-        source: SourceInfo(name: DemoData.emergencyManagement, corroboratedBy: [DemoData.fireInformation])
+        text: "An **Evacuation Order: leave now** is in effect for the Marina District, north of Lombard Street, "
+            + "from Van Ness Avenue to Lyon Street. That includes the Marina Branch Library. "
+            + "Go to Hamilton Recreation Center, 1900 Geary Boulevard.",
+        timeLabel: "Issued", time: "3:43 PM",
+        source: SourceInfo(name: DemoData.emergencyManagement, corroboratedBy: [DemoData.fireDepartment])
+    )
+
+    static let palaceAnswer = SourcedAnswer(
+        text: "The Palace of Fine Arts **partly collapsed**. **All Cal Hacks attendees and staff are accounted for.** "
+            + "Fourteen people had minor injuries and were treated on scene.",
+        timeLabel: "Issued", time: "3:43 PM",
+        source: SourceInfo(name: DemoData.fireDepartment, corroboratedBy: [DemoData.emergencyManagement])
     )
 
     static let shelterAnswer = SourcedAnswer(
-        text: "Two shelters are open: **Ridgeview Community Center**, 500 Elm Street (120 of 200 spaces, pets in crates), "
-            + "and **Santa Rosa Veterans Building** (210 of 300 spaces, service animals only).",
-        timeLabel: "Checked", time: "2:30 PM",
+        text: "Two shelters are open: **Hamilton Recreation Center**, 1900 Geary Boulevard (180 of 250 spaces, pets in crates), "
+            + "and **Kezar Pavilion**, 755 Stanyan Street (390 of 400 spaces, service animals only). "
+            + "Moscone Center West opens at 6:00 PM.",
+        timeLabel: "Checked", time: "3:45 PM",
         source: SourceInfo(name: DemoData.emergencyManagement),
-        note: "Space was checked at 2:30 PM and may have changed."
+        note: "Space was checked at 3:45 PM and may have changed."
     )
 
     static let roadAnswer = SourcedAnswer(
-        text: "**Ridgeview Road is closed** both ways between Highway 12 and Bennett Valley Road. "
-            + "Use Highway 12 or Bennett Valley Road instead.",
-        timeLabel: "Issued", time: "1:15 PM",
-        source: SourceInfo(name: DemoData.caltrans)
+        text: "**Marina Boulevard is closed** both ways from Lyon Street to Laguna Street, and Lombard Street is closed "
+            + "from Van Ness Avenue to Broderick Street. The Golden Gate Bridge is closed and BART is suspended.",
+        timeLabel: "Issued", time: "3:44 PM",
+        source: SourceInfo(name: DemoData.sfmta)
     )
 }
