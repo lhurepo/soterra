@@ -100,5 +100,5 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 /** Twilio's standard opt-out words (Twilio blocks further texts by itself) plus Spanish ones. */
 export function isOptOutText(body: string): boolean {
-  return /^\s*(stop|stopall|unsubscribe|cancel|end|quit|optout|revoke|parar|para|alto|cancelar|baja)\s*[.!]?\s*$/i.test(body);
+  return /^\s*(stop|stop ?all|unsubscribe|cancel|end|quit|optout|revoke|parar|para|alto|cancelar|baja)\s*[.!]?\s*$/i.test(body);
 }

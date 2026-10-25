@@ -52,8 +52,8 @@ const EnvSchema = z.object({
   /** Send from this number (E.164), or set TWILIO_MESSAGING_SERVICE_SID instead (it wins when both are set). */
   TWILIO_FROM_NUMBER: optionalString,
   TWILIO_MESSAGING_SERVICE_SID: optionalString,
-  /** The hotline number printed in texts ("Questions? Call …"). Optional. */
-  HOTLINE_NUMBER: optionalString,
+  /** The hotline number printed in texts ("Questions? Call (712) 600-3362"). */
+  HOTLINE_NUMBER: optionalString.transform((v) => v ?? DEFAULTS.hotlineNumber),
   SERVE_FIXTURES: bool,
   ENABLE_MOCK_SITES: bool,
   ANON_TRANSCRIPT_TTL_HOURS: positiveInt(DEFAULTS.anonTranscriptTtlMs / 3_600_000),

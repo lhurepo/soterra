@@ -1,6 +1,6 @@
 // [B] Text alerts end to end: "text me" subscriptions, the confirmation text, a missed update call texted, an answered
 // one recapped, voicemail, a call that can't be placed, landlines switched to calls, Twilio webhooks (signatures, STOP)
-// and time-based updates. Only the mock notifiers run (no Twilio or Cartesia request is made).
+// and time-based updates. Text format: "Update on <topic> (<time sent>):", "As of <official time>: …", how to stop. Only the mock notifiers run (no Twilio or Cartesia request is made).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULTS } from "../../src/config/defaults";
 import { t as str } from "../../src/config/strings";
@@ -15,7 +15,7 @@ const TOKEN = "twilio-test-token";
 
 beforeEach(() => {
   useDemoClock();
-  setupEnv({ CONVEX_SITE_URL: SITE, TWILIO_AUTH_TOKEN: TOKEN, HOTLINE_NUMBER: "+18046066867" });
+  setupEnv({ CONVEX_SITE_URL: SITE, TWILIO_AUTH_TOKEN: TOKEN, HOTLINE_NUMBER: "+17126003362" });
 });
 afterEach(() => vi.useRealTimers());
 
@@ -60,7 +60,7 @@ describe("choosing texts", () => {
     const [confirmation] = await callTexts(t);
     expect(confirmation).toMatchObject({ channel: "sms", purpose: "subscription_confirmation", status: "mock", recipientPhone: PHONE, subscriptionId: r.subscriptionId });
     expect(confirmation.message).toBe(
-      "Soterra: you'll get texts about Ridgeview Fire when officials post updates, until October 25 at 3:00 PM Pacific. Questions? Call (804) 606-6867. Reply STOP to stop texts. In danger? Call 911.",
+      "Soterra: you'll get texts about Ridgeview Fire when officials post updates, until October 25 at 3:00 PM Pacific. Questions? Call (712) 600-3362. Reply STOP to stop all Soterra texts. In danger? Call 911.",
     );
 
     await seedBulletins(t, updateDrafts);
@@ -68,7 +68,10 @@ describe("choosing texts", () => {
     const updates = await updateNotifications(t);
     expect(updates).toHaveLength(1);
     expect(updates[0]).toMatchObject({ channel: "sms", purpose: "update", status: "mock" });
-    expect(updates[0].message).toMatch(/Evacuation Order for zone SON-3A/);
+    expect(updates[0].text).toMatch(/^Update on Ridgeview Fire \(3:00 PM PT\):\n\nAs of [^:]+:\d\d [AP]M PT: Evacuation Order for zone SON-3A/);
+    expect(updates[0].text).toMatch(/\n\nReply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\. Questions\? Call \(712\) 600-3362\. In danger\? Call 911\.$/);
+    // What a callback would speak is kept separately.
+    expect(updates[0].message).toMatch(/^Update from Sonoma County Emergency Management/);
     // A text is not a call: no outcome check, no missed-call text.
     expect((await callTexts(t)).map((n) => n.purpose)).toEqual(["subscription_confirmation"]);
   });
@@ -119,13 +122,13 @@ describe("update calls: missed → text, answered → recap", () => {
     const missed = (await callTexts(t)).filter((n) => n.purpose === "missed_call_text");
     expect(missed).toHaveLength(1);
     expect(missed[0]).toMatchObject({ channel: "sms", status: "mock", parentNotificationId: update._id, recipientPhone: PHONE });
-    expect(missed[0].message).toMatch(/^Soterra: we called with the update you asked for\. Update from Sonoma County Emergency Management \(Demo\)/);
-    expect(missed[0].message).toMatch(/Reply STOP to stop texts\. In danger\? Call 911\.$/);
+    expect(missed[0].message).toMatch(/^Update on Ridgeview Fire \([^)]+\):\n\nWe tried to call you\. As of [^:]+:\d\d [AP]M PT: Evacuation Order for zone SON-3A/);
+    expect(missed[0].message).toMatch(/Reply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\. Questions\? Call \(712\) 600-3362\. In danger\? Call 911\.$/);
     expect(missed[0].message.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
     expect((await t.run(async (ctx) => await ctx.db.get("notifications", update._id)))?.outcome).toBe("missed");
   });
 
-  it("recaps an answered call by text, with the answers but without their sources", async () => {
+  it("texts the update after an answered call, and nothing that was said on it", async () => {
     const t = newTest();
     const { update } = await subscribedAndUpdated(t);
     const outbound = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: update._id });
@@ -140,47 +143,21 @@ describe("update calls: missed → text, answered → recap", () => {
     expect(texts.filter((n) => n.purpose === "missed_call_text")).toHaveLength(0);
     const [recap] = texts.filter((n) => n.purpose === "call_recap");
     expect(recap).toMatchObject({ channel: "sms", status: "mock", parentNotificationId: update._id });
-    expect(recap.message).toMatch(/^Soterra recap: Update from Sonoma County Emergency Management \(Demo\)/);
-    expect(recap.message).toMatch(/Reply STOP to stop texts\. In danger\? Call 911\.$/);
-    expect(recap.message.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
+    expect(recap.message).toBe(update.text);
+    expect(recap.message).not.toMatch(/shelter|pets/i);
     expect((await t.run(async (ctx) => await ctx.db.get("notifications", update._id)))?.outcome).toBe("answered");
-  });
-
-  it("puts a short answer in the recap when there is room", async () => {
-    const t = newTest();
-    await seedBulletins(t);
-    await ask(t, "Please call me if the evacuation changes.");
-    // A short update leaves room for the answer.
-    const [sub] = await t.run(async (ctx) => await ctx.db.query("subscriptions").collect());
-    const notificationId = await t.run(async (ctx) =>
-      ctx.db.insert("notifications", {
-        subscriptionId: sub._id,
-        recipientPhone: PHONE,
-        channel: "phone_call",
-        language: "en",
-        message: "Evacuation Order for zone SON-3A.",
-        bulletinRefs: [],
-        dedupeKey: "short-update",
-        purpose: "update",
-        status: "mock",
-        createdAt: Date.now(),
-      }),
-    );
-    const outbound = await start(t, { direction: "outbound", callerPhone: undefined, notificationId });
-    await say(t, outbound.sessionId, 0, "Are there shelters that take pets?");
-    await end(t, outbound.sessionId);
-    await settle(t);
-    const [recap] = (await callTexts(t)).filter((n) => n.purpose === "call_recap");
-    // The mock model's answer is long: it is cut at a word so the footer (STOP, 911) always fits.
-    expect(recap.message).toMatch(/^Soterra recap: Evacuation Order for zone SON-3A\. On the call: Two evacuation shelters are open, .*… Questions\? Call/);
-    expect(recap.message.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
   });
 
   it("treats a call that only reached voicemail as missed", async () => {
     const t = newTest();
     const { update } = await subscribedAndUpdated(t);
     const outbound = await start(t, { direction: "outbound", callerPhone: undefined, notificationId: update._id });
-    await say(t, outbound.sessionId, 0, "Hi, you've reached Sam. Please leave a message after the tone.");
+    const vm = await say(t, outbound.sessionId, 0, "Hi, you've reached Sam. Please leave a message after the tone.");
+    // A short message for the machine, then hang up.
+    expect(vm.reply).toBe(
+      "Hi, this is Soterra, the disaster information line, with the update you asked for on Ridgeview Fire. We'll text you the details. If you are in danger, call 911. Goodbye.",
+    );
+    expect(vm.endCall).toBe(true);
     await end(t, outbound.sessionId);
     await settle(t);
     const texts = await callTexts(t);
@@ -232,7 +209,7 @@ describe("landlines", () => {
       ["phone_call", "mock"],
     ]);
     expect(rows[0]).toMatchObject({ providerStatus: "undelivered", error: "code 30006: undelivered" });
-    expect(rows[1]).toMatchObject({ message: text.message, parentNotificationId: text._id });
+    expect(rows[1]).toMatchObject({ message: text.message, text: text.text, parentNotificationId: text._id });
     // The caller's choice is updated too, so the next request defaults to calls.
     const caller = await t.run(async (ctx) => await ctx.db.query("callers").first());
     expect(caller?.preferredChannel).toBe("phone_call");
@@ -277,6 +254,27 @@ describe("Twilio webhooks", () => {
     expect(await updateNotifications(t)).toHaveLength(0);
   });
 
+  it("STOP <topic> cancels only that subscription and says so", async () => {
+    const t = newTest();
+    await seedBulletins(t);
+    const r = await ask(t, "Text me if the evacuation changes");
+    const sub = (await subscription(t, r.subscriptionId))!;
+    const other = await t.run(async (ctx) =>
+      ctx.db.insert("subscriptions", { ...sub, _id: undefined, _creationTime: undefined, target: { kind: "area", area: { label: "Sonoma County", state: "CA" } }, topicLabel: "Sonoma County" } as never),
+    );
+    const res = await twilioPost(t, "/twilio/inbound", { From: PHONE, Body: "Stop Ridgeview fire" });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(
+      '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Soterra: you won&apos;t get more updates on Ridgeview Fire. Reply STOP to stop all Soterra texts.</Message></Response>'.replace("&apos;", "'"),
+    );
+    expect((await subscription(t, r.subscriptionId))?.status).toBe("cancelled");
+    expect((await subscription(t, other))?.status).toBe("active");
+
+    const none = await twilioPost(t, "/twilio/inbound", { From: PHONE, Body: "STOP CAMP FIRE" });
+    expect(await none.text()).toContain("Soterra: no active updates match &quot;STOP CAMP FIRE&quot;. Reply STOP to stop all Soterra texts.");
+    expect((await subscription(t, other))?.status).toBe("active");
+  });
+
   it("other texts change nothing", async () => {
     const t = newTest();
     await seedBulletins(t);
@@ -309,6 +307,8 @@ describe("time-based updates", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ channel: "sms", purpose: "scheduled_update", status: "mock" });
     expect(rows[0].message).toMatch(/^No new official updates about Ridgeview Fire since October 24 at 3:00 PM Pacific\. Latest from /);
+    expect(rows[0].text).toMatch(/^Update on Ridgeview Fire \(5:00 PM PT\):\n\nNo new official updates since 3:00 PM PT\. Latest, as of /);
+    expect(rows[0].text).toMatch(/\n\nThis is an update every 2 hours\. Reply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\. Questions/);
 
     // An event does not fire a scheduled subscription; the next slot reports it.
     await seedBulletins(t, updateDrafts);
@@ -321,6 +321,7 @@ describe("time-based updates", () => {
     rows = await updateNotifications(t);
     expect(rows).toHaveLength(2);
     expect(rows[1].message).toMatch(/Evacuation Order for zone SON-3A/);
+    expect(rows[1].text).toMatch(/^Update on Ridgeview Fire \(7:00 PM PT\):\n\nAs of [^:]+:\d\d [AP]M PT: Evacuation Order for zone SON-3A/);
   });
 
   it("a scheduled call that is missed is texted too", async () => {

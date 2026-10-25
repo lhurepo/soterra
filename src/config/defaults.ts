@@ -34,8 +34,10 @@ export const DEFAULTS = {
    * (src/providers/cartesia/outbound.ts), so a call with no session by then was missed.
    */
   callOutcomeCheckMs: 100_000,
-  /** Texts are kept to about two SMS segments; longer recaps are cut at a sentence. */
-  smsMaxChars: 320,
+  /** Longest text we send: three GSM segments (Spanish accents make it UCS-2, so more segments there). */
+  smsMaxChars: 450,
+  /** Printed in texts when HOTLINE_NUMBER is not set: the Soterra line. */
+  hotlineNumber: "+17126003362",
   /** When the newest cited source is older than this, the reply says "as of" its time. */
   staleSourceMs: 3 * HOUR,
   /** Sessions silent this long are finalized by the sweeper (docs/contracts/live-call.md says 15 minutes). */

@@ -87,6 +87,9 @@ class Settings:
     # Our own Cartesia numbers: a call whose `from` is one of these is an outbound callback.
     own_numbers: frozenset[str] = frozenset()
     offer_spanish_dtmf: bool = False
+    # Outbound callbacks: wait this long for whoever answers to speak before greeting, so an answering machine's
+    # prompt is heard first (then the backend leaves a short voicemail) instead of the greeting being recorded.
+    outbound_greeting_wait_s: float = 2.0
     mock_conversation: Optional[str] = None
 
     def voice_for(self, language: str) -> str:
@@ -129,6 +132,7 @@ class Settings:
             language_by_dialed_number=parse_language_map(env.get("LANGUAGE_BY_DIALED_NUMBER", "")),
             own_numbers=parse_numbers(env.get("SOTERRA_PHONE_NUMBERS", "")),
             offer_spanish_dtmf=_bool(env, "OFFER_SPANISH_DTMF"),
+            outbound_greeting_wait_s=_float(env, "OUTBOUND_GREETING_WAIT_S", 2.0),
             mock_conversation=env.get("MOCK_CONVERSATION", "").strip() or None,
         )
 

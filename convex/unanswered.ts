@@ -7,7 +7,7 @@ import { buildAnswerMessage } from "../src/notifications/message";
 import { normalizeForMatch } from "../src/orchestration/text";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
-import { queueNotification } from "./subscriptions";
+import { queueNotification, updateTextFor } from "./subscriptions";
 
 const sameQuestion = (a: string, b: string) =>
   normalizeForMatch(a).replace(/[^\p{L}\p{N} ]/gu, "") === normalizeForMatch(b).replace(/[^\p{L}\p{N} ]/gu, "");
@@ -79,7 +79,8 @@ export const answerUnansweredQuestion = internalMutation({
         { question: question.text, answer: answer.trim(), sourceName: sourceName.trim(), answeredAt: now, state: question.area?.state },
         sub.language,
       );
-      const created = await queueNotification(ctx, sub, { dedupeKey: answerDedupeKeyFor(sub._id, id), message, bulletinRefs: [], now });
+      const text = updateTextFor(sub, { sentAt: now, answer: { question: question.text, answer: answer.trim(), answeredAt: now } });
+      const created = await queueNotification(ctx, sub, { dedupeKey: answerDedupeKeyFor(sub._id, id), message, text, bulletinRefs: [], now });
       if (created === "queued") notificationsCreated++;
     }
     return { notificationsCreated };

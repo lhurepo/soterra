@@ -9,21 +9,22 @@ import { buildScheduledMessage } from "../src/notifications/message";
 import { MockSmsNotifier, TwilioSmsNotifier, UnconfiguredSmsNotifier, selectNotifier } from "../src/notifications/notifier";
 import { clampIntervalMs, formatInterval, nextRunAfter, subscriptionLifetimeMs } from "../src/notifications/schedule";
 import {
-  answerWithoutAttribution,
   buildConfirmationText,
-  buildMissedCallText,
-  buildRecapText,
+  buildUpdateText,
   fitText,
   formatPhoneForText,
   incidentLabel,
+  parseStopTopic,
+  shortTopic,
+  stopKeyword,
+  stopTopicMatches,
   textTopic,
+  withMissedCallLead,
 } from "../src/notifications/sms";
 import { asksForFollowUp, looksLikeVoicemail, requestedChannel, requestedIntervalMinutes } from "../src/orchestration/intents";
 import { isOptOutText, messagesUrl, sendSms, smsRequestBody, twilioSignature, verifyTwilioSignature } from "../src/providers/twilio/sms";
 
 const HOUR = 3_600_000;
-const UPDATE =
-  "Update from Sonoma County Emergency Management (Demo), October 24 at 6:20 PM Pacific: Evacuation Order for zone SON-3A, Ridgeview Fire. An Evacuation Order is now in effect for zone SON-3A near the Ridgeview Fire.";
 
 describe("intents: channel, interval, voicemail", () => {
   it("reads 'text me' as texts and 'call me' as calls, in English and Spanish", () => {
@@ -93,32 +94,83 @@ describe("schedule rules", () => {
 });
 
 describe("text templates", () => {
-  it("keeps every text within two segments, always ending with STOP and 911", () => {
-    const missed = buildMissedCallText(UPDATE, "en", "+18046066867");
-    expect(missed.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
-    expect(missed).toMatch(/^Soterra: we called with the update you asked for\. Update from Sonoma County/);
-    expect(missed).toMatch(/Questions\? Call \(804\) 606-6867\. Reply STOP to stop texts\. In danger\? Call 911\.$/);
-    const long = fitText(`${"A very long sentence about the fire. ".repeat(20)}`, t("smsFooter", "en"));
+  const SENT = Date.parse("2026-10-24T23:40:00Z"); // 4:40 PM PT
+  const COOLEY = {
+    title: "Cooley Fire",
+    body: "Cooley Fire, Mendocino County: about 1,365 acres, 90% contained. Incident 2026-CAMEU-001234 in the NIFC WFIGS current incidents layer.",
+    issuedAt: Date.parse("2026-10-24T21:22:00Z"), // 2:22 PM PT
+    primaryState: "CA",
+  };
+  const base = { topic: "Cooley Fire", keyword: "STOP COOLEY FIRE", sentAt: SENT, state: "CA", latest: COOLEY };
+
+  it("formats an update: header with the time sent, 'As of' the official time, how to stop", () => {
+    expect(buildUpdateText(base, "en", "+17126003362")).toBe(
+      [
+        "Update on Cooley Fire (4:40 PM PT):",
+        "As of 2:22 PM PT: Cooley Fire, Mendocino County: about 1,365 acres, 90% contained.",
+        "Reply STOP COOLEY FIRE to stop receiving updates on Cooley Fire. Questions? Call (712) 600-3362. In danger? Call 911.",
+      ].join("\n\n"),
+    );
+    // An older official time carries its date.
+    expect(buildUpdateText({ ...base, latest: { ...COOLEY, issuedAt: COOLEY.issuedAt - 86_400_000 } }, "en")).toContain("As of Oct 23, 2:22 PM PT:");
+  });
+
+  it("adds the repeat line to time-based updates, and says when nothing changed", () => {
+    const scheduled = { intervalMs: 2 * HOUR, since: SENT - 3 * HOUR };
+    const text = buildUpdateText({ ...base, scheduled }, "en", "+17126003362");
+    expect(text).toContain("\n\nThis is an update every 2 hours. Reply STOP COOLEY FIRE to stop receiving updates on Cooley Fire.");
+    expect(text).toContain("As of 2:22 PM PT:");
+    const same = buildUpdateText({ ...base, scheduled: { ...scheduled, since: SENT - 30 * 60_000 } }, "en");
+    expect(same).toContain("No new official updates since 4:10 PM PT. Latest, as of 2:22 PM PT: Cooley Fire, Mendocino County");
+    const none = buildUpdateText({ ...base, latest: undefined, scheduled }, "en");
+    expect(none).toContain("No official updates yet. We'll check again in 2 hours.");
+  });
+
+  it("texts an answered question in the same format", () => {
+    const text = buildUpdateText(
+      { topic: "your question", keyword: "STOP QUESTION", sentAt: SENT, answer: { question: "Is Hwy 128 open", answer: "Highway 128 reopened at 3 PM", answeredAt: SENT } },
+      "en",
+    );
+    expect(text).toMatch(/^Update on your question \(4:40 PM PT\):\n\nYou asked: "Is Hwy 128 open\?" As of 4:40 PM PT: Highway 128 reopened at 3 PM\.\n\nReply STOP QUESTION/);
+  });
+
+  it("puts 'We tried to call you.' in front of the update for a missed call", () => {
+    const missed = withMissedCallLead(buildUpdateText(base, "en", "+17126003362"), "en");
+    expect(missed.split("\n\n")[1]).toBe("We tried to call you. As of 2:22 PM PT: Cooley Fire, Mendocino County: about 1,365 acres, 90% contained.");
+    expect(withMissedCallLead(buildUpdateText(base, "es"), "es").split("\n\n")[1]).toMatch(/^Intentamos llamarle\. Aviso oficial de las 2:22/);
+  });
+
+  it("keeps every text within the limit, cutting the body and never the header or STOP lines", () => {
+    const long = buildUpdateText({ ...base, latest: { ...COOLEY, body: `Cooley Fire ${"burns in steep terrain near the river ".repeat(30)}.` } }, "en", "+17126003362");
     expect(long.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
-    expect(long.endsWith(t("smsFooter", "en"))).toBe(true);
-    // A single sentence that does not fit is cut at a word, not dropped.
+    expect(long).toMatch(/^Update on Cooley Fire/);
+    expect(long).toMatch(/\.\.\.\n\nReply STOP COOLEY FIRE .* Call 911\.$/);
+    const missed = withMissedCallLead(long, "en");
+    expect(missed.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
     const cut = fitText(`Intro. ${"word ".repeat(100)}end.`, t("smsFooter", "en"));
-    expect(cut).toMatch(/^Intro\. word word .*…/);
+    expect(cut).toMatch(/^Intro\. word word .*\.\.\. Reply STOP/);
     expect(cut.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
   });
 
-  it("recaps the update and the answers without their attributions", () => {
-    expect(answerWithoutAttribution("Ridgeview Community Center takes pets in crates. Sonoma County Fire, 2:10 PM.")).toBe("Ridgeview Community Center takes pets in crates.");
-    expect(answerWithoutAttribution("The fire is 10% contained. Also reported by CAL FIRE. Sonoma County Fire, yesterday.")).toBe("The fire is 10% contained.");
-    expect(answerWithoutAttribution("Zones SON-3A and SON-3B. Fuente: Bomberos de Sonoma, 2:10 p. m.")).toBe("Zones SON-3A and SON-3B.");
-    // A one-sentence reply is kept, whatever it says.
-    expect(answerWithoutAttribution("Evacuation is ordered as of 6:20 PM.")).toBe("Evacuation is ordered as of 6:20 PM.");
+  it("names topics and STOP keywords, and reads STOP <topic> replies", () => {
+    expect(shortTopic("Cooley Fire")).toBe("Cooley Fire");
+    expect(shortTopic("Red Flag Warning issued October 24 at 2:00PM PDT by NWS Eureka")).toBe("Red Flag Warning");
+    expect(textTopic({ kind: "incident", incidentKey: "wfigs:2026-CAMEU-001234" }, "en", "Cooley Fire")).toBe("Cooley Fire");
+    expect(textTopic({ kind: "incident", incidentKey: "wfigs:2026-CAMEU-001234" }, "en")).toBe(t("topicIncident", "en"));
+    expect(stopKeyword({ kind: "incident" }, "Cooley Fire", "en")).toBe("STOP COOLEY FIRE");
+    expect(stopKeyword({ kind: "area" }, "Doña Ana County", "es")).toBe("STOP DONA ANA COUNTY");
+    expect(stopKeyword({ kind: "question" }, "su pregunta", "es")).toBe("STOP PREGUNTA");
 
-    const recap = buildRecapText("Evacuation Order for zone SON-3A.", ["Ridgeview Community Center takes pets in crates. Sonoma County Fire, 2:10 PM."], "en");
-    expect(recap).toBe(`Soterra recap: Evacuation Order for zone SON-3A. On the call: Ridgeview Community Center takes pets in crates. ${t("smsFooter", "en")}`);
-    const crowded = buildRecapText(UPDATE, ["One answer that is fairly long and goes on. Source, 2:10 PM.", "Another answer that is also long and detailed. Source, 2:15 PM."], "en", "+18046066867");
-    expect(crowded.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
-    expect(crowded).toMatch(/^Soterra recap: Update from/);
+    expect(parseStopTopic("STOP COOLEY FIRE")).toBe("cooley fire");
+    expect(parseStopTopic("  stop cooley fire. ")).toBe("cooley fire");
+    expect(parseStopTopic("Parar pregunta")).toBe("pregunta");
+    for (const b of ["STOP", "stop all", "Cooley fire", "stop"]) expect(parseStopTopic(b), b).toBeNull();
+    expect(stopTopicMatches("cooley fire", ["Cooley Fire"])).toBe(true);
+    expect(stopTopicMatches("cooley", ["Cooley Fire"])).toBe(true);
+    expect(stopTopicMatches("cooley fire please", ["Cooley Fire"])).toBe(true);
+    expect(stopTopicMatches("coo", ["Cooley Fire"])).toBe(false);
+    expect(stopTopicMatches("ridgeview", ["Cooley Fire"])).toBe(false);
+    expect(isOptOutText("STOP ALL")).toBe(true);
   });
 
   it("confirms what was set up, in the caller's language", () => {

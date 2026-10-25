@@ -461,6 +461,8 @@ export default defineSchema({
     intervalMs: v.optional(v.number()),
     nextRunAt: v.optional(v.number()),
     lastRunAt: v.optional(v.number()),
+    /** What texts call it ("Cooley Fire", "Sonoma County"); also its STOP keyword ("STOP COOLEY FIRE"). Set at creation. */
+    topicLabel: v.optional(v.string()),
   })
     .index("by_status_and_nextRunAt", ["status", "nextRunAt"])
     .index("by_createdFromCallId", ["createdFromCallId"])
@@ -483,6 +485,8 @@ export default defineSchema({
     dedupeKey: v.string(),
     /** Absent = "update". See NotificationPurpose in src/contracts/notifications.ts. */
     purpose: v.optional(notificationPurpose),
+    /** Updates only: the text version ("Update on Cooley Fire (4:40 PM PT): …"); `message` is what a call speaks. */
+    text: v.optional(v.string()),
     /** Texts about a call (missed-call text, recap): the update call they follow. */
     parentNotificationId: v.optional(v.id("notifications")),
     /** Phone calls only: whether the caller picked up and spoke (set by the outcome check or at finalize). */

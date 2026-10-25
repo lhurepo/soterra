@@ -15,7 +15,7 @@ import { dangerLanguage } from "./danger";
 import { enforceGrounding } from "./grounding";
 import { addNeed } from "../memory/profile";
 import { clampIntervalMs, subscriptionLifetimeMs, formatInterval } from "../notifications/schedule";
-import { asksToStopUpdates, declinesTranscript, explicitFollowUpRequest, isConfirmation, isRefusal, profileCommand, requestedChannel, requestedIntervalMinutes } from "./intents";
+import { asksToStopUpdates, declinesTranscript, explicitFollowUpRequest, isConfirmation, isRefusal, looksLikeVoicemail, profileCommand, requestedChannel, requestedIntervalMinutes } from "./intents";
 import { buildTurnRequest, parseDraft } from "./prompt";
 
 export type TurnInput = {
@@ -48,6 +48,8 @@ export type TurnState = {
   preferredChannel?: "phone_call" | "sms";
   /** For an update callback: what we phoned about (the update text). */
   callReason?: string;
+  /** For an update callback: what the update is about ("Cooley Fire"), for the voicemail message. */
+  updateTopic?: string;
 };
 
 export type TurnDeps = {
@@ -161,6 +163,12 @@ export async function runTurn(input: TurnInput, state: TurnState, deps: TurnDeps
   // 1. Danger first: deterministic, before retrieval and the LLM, and its reply needs neither.
   const inDangerIn = dangerLanguage(input.utterance, language === "es" ? "es" : "en");
   if (inDangerIn) return { ...simple("safety", t("safety", inDangerIn)), language: inDangerIn };
+
+  // 1b. An update callback that reached voicemail: a short message and hang up; the update follows by text
+  // (notifications.sendAfterCallTexts sees only voicemail turns and sends the missed-call text).
+  if (state.updateTopic !== undefined && looksLikeVoicemail(input.utterance) && state.recentCallerUtterances.every(looksLikeVoicemail)) {
+    return { ...simple("smalltalk", tf("outboundVoicemail", language, { topic: state.updateTopic })), endCall: true };
+  }
 
   // 2. Deterministic intents that must not depend on the model.
   // 2a. A destructive command from the previous turn is waiting for "yes"; anything else cancels it.

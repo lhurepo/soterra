@@ -2,7 +2,7 @@
   "recipientPhone": "+17075550123",
   "channel": "sms",
   "language": "en",
-  "message": "Soterra: we called with the update you asked for. Update from Sonoma County Emergency Management (Demo), October 24 at 6:20 PM Pacific: Evacuation Order for zone SON-3A, Ridgeview Fire. Questions? Call (804) 606-6867. Reply STOP to stop texts. In danger? Call 911.",
+  "message": "Update on Ridgeview Fire (6:21 PM PT):\n\nWe tried to call you. As of 6:20 PM PT: Evacuation Order for zone SON-3A, Ridgeview Fire. An Evacuation Order is now in effect for zone SON-3A near the Ridgeview Fire.\n\nReply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire. Questions? Call (712) 600-3362. In danger? Call 911.",
   "bulletinRefs": ["jh7demo0bulletin0000000000000000"],
   "dedupeKey": "kn7demo0notification:missed",
   "subscriptionId": "kn7demo0subscription000000000000",

@@ -6,12 +6,30 @@ import { v } from "convex/values";
 import type { FollowUpRequest } from "../src/contracts";
 import { loadConfig } from "../src/config/env";
 import { clampIntervalMs, nextRunAfter, subscriptionLifetimeMs } from "../src/notifications/schedule";
-import { textTopic } from "../src/notifications/sms";
+import { buildUpdateText, stopKeyword, textTopic, type UpdateTextArgs } from "../src/notifications/sms";
 import { RATE_LIMITED_ERROR, dedupeKeyFor, eventMatches, rateLimited } from "../src/notifications/match";
 import { buildScheduledMessage, buildUpdateMessage } from "../src/notifications/message";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "./_generated/server";
+
+/** What texts call this subscription ("Cooley Fire"); `bulletinTitle` names an incident when no label was stored. */
+export function subscriptionTopic(sub: Pick<Doc<"subscriptions">, "target" | "language" | "topicLabel">, bulletinTitle?: string): string {
+  return sub.topicLabel ?? textTopic(sub.target, sub.language, bulletinTitle);
+}
+
+/** The text version of an update for this subscription, with its STOP keyword. */
+export function updateTextFor(
+  sub: Doc<"subscriptions">,
+  args: Pick<UpdateTextArgs, "sentAt" | "latest" | "scheduled" | "answer">,
+): string {
+  const topic = subscriptionTopic(sub, args.latest?.title);
+  return buildUpdateText(
+    { ...args, topic, keyword: stopKeyword(sub.target, topic, sub.language), state: sub.target.area?.state },
+    sub.language,
+    loadConfig(process.env).HOTLINE_NUMBER,
+  );
+}
 
 function sameTarget(a: Doc<"subscriptions">["target"], b: Doc<"subscriptions">["target"]): boolean {
   if (a.kind !== b.kind) return false;
@@ -61,6 +79,17 @@ export async function createSubscriptionForCall(
   const schedule = intervalMs === undefined ? {} : { intervalMs, nextRunAt: now + intervalMs };
 
   if (call.callerId) await ctx.db.patch("callers", call.callerId, { preferredChannel: channel });
+  // The incident's name for texts, from its newest bulletin ("Cooley Fire"), so the STOP keyword stays the same.
+  let incidentTitle: string | undefined;
+  if (target.kind === "incident" && target.incidentKey) {
+    const incidentKey = target.incidentKey;
+    const bulletins = await ctx.db
+      .query("bulletins")
+      .withIndex("by_incidentKey_and_isActive", (q) => q.eq("incidentKey", incidentKey).eq("isActive", true))
+      .take(10);
+    incidentTitle = bulletins.sort((x, y) => (y.updatedAt ?? y.issuedAt) - (x.updatedAt ?? x.issuedAt))[0]?.title;
+  }
+  const topicLabel = target.kind === "question" ? undefined : textTopic(target, language, incidentTitle);
 
   const mine = await ctx.db
     .query("subscriptions")
@@ -69,7 +98,15 @@ export async function createSubscriptionForCall(
   const same = mine.find((s) => sameTarget(s.target, target) && s.trigger === trigger && (s.mode ?? "on_change") === mode);
   if (same) {
     // Asking again refreshes it, and the newest request decides the channel and interval.
-    await ctx.db.patch("subscriptions", same._id, { expiresAt, consentAt: now, language, channels: [channel], createdFromCallId: call._id, ...schedule });
+    await ctx.db.patch("subscriptions", same._id, {
+      expiresAt,
+      consentAt: now,
+      language,
+      channels: [channel],
+      createdFromCallId: call._id,
+      topicLabel: same.topicLabel ?? topicLabel,
+      ...schedule,
+    });
     return same._id;
   }
   return await ctx.db.insert("subscriptions", {
@@ -84,6 +121,7 @@ export async function createSubscriptionForCall(
     expiresAt,
     createdFromCallId: call._id,
     mode,
+    topicLabel,
     ...schedule,
   });
 }
@@ -110,7 +148,7 @@ const PHONE_BURST_MS = 2 * 60_000;
 export async function queueNotification(
   ctx: MutationCtx,
   sub: Doc<"subscriptions">,
-  n: { dedupeKey: string; message: string; bulletinRefs: Id<"bulletins">[]; now: number; purpose?: "update" | "scheduled_update" },
+  n: { dedupeKey: string; message: string; text: string; bulletinRefs: Id<"bulletins">[]; now: number; purpose?: "update" | "scheduled_update" },
 ): Promise<"queued" | "duplicate" | "rate_limited"> {
   const dup = await ctx.db
     .query("notifications")
@@ -143,6 +181,7 @@ export async function queueNotification(
     channel: sub.channels[0],
     language: sub.language,
     message: n.message,
+    text: n.text,
     bulletinRefs: n.bulletinRefs,
     dedupeKey: n.dedupeKey,
     purpose: n.purpose ?? "update",
@@ -221,6 +260,7 @@ export const matchEvents = internalMutation({
         const result = await queueNotification(ctx, sub, {
           dedupeKey: dedupeKeyFor(sub._id, bulletin._id, event.versionNumber),
           message: buildUpdateMessage(bulletin, sub.language),
+          text: updateTextFor(sub, { sentAt: now, latest: bulletin }),
           bulletinRefs: [bulletin._id],
           now,
         });
@@ -307,11 +347,12 @@ export const runScheduled = internalMutation({
         continue;
       }
       const latest = await latestBulletinFor(ctx, sub.target);
+      const since = sub.lastRunAt ?? sub.consentAt;
       const message = buildScheduledMessage(
         {
-          topic: textTopic(sub.target, sub.language),
+          topic: subscriptionTopic(sub, latest?.title),
           latest: latest ?? undefined,
-          since: sub.lastRunAt ?? sub.consentAt,
+          since,
           intervalMs: sub.intervalMs,
           state: sub.target.area?.state,
         },
@@ -320,6 +361,7 @@ export const runScheduled = internalMutation({
       const result = await queueNotification(ctx, sub, {
         dedupeKey: `${sub._id}:sched:${sub.nextRunAt}`,
         message,
+        text: updateTextFor(sub, { sentAt: now, latest: latest ?? undefined, scheduled: { intervalMs: sub.intervalMs, since } }),
         bulletinRefs: latest ? [latest._id] : [],
         now,
         purpose: "scheduled_update",

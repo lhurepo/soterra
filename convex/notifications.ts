@@ -3,21 +3,21 @@
 // Texts around update calls (docs/backend.md, "Calls and texts"):
 // - an update call nobody answered (no session within callOutcomeCheckMs, only voicemail, or the call could not be
 //   placed) → the update by text ("missed_call_text");
-// - an answered update call → a short recap by text when it ends ("call_recap");
+// - an answered update call → the update by text when it ends ("call_recap"; nothing said on the call is texted);
 // - a call that set up updates → one confirmation text when it ends ("subscription_confirmation");
 // - a text the number can't receive (a landline) → the subscription switches to calls, and an update is called instead.
 import { v } from "convex/values";
 import { DEFAULTS } from "../src/config/defaults";
 import { loadConfig } from "../src/config/env";
 import { selectNotifier } from "../src/notifications/notifier";
-import { buildConfirmationText, buildMissedCallText, buildRecapText, textTopic } from "../src/notifications/sms";
+import { buildConfirmationText, fitText, smsFooter, stopKeyword, stopTopicMatches, withMissedCallLead } from "../src/notifications/sms";
 import { looksLikeVoicemail } from "../src/orchestration/intents";
 import { formatSpokenTime } from "../src/orchestration/time";
 import { LANDLINE_ERROR_CODES } from "../src/providers/twilio/sms";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
-import { cancelSubscriptionsForPhone } from "./subscriptions";
+import { cancelSubscriptionsForPhone, subscriptionTopic } from "./subscriptions";
 import { notificationStatus } from "./validators";
 
 /** An update (on change or scheduled), as opposed to the callback check or a text about a call. */
@@ -33,6 +33,11 @@ export function isLandlineError(error: string | undefined): boolean {
 
 function hotline(): string | undefined {
   return loadConfig(process.env).HOTLINE_NUMBER;
+}
+
+/** The text version of an update (rows from before texts had their own format: the spoken message with a footer). */
+function updateText(n: Doc<"notifications">): string {
+  return n.text ?? fitText(n.message, smsFooter(n.language, hotline()));
 }
 
 async function subscriptionActive(ctx: MutationCtx, subscriptionId: Id<"subscriptions"> | undefined, now: number): Promise<boolean> {
@@ -85,7 +90,7 @@ async function markCallMissed(ctx: MutationCtx, n: Doc<"notifications">, now: nu
   await queueText(ctx, {
     phone: n.recipientPhone,
     language: n.language,
-    message: buildMissedCallText(n.message, n.language, hotline()),
+    message: withMissedCallLead(updateText(n), n.language),
     purpose: "missed_call_text",
     dedupeKey: `${n._id}:missed`,
     subscriptionId: n.subscriptionId,
@@ -115,6 +120,7 @@ async function textUndeliverable(ctx: MutationCtx, n: Doc<"notifications">, now:
     channel: "phone_call",
     language: n.language,
     message: n.message,
+    text: n.text,
     bulletinRefs: n.bulletinRefs,
     dedupeKey,
     purpose: n.purpose ?? "update",
@@ -127,7 +133,7 @@ async function textUndeliverable(ctx: MutationCtx, n: Doc<"notifications">, now:
 
 /**
  * Called by memory.finalizeCall. On an update callback: answered (the caller said something that is not an answering
- * machine) → recap text; otherwise → missed, text the update. On any call that set up updates → one confirmation text.
+ * machine) → the update by text, so they have it in writing; otherwise → missed, the update with "We tried to call you." On any call that set up updates → one confirmation text.
  */
 export async function sendAfterCallTexts(ctx: MutationCtx, call: Doc<"calls">, now: number): Promise<void> {
   const turns = await ctx.db
@@ -143,11 +149,10 @@ export async function sendAfterCallTexts(ctx: MutationCtx, call: Doc<"calls">, n
       } else {
         await ctx.db.patch("notifications", n._id, { outcome: "answered" });
         if (await subscriptionActive(ctx, n.subscriptionId, now)) {
-          const answers = turns.filter((t) => t.status === "complete" && t.kind === "answer" && t.reply).map((t) => t.reply!);
           await queueText(ctx, {
             phone: n.recipientPhone,
             language: n.language,
-            message: buildRecapText(n.message, answers, n.language, hotline()),
+            message: updateText(n),
             purpose: "call_recap",
             dedupeKey: `${n._id}:recap`,
             subscriptionId: n.subscriptionId,
@@ -172,7 +177,7 @@ export async function sendAfterCallTexts(ctx: MutationCtx, call: Doc<"calls">, n
   const items = subs.map((s) => ({
     channel: s.channels[0] ?? "phone_call",
     intervalMs: s.mode === "scheduled" ? s.intervalMs : undefined,
-    topic: textTopic(s.target, language),
+    topic: subscriptionTopic({ ...s, language }),
   }));
   const until = formatSpokenTime(Math.max(...subs.map((s) => s.expiresAt)), subs[0].target.area?.state ?? call.knownArea?.state, language);
   await queueText(ctx, {
@@ -245,7 +250,7 @@ export const deliver = internalAction({
         recipientPhone: n.recipientPhone,
         channel: n.channel,
         language: n.language,
-        message: n.message,
+        message: n.channel === "sms" ? updateText(n) : n.message,
         bulletinRefs: n.bulletinRefs,
         dedupeKey: n.dedupeKey,
         subscriptionId: n.subscriptionId,
@@ -315,6 +320,30 @@ export const stopByText = internalMutation({
   handler: async (ctx, { phone }) => await cancelSubscriptionsForPhone(ctx, phone, Date.now()),
 });
 
+/**
+ * A text reply of "STOP COOLEY FIRE" (POST /twilio/inbound): cancels the subscriptions of this number whose topic or
+ * keyword it names, and leaves the others. Returns the topics cancelled and the language to reply in.
+ */
+export const stopTopicByText = internalMutation({
+  args: { phone: v.string(), requested: v.string() },
+  returns: v.object({ topics: v.array(v.string()), language: v.string() }),
+  handler: async (ctx, { phone, requested }) => {
+    const now = Date.now();
+    const subs = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_recipientPhone_and_status", (q) => q.eq("recipient.phone", phone).eq("status", "active"))
+      .take(100);
+    const topics: string[] = [];
+    for (const s of subs) {
+      const topic = subscriptionTopic(s);
+      if (!stopTopicMatches(requested, [topic, stopKeyword(s.target, topic, s.language).replace(/^STOP /, "")])) continue;
+      await ctx.db.patch("subscriptions", s._id, { status: "cancelled", cancelledAt: now });
+      if (!topics.includes(topic)) topics.push(topic);
+    }
+    return { topics, language: subs[0]?.language ?? "en" };
+  },
+});
+
 export const subscriptionIsActive = internalQuery({
   args: { subscriptionId: v.id("subscriptions"), now: v.number() },
   returns: v.boolean(),
@@ -336,7 +365,7 @@ export const recent = internalQuery({
       purpose: n.purpose ?? "update",
       outcome: n.outcome,
       recipientPhone: n.recipientPhone,
-      message: n.message,
+      message: n.channel === "sms" ? (n.text ?? n.message) : n.message,
       createdAt: n.createdAt,
       error: n.error,
       dedupeKey: n.dedupeKey,

@@ -5,7 +5,7 @@ import { formatSpokenTime } from "../orchestration/time";
 import { formatDuration } from "./schedule";
 
 /** First sentence of the body, without the "fictional demo data" disclaimer when that is all there is. */
-function detailSentence(body: string): string {
+export function detailSentence(body: string): string {
   const sentences = (body.match(/[^.!?]+[.!?]+/g) ?? [body]).map((s) => s.trim()).filter(Boolean);
   return sentences.find((s) => !/fictional demo data/i.test(s)) ?? sentences[0] ?? "";
 }
