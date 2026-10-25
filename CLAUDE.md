@@ -44,7 +44,7 @@ rolldown binding (Vitest then fails "Cannot find native binding"); fix with
 
 The dev deployment has `PHONE_NOTIFIER=cartesia`, so `npm run inject:update` places **real phone calls**
 to subscribers. Never place calls (or run `inject:update`) toward numbers that have not agreed to it. With
-`SMS_NOTIFIER=twilio` it also sends **real texts** (update texts, missed-call texts, recaps, confirmations); a Twilio
+`SMS_NOTIFIER=twilio` it also sends **real texts** (update texts, missed-call texts, the update after an answered call, confirmations); a Twilio
 trial account only texts numbers verified in the Twilio console.
 
 ## After you change code

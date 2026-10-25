@@ -23,7 +23,7 @@ tests/                          pytest (no network): contract fixtures, client, 
 5. **Failures** (timeout `TURN_TIMEOUT_S`=8 s, network, non-200, invalid body): speaks the fallback ("…trouble reaching the information service. If you are in danger, hang up and dial 911 now."), keeps the call open and the turn numbering intact. After 3 in a row: apology, 911 line, "call back in a few minutes", hang up (reason `error`). A success resets the count. `degraded: true` replies are spoken normally.
 6. **CallEnded:** `/voice/session/end` once per call (`caller_hangup`, `agent_end` or `error`), 2 s timeout; the backend's sweeper covers anything missed.
 7. **Repeat:** "repeat that", "say that again", "¿puede repetir?", "repítelo"… replays the last reply without a backend call (tight whole-utterance match).
-8. **Outbound callbacks:** `call_request.metadata.notificationId` (or `notification_id`) ⇒ `direction: "outbound"` + `notificationId`; the backend's greeting carries the update and the conversation then continues normally.
+8. **Outbound callbacks:** `call_request.metadata.notificationId` (or `notification_id`) ⇒ `direction: "outbound"` + `notificationId`; the backend's greeting carries the update and the conversation then continues normally. The greeting waits up to `OUTBOUND_GREETING_WAIT_S` (2 s) for whoever answers: "Hello?" gets it at once (no backend turn); an answering machine's prompt ("leave a message after the tone", matched by `looks_like_voicemail`, kept in step with the backend) goes to `/voice/turn` instead, and the backend replies with a short voicemail message and `endCall` (no filler; if the backend is down, the local `voicemail` phrase). Silence gets the greeting when the wait ends. The session start is shielded, so it finishes even when the person speaks during it.
 
 ## Languages
 
@@ -46,6 +46,7 @@ Ink 2 STT: en, es, fr, hi, ja. Sonic 3.6 TTS: 44 languages, and "every voice can
 | `PRONUNCIATION_DICT_ID` | — | optional Cartesia pronunciation dictionary (e.g. Ridgeview, Sonoma, CAL FIRE) |
 | `LANGUAGE_BY_DIALED_NUMBER` | — | `+14155550100:es,+14155550101:en` |
 | `OFFER_SPANISH_DTMF` | `false` | |
+| `OUTBOUND_GREETING_WAIT_S` | `2.0` | Outbound callbacks: how long to wait for whoever answers before greeting (`0` = greet at once). |
 | `MOCK_CONVERSATION` | — | mock mode: replay `fixtures/conversations/<name>.json` |
 
 Missing or malformed values fail at startup with a message naming the variable. Logs never contain the secret or a full phone number (`+1415***9876`).
