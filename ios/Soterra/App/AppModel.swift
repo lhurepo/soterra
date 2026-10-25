@@ -108,6 +108,7 @@ final class AppModel {
     // Household
     var members: [HouseholdMember] = DemoData.members
     var meetingPointID: Shelter.ID = DemoData.hamiltonID
+    private var statusBeforeSafe: MemberStatus?
 
     // Settings
     var language: AppLanguage = .english
@@ -279,6 +280,18 @@ final class AppModel {
         guard let index = members.firstIndex(where: \.isYou) else { return }
         members[index].status = status
         members[index].lastUpdate = "Just now"
+    }
+
+    /// Simple mode's "I'm safe" button: marks you safe, or undoes it by going back to the status you had before.
+    func toggleSafe() {
+        guard let index = members.firstIndex(where: \.isYou) else { return }
+        if members[index].status == .safe {
+            setMyStatus(statusBeforeSafe ?? .checkingIn)
+            statusBeforeSafe = nil
+        } else {
+            statusBeforeSafe = members[index].status
+            setMyStatus(.safe)
+        }
     }
 
     func setMeetingPoint(_ shelter: Shelter) {

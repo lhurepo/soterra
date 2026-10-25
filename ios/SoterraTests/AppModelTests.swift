@@ -75,6 +75,15 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.members.first(where: \.isYou)?.status, .atMeetingPoint)
     }
 
+    func testToggleSafeUndoesToPreviousStatus() {
+        let model = AppModel()
+        let before = model.members.first(where: \.isYou)?.status
+        model.toggleSafe()
+        XCTAssertEqual(model.members.first(where: \.isYou)?.status, .safe)
+        model.toggleSafe()
+        XCTAssertEqual(model.members.first(where: \.isYou)?.status, before)
+    }
+
     func testForgetMeClearsNeedsAndStopsUpdates() {
         let model = AppModel()
         model.forgetMe()

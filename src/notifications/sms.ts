@@ -45,9 +45,9 @@ export function fitBody(body: string, room: number): string {
   return out;
 }
 
-/** `body` and the footer within `max` characters. The footer (STOP, 911) is never cut. */
+/** `body`, a blank line and the footer within `max` characters. The footer (STOP, 911) is never cut. */
 export function fitText(body: string, footer: string, max: number = DEFAULTS.smsMaxChars): string {
-  return `${fitBody(body, max - footer.length - 1)} ${footer}`;
+  return `${fitBody(body, max - footer.length - 2)}\n\n${footer}`;
 }
 
 /** "ridgeview-fire-demo" → "Ridgeview Fire": a readable incident name for texts. */
@@ -156,7 +156,9 @@ function compose(header: string, body: string, tail: string): string {
  *
  *   As of 2:22 PM PT: Cooley Fire, Mendocino County: about 1,365 acres, 90% contained.
  *
- *   [This is an update every 2 hours.] Reply STOP COOLEY FIRE to stop receiving updates on Cooley Fire. Questions? …
+ *   [This is an update every 2 hours.]
+ *   Reply STOP COOLEY FIRE to stop receiving updates on Cooley Fire.
+ *   Questions? …
  */
 export function buildUpdateText(a: UpdateTextArgs, language: string, hotline?: string): string {
   const time = (ms: number, state = a.state) => formatTextTime(ms, state, language, a.sentAt);
@@ -184,7 +186,7 @@ export function buildUpdateText(a: UpdateTextArgs, language: string, hotline?: s
     hotline ? tf("smsHelpHotline", language, { hotline: formatPhoneForText(hotline) }) : t("smsHelp", language),
   ]
     .filter(Boolean)
-    .join(" ");
+    .join("\n");
   return compose(header, body, tail);
 }
 

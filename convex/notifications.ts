@@ -73,6 +73,8 @@ export async function queueText(
     channel: "sms",
     language: args.language,
     message: args.message,
+    // Already a finished text (footer included): smsBody must not add another footer.
+    text: args.message,
     bulletinRefs: args.bulletinRefs ?? [],
     dedupeKey: args.dedupeKey,
     purpose: args.purpose,
