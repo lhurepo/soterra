@@ -42,7 +42,7 @@ export const getPage = internalQuery({
   },
 });
 
-async function writeVariant(ctx: MutationCtx, value: "v1" | "v2"): Promise<void> {
+export async function writeVariant(ctx: MutationCtx, value: "v1" | "v2"): Promise<void> {
   const row = await ctx.db
     .query("devSettings")
     .withIndex("by_key", (q) => q.eq("key", VARIANT_KEY))

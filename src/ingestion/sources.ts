@@ -2,7 +2,9 @@
 // Sources start disabled (the cron tick only runs enabled ones) and in fixture mode (no network, no keys).
 // Trust tier is a property of the source and is never taken from content or from a model.
 // Endpoints verified 2026-10-24 (docs/DECISIONS.md, docs/ingestion.md).
+import { DEMO_SITES, DEMO_X_ACCOUNTS } from "../../demo/scenario";
 import type { AreaRef, SourceDefinition } from "../contracts";
+import type { XAllowlistEntry } from "./config";
 
 export type SourceMode = "fixture" | "live";
 export type ApifyActorKind = "website-content-crawler" | "cheerio-scraper" | "tweet-scraper";
@@ -13,10 +15,33 @@ export type IngestionSource = SourceDefinition & {
   contentIsFixture?: boolean;
   /** The area this source has authority over. Comes from configuration, never from content. */
   jurisdiction?: AreaRef;
-  apify?: { actor: ApifyActorKind; mockSitePath?: string; maxItems?: number };
+  apify?: { actor: ApifyActorKind; mockSitePath?: string; maxItems?: number; pageFunction?: "shelters" | "x-feed" };
+  /** Mock X feeds only: fictional official accounts whose posts become bulletins (added to X_ALLOWLIST). */
+  xAllowlist?: XAllowlistEntry[];
 };
 
 const SONOMA: AreaRef = { state: "CA", county: "Sonoma", countyFips: "06097", label: "Sonoma County" };
+const SAN_FRANCISCO: AreaRef = { state: "CA", county: "San Francisco", countyFips: "06075", label: "San Francisco County" };
+
+/** The Marina Earthquake demo (demo/scenario.ts): Convex-served mock sites crawled by real Apify actors on demand. */
+const DEMO_SOURCES: IngestionSource[] = DEMO_SITES.map((site) => ({
+  sourceId: site.sourceId,
+  name: site.name,
+  kind: site.kind,
+  trustTier: site.kind === "social" ? "official_social" : "official",
+  fetchVia: "apify",
+  normalIntervalMin: 30,
+  crisisIntervalMin: 5,
+  // Never polled by the tick: `npm run demo:start` crawls them once, right after the pages switch.
+  enabled: false,
+  mode: "fixture",
+  regionStates: ["CA"],
+  endpoint: `{CONVEX_SITE_URL}/mock-sites/${site.path}`,
+  contentIsFixture: true,
+  jurisdiction: SAN_FRANCISCO,
+  apify: { actor: site.actor, mockSitePath: site.path, maxItems: 1, pageFunction: site.pageFunction },
+  ...(site.pageFunction === "x-feed" ? { xAllowlist: DEMO_X_ACCOUNTS } : {}),
+}));
 
 export const SOURCES: IngestionSource[] = [
   {
@@ -187,6 +212,7 @@ export const SOURCES: IngestionSource[] = [
     regionStates: ["CA"],
     apify: { actor: "tweet-scraper", maxItems: 50 },
   },
+  ...DEMO_SOURCES,
 ];
 
 export function sourceById(sourceId: string): IngestionSource | undefined {
@@ -231,11 +257,13 @@ export const INDEPENDENCE_GROUPS: Record<string, string> = {
   mock_county_emergency: "sonoma-county",
   mock_shelters: "sonoma-county",
   mock_disaster_assistance: "disasterassistance-demo",
+  ...Object.fromEntries(DEMO_SITES.map((s) => [s.sourceId, s.group])),
 };
 
 export function independenceGroupOf(sourceId: string, sourceName: string, xAllowlist: { issuer: string; handle: string; group?: string }[] = []): string {
-  if (sourceId === "x_posts") {
-    const entry = xAllowlist.find((e) => e.issuer === sourceName);
+  const feedAccounts = sourceById(sourceId)?.xAllowlist;
+  if (sourceId === "x_posts" || feedAccounts) {
+    const entry = [...(feedAccounts ?? []), ...xAllowlist].find((e) => e.issuer === sourceName);
     return entry?.group ?? `x:${entry?.handle ?? sourceName}`;
   }
   return INDEPENDENCE_GROUPS[sourceId] ?? sourceId;

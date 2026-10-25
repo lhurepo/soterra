@@ -52,6 +52,8 @@ const EnvSchema = z.object({
   SMS_NOTIFIER: z.enum(["mock", "twilio", "mac_relay", "unconfigured"]).default("mock"),
   /** Bearer secret the Mac relay (`npm run relay:mac`) sends to POST /relay/claim and /relay/result. */
   SMS_RELAY_SECRET: optionalString,
+  /** Bearer token for the demo switch: POST /demo/start, POST /demo/stop, GET /demo/status (convex/demo.ts). */
+  DEMO_SECRET: optionalString,
   TWILIO_ACCOUNT_SID: optionalString,
   TWILIO_AUTH_TOKEN: optionalString,
   /** Send from this number (E.164), or set TWILIO_MESSAGING_SERVICE_SID instead (it wins when both are set). */

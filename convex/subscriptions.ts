@@ -61,7 +61,9 @@ export async function createSubscriptionForCall(
       .take(20);
     const open = questions.find((q) => q.status === "open");
     if (!open) return null;
-    target = { kind: "question", unansweredQuestionId: open._id };
+    // The area lets an official update there count as the answer ("what just happened?" asked before any source had it).
+    const area = request.area ?? call.knownArea ?? open.area;
+    target = { kind: "question", unansweredQuestionId: open._id, ...(area ? { area } : {}) };
   } else if (request.targetKind === "incident") {
     if (!request.incidentKey) return null;
     target = { kind: "incident", incidentKey: request.incidentKey };
@@ -236,11 +238,13 @@ export const matchEvents = internalMutation({
           candidates.set(s._id, s);
         }
       }
-      for (const s of await ctx.db
-        .query("subscriptions")
-        .withIndex("by_status_and_targetKind", (q) => q.eq("status", "active").eq("target.kind", "area"))
-        .take(200)) {
-        candidates.set(s._id, s);
+      for (const kind of ["area", "question"] as const) {
+        for (const s of await ctx.db
+          .query("subscriptions")
+          .withIndex("by_status_and_targetKind", (q) => q.eq("status", "active").eq("target.kind", kind))
+          .take(200)) {
+          candidates.set(s._id, s);
+        }
       }
 
       for (const sub of candidates.values()) {

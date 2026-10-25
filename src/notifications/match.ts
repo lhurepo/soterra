@@ -27,9 +27,9 @@ export function eventMatches(sub: MatchableSubscription, event: MatchableEvent, 
   const targetHit =
     sub.target.kind === "incident"
       ? sub.target.incidentKey !== undefined && sub.target.incidentKey === event.incidentKey
-      : sub.target.kind === "area"
-        ? sub.target.area !== undefined && areaOverlaps(sub.target.area, event.areas)
-        : false; // "question" targets fire from answerUnansweredQuestion, never from bulletin events.
+      : // An area target, or an unanswered question asked from a known area: a new official update there answers it.
+        // A question without an area fires only from answerUnansweredQuestion.
+        sub.target.area !== undefined && areaOverlaps(sub.target.area, event.areas);
   if (!targetHit) return false;
 
   switch (sub.trigger) {
@@ -42,7 +42,7 @@ export function eventMatches(sub: MatchableSubscription, event: MatchableEvent, 
       // A request for an area also wants a brand-new Evacuation Order or Warning: that is the change.
       return event.hazardType === "evacuation" && (event.change !== "created" || sub.target.kind === "area");
     case "answer_available":
-      return false;
+      return sub.target.kind === "question";
   }
 }
 

@@ -10,7 +10,7 @@ export const syncRegistry = internalMutation({
   returns: v.number(),
   handler: async (ctx) => {
     for (const def of SOURCES) {
-      const { contentIsFixture: _f, jurisdiction: _j, apify: _a, ...row } = def;
+      const { contentIsFixture: _f, jurisdiction: _j, apify: _a, xAllowlist: _x, ...row } = def;
       const existing = await ctx.db
         .query("sources")
         .withIndex("by_sourceId", (q) => q.eq("sourceId", def.sourceId))

@@ -69,10 +69,10 @@ export function severityFromText(text: string): Severity | undefined {
   return undefined;
 }
 
-/** "Ridgeview Fire: Evacuation Updates" → "ridgeview-fire". Derived only from the verified title. */
+/** "Ridgeview Fire: Evacuation Updates" → "ridgeview-fire", "M 6.4 Marina Earthquake" → "marina-earthquake". From the verified title only. */
 export function incidentKeyFromTitle(title: string): string | undefined {
-  const m = /\b([A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?) Fire\b/.exec(title);
-  return m ? `${m[1].toLowerCase().replace(/\s+/g, "-")}-fire` : undefined;
+  const m = /\b([A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?) (Fire|Earthquake)\b/.exec(title);
+  return m ? `${m[1].toLowerCase().replace(/\s+/g, "-")}-${m[2].toLowerCase()}` : undefined;
 }
 
 export type PageInput = { url: string; title?: string; text: string; fetchedAt: number };

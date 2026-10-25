@@ -46,7 +46,7 @@ export type UpsertBatchResult = { results: StoredUpsertResult[]; changedChunkIds
 
 // ───────────────────────── Storage ─────────────────────────
 
-async function deleteDerivedRows(ctx: MutationCtx, bulletinId: Id<"bulletins">): Promise<Id<"chunks">[]> {
+export async function deleteDerivedRows(ctx: MutationCtx, bulletinId: Id<"bulletins">): Promise<Id<"chunks">[]> {
   const removed: Id<"chunks">[] = [];
   for (const c of await ctx.db.query("chunks").withIndex("by_bulletinId", (q) => q.eq("bulletinId", bulletinId)).take(500)) {
     await ctx.db.delete("chunks", c._id);
