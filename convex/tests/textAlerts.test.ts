@@ -60,7 +60,7 @@ describe("choosing texts", () => {
     const [confirmation] = await callTexts(t);
     expect(confirmation).toMatchObject({ channel: "sms", purpose: "subscription_confirmation", status: "mock", recipientPhone: PHONE, subscriptionId: r.subscriptionId });
     expect(confirmation.message).toBe(
-      "Soterra: you'll get texts about Ridgeview Fire when officials post updates, until October 25 at 3:00 PM Pacific. Questions? Call (712) 600-3362. Reply STOP to stop all Soterra texts. In danger? Call 911.",
+      "Soterra: you'll get texts about Ridgeview Fire when officials post updates, until October 25 at 3:00 PM Pacific.\n\nQuestions? Call (712) 600-3362.\nReply STOP to stop all Soterra texts.\nIn danger? Call 911.",
     );
 
     await seedBulletins(t, updateDrafts);
@@ -69,7 +69,7 @@ describe("choosing texts", () => {
     expect(updates).toHaveLength(1);
     expect(updates[0]).toMatchObject({ channel: "sms", purpose: "update", status: "mock" });
     expect(updates[0].text).toMatch(/^Update on Ridgeview Fire \(3:00 PM PT\):\n\nAs of [^:]+:\d\d [AP]M PT: Evacuation Order for zone SON-3A/);
-    expect(updates[0].text).toMatch(/\n\nReply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\. Questions\? Call \(712\) 600-3362\. In danger\? Call 911\.$/);
+    expect(updates[0].text).toMatch(/\n\nReply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\.\nQuestions\? Call \(712\) 600-3362\.\nIn danger\? Call 911\.$/);
     // What a callback would speak is kept separately.
     expect(updates[0].message).toMatch(/^Update from Sonoma County Emergency Management/);
     // A text is not a call: no outcome check, no missed-call text.
@@ -123,7 +123,7 @@ describe("update calls: missed → text, answered → recap", () => {
     expect(missed).toHaveLength(1);
     expect(missed[0]).toMatchObject({ channel: "sms", status: "mock", parentNotificationId: update._id, recipientPhone: PHONE });
     expect(missed[0].message).toMatch(/^Update on Ridgeview Fire \([^)]+\):\n\nWe tried to call you\. As of [^:]+:\d\d [AP]M PT: Evacuation Order for zone SON-3A/);
-    expect(missed[0].message).toMatch(/Reply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\. Questions\? Call \(712\) 600-3362\. In danger\? Call 911\.$/);
+    expect(missed[0].message).toMatch(/Reply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\.\nQuestions\? Call \(712\) 600-3362\.\nIn danger\? Call 911\.$/);
     expect(missed[0].message.length).toBeLessThanOrEqual(DEFAULTS.smsMaxChars);
     expect((await t.run(async (ctx) => await ctx.db.get("notifications", update._id)))?.outcome).toBe("missed");
   });
@@ -308,7 +308,7 @@ describe("time-based updates", () => {
     expect(rows[0]).toMatchObject({ channel: "sms", purpose: "scheduled_update", status: "mock" });
     expect(rows[0].message).toMatch(/^No new official updates about Ridgeview Fire since October 24 at 3:00 PM Pacific\. Latest from /);
     expect(rows[0].text).toMatch(/^Update on Ridgeview Fire \(5:00 PM PT\):\n\nNo new official updates since 3:00 PM PT\. Latest, as of /);
-    expect(rows[0].text).toMatch(/\n\nThis is an update every 2 hours\. Reply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\. Questions/);
+    expect(rows[0].text).toMatch(/\n\nThis is an update every 2 hours\.\nReply STOP RIDGEVIEW FIRE to stop receiving updates on Ridgeview Fire\.\nQuestions/);
 
     // An event does not fire a scheduled subscription; the next slot reports it.
     await seedBulletins(t, updateDrafts);
