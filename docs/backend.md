@@ -109,7 +109,7 @@ Set on the deployment with `npx convex env set NAME value` (dev only from this s
 | `RETRIEVER` | `convex` | `moss` tries Moss first and falls back to Convex (Moss cannot load in Convex today). |
 | `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`, `MOSS_INDEX_NAME` | — | Moss. |
 | `PHONE_NOTIFIER` | `mock` | `cartesia` uses the outbound-call adapter (**not verified live**; needs `CARTESIA_API_KEY`, `CARTESIA_AGENT_ID`, `CARTESIA_FROM_NUMBER_ID`). |
-| `SMS_NOTIFIER` | `mock` | `mock` stores texts without sending, `twilio` sends them (**not verified live**; needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`), `unconfigured` sends nothing. |
+| `SMS_NOTIFIER` | `mock` | `mock` stores texts without sending, `twilio` sends them (**not verified live**; needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`), `mac_relay` queues them for a Mac that sends them with Messages.app (`docs/mac-relay.md`; needs `SMS_RELAY_SECRET`), `unconfigured` sends nothing. |
 | `TWILIO_AUTH_TOKEN` | — | Also checks the signature on `/twilio/*`. |
 | `HOTLINE_NUMBER` | `+17126003362` | Printed in texts ("Questions? Call (712) 600-3362"). |
 | `SERVE_FIXTURES` | `false` | `true` lets callers hear the fictional demo bulletins. |

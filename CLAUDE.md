@@ -45,7 +45,9 @@ rolldown binding (Vitest then fails "Cannot find native binding"); fix with
 The dev deployment has `PHONE_NOTIFIER=cartesia`, so `npm run inject:update` places **real phone calls**
 to subscribers. Never place calls (or run `inject:update`) toward numbers that have not agreed to it. With
 `SMS_NOTIFIER=twilio` it also sends **real texts** (update texts, missed-call texts, the update after an answered call, confirmations); a Twilio
-trial account only texts numbers verified in the Twilio console.
+trial account only texts numbers verified in the Twilio console. With `SMS_NOTIFIER=mac_relay` (`docs/mac-relay.md`) texts
+go out from a teammate's iPhone to **any** number while `npm run relay:mac` runs on their Mac. Code without the relay
+does not accept `SMS_NOTIFIER=mac_relay` and fails to load its config, so pull before `npx convex dev`.
 
 ## After you change code
 

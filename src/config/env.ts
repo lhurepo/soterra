@@ -45,8 +45,13 @@ const EnvSchema = z.object({
   CARTESIA_API_KEY: optionalString,
   CARTESIA_AGENT_ID: optionalString,
   CARTESIA_FROM_NUMBER_ID: optionalString,
-  /** Text messages: "mock" stores them without sending (default), "twilio" sends through Twilio, "unconfigured" sends nothing. */
-  SMS_NOTIFIER: z.enum(["mock", "twilio", "unconfigured"]).default("mock"),
+  /**
+   * Text messages: "mock" stores them without sending (default), "twilio" sends through Twilio, "mac_relay" queues them
+   * for a Mac that sends them with Messages.app (convex/smsRelay.ts, docs/mac-relay.md), "unconfigured" sends nothing.
+   */
+  SMS_NOTIFIER: z.enum(["mock", "twilio", "mac_relay", "unconfigured"]).default("mock"),
+  /** Bearer secret the Mac relay (`npm run relay:mac`) sends to POST /relay/claim and /relay/result. */
+  SMS_RELAY_SECRET: optionalString,
   TWILIO_ACCOUNT_SID: optionalString,
   TWILIO_AUTH_TOKEN: optionalString,
   /** Send from this number (E.164), or set TWILIO_MESSAGING_SERVICE_SID instead (it wins when both are set). */

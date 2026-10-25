@@ -1,5 +1,6 @@
 // [B] Notifier interface and implementations: mock phone calls (default), Cartesia outbound calls
-// (PHONE_NOTIFIER=cartesia), mock texts (default) and Twilio texts (SMS_NOTIFIER=twilio, NOT verified live).
+// (PHONE_NOTIFIER=cartesia), mock texts (default) and Twilio texts (SMS_NOTIFIER=twilio, NOT verified live). Mac relay texts
+// (SMS_NOTIFIER=mac_relay) bypass the Notifier: see convex/smsRelay.ts.
 // Nothing in the hotline's hot path imports this file.
 import type { Config } from "../config/env";
 import type { NotificationRequest, NotificationResult } from "../contracts";
@@ -80,6 +81,8 @@ export function selectNotifier(
 ): Notifier {
   if (channel === "sms") {
     if (config.SMS_NOTIFIER === "twilio") return new TwilioSmsNotifier(config, fetchFn, opts.smsStatusCallbackUrl);
+    // Defensive: with mac_relay, convex/notifications.ts deliver hands texts to convex/smsRelay.ts and never gets here.
+    if (config.SMS_NOTIFIER === "mac_relay") return new UnconfiguredSmsNotifier();
     return config.SMS_NOTIFIER === "mock" ? new MockSmsNotifier() : new UnconfiguredSmsNotifier();
   }
   return config.PHONE_NOTIFIER === "cartesia" ? new CartesiaOutboundCallNotifier(config, fetchFn) : new MockPhoneNotifier();

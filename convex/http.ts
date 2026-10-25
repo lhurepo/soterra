@@ -2,6 +2,7 @@
 import { httpRouter } from "convex/server";
 import { appStateHttp } from "./app";
 import { mockSite } from "./mockSites";
+import { relayClaim, relayResult } from "./smsRelay";
 import { health } from "./health";
 import { apifyWebhook } from "./ingestion";
 import { twilioInbound, twilioStatus } from "./twilio";
@@ -21,6 +22,10 @@ http.route({ path: "/app/state", method: "GET", handler: appStateHttp });
 // [B] Twilio texts: delivery status callbacks and incoming texts (STOP). Signed with TWILIO_AUTH_TOKEN.
 http.route({ path: "/twilio/status", method: "POST", handler: twilioStatus });
 http.route({ path: "/twilio/inbound", method: "POST", handler: twilioInbound });
+
+// [B] Mac Messages relay (SMS_NOTIFIER=mac_relay; convex/smsRelay.ts). Bearer SMS_RELAY_SECRET.
+http.route({ path: "/relay/claim", method: "POST", handler: relayClaim });
+http.route({ path: "/relay/result", method: "POST", handler: relayResult });
 
 // [I] Apify run webhook.
 http.route({ path: "/ingest/apify", method: "POST", handler: apifyWebhook });

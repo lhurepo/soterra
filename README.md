@@ -61,7 +61,7 @@ npm run test:voice  # pytest in voice/ (uv)
 | Official feeds | NWS, USGS, OpenFEMA, NHC, Tsunami.gov, InciWeb, WFIGS adapters; fixture mode by default, live-ready; all disabled until enabled ([docs/ingestion.md](docs/ingestion.md)) |
 | Apify | MockApify by default; live client wired for the Convex-served mock sites (not yet run with a real token) |
 | Moss, Cartesia outbound | Placeholders that throw `NotConfiguredError` naming missing env vars |
-| SMS | Mock by default; Twilio adapter (`SMS_NOTIFIER=twilio`) for update texts, missed-call texts, recaps and confirmations; not verified live |
+| SMS | Mock by default; Twilio adapter (`SMS_NOTIFIER=twilio`) or a Mac Messages relay (`SMS_NOTIFIER=mac_relay`, `docs/mac-relay.md`) for update texts, missed-call texts, recaps and confirmations; neither verified live |
 | Voice agent | Working against `MockBackendClient` and the HTTP backend; not yet on a phone number |
 
 The non-negotiable product rules are in [TEAM_PLAN.md](TEAM_PLAN.md#rules).
