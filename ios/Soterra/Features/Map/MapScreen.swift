@@ -7,17 +7,38 @@ enum DemoGeo {
         let id: String
         let coordinates: [CLLocationCoordinate2D]
         let label: CLLocationCoordinate2D
+        /// What the bulletin says the zone covers.
+        let covers: String
+
+        /// Ray casting on latitude and longitude, which is accurate enough at the size of a zone.
+        func contains(_ point: CLLocationCoordinate2D) -> Bool {
+            var isInside = false
+            var j = coordinates.count - 1
+            for i in coordinates.indices {
+                let a = coordinates[i], b = coordinates[j]
+                if (a.latitude > point.latitude) != (b.latitude > point.latitude),
+                   point.longitude < (b.longitude - a.longitude) * (point.latitude - a.latitude) / (b.latitude - a.latitude) + a.longitude {
+                    isInside.toggle()
+                }
+                j = i
+            }
+            return isInside
+        }
     }
 
     static let son3A = Zone(id: "SON-3A", coordinates: [
         .init(latitude: 38.4520, longitude: -122.6600), .init(latitude: 38.4550, longitude: -122.6300),
         .init(latitude: 38.4400, longitude: -122.6280), .init(latitude: 38.4370, longitude: -122.6580),
-    ], label: .init(latitude: 38.4460, longitude: -122.6440))
+    ], label: .init(latitude: 38.4460, longitude: -122.6440),
+    covers: "Zone SON-3A covers Ridgeview Road from Highway 12 to Bennett Valley Road.")
 
     static let son3B = Zone(id: "SON-3B", coordinates: [
         .init(latitude: 38.4550, longitude: -122.6300), .init(latitude: 38.4580, longitude: -122.6000),
         .init(latitude: 38.4320, longitude: -122.5980), .init(latitude: 38.4400, longitude: -122.6280),
-    ], label: .init(latitude: 38.4460, longitude: -122.6140))
+    ], label: .init(latitude: 38.4460, longitude: -122.6140),
+    covers: "Zone SON-3B covers the Matanzas Creek area.")
+
+    static let zones = [son3A, son3B]
 
     static let fireCenter = CLLocationCoordinate2D(latitude: 38.4520, longitude: -122.6050)
     static let fireRadius: CLLocationDistance = 900
@@ -31,14 +52,33 @@ enum DemoGeo {
         center: .init(latitude: 38.4440, longitude: -122.6500),
         span: .init(latitudeDelta: 0.06, longitudeDelta: 0.13)
     )
+
+    static func coordinate(of place: MapPlace) -> CLLocationCoordinate2D? {
+        switch place {
+        case .shelter(let id): DemoData.shelters.first { $0.id == id }?.coordinate
+        case .zone(let id): zones.first { $0.id == id }?.label
+        case .fire: fireCenter
+        case .roadClosure: roadClosure[1]
+        }
+    }
 }
 
-/// Shelters, evacuation zones and closures on one map. Zones are shown only from official shapes, and the
-/// app never says whether an address is inside one.
+/// A full-screen map of shelters, evacuation zones and closures. Search and filters float on top and fade while
+/// the person moves the map; tapping a place slides up its panel. Zones are shown only from official shapes, and
+/// the app never says whether an address is inside one.
 struct MapScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
+    @Namespace private var mapScope
     @State private var position: MapCameraPosition = .region(DemoGeo.initialRegion)
+    @State private var visibleSpan = DemoGeo.initialRegion.span
     @State private var query = ""
+    @State private var isChromeHidden = false
+    /// Set while the camera moves for the app's own reasons (first load, framing a place, the panel resizing the
+    /// map), so those moves don't hide the search. Cleared when the move ends, or after a moment if none comes.
+    @State private var appCameraMove: UUID?
+    @FocusState private var isSearchFocused: Bool
 
     private var hasActiveIncident: Bool { model.scenario != .calm }
 
@@ -49,30 +89,144 @@ struct MapScreen: View {
         }
     }
 
-    private var selectedShelter: Shelter? {
-        DemoData.shelters.first { $0.id == model.selectedShelterID }
-    }
-
     var body: some View {
-        VStack(spacing: 0) {
-            searchField
-            filters
-            map
-        }
-        .screenBackground()
-        .navigationTitle("Map")
-        .soterraToolbar()
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let shelter = selectedShelter {
-                ShelterCard(shelter: shelter, isMeetingPoint: shelter.id == model.meetingPointID) {
-                    model.selectedShelterID = nil
+        GeometryReader { geometry in
+            MapReader { proxy in
+                map
+                    .onTapGesture { point in handleTap(at: point, proxy: proxy) }
+            }
+            .overlay(alignment: .top) {
+                if !isChromeHidden {
+                    chrome.transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: -12)))
+                }
+            }
+            .overlay(alignment: .bottomTrailing) { mapCorner }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if let place = model.mapSelection {
+                    MapPlacePanel(place: place, maxHeight: geometry.size.height * 0.5) { select(nil) }
+                        .id(place)
+                        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                 }
             }
         }
-        .onChange(of: model.selectedShelterID) {
-            guard let shelter = selectedShelter else { return }
-            withAnimation { position = .region(MKCoordinateRegion(center: shelter.coordinate, span: DemoGeo.initialRegion.span)) }
+        .mapScope(mapScope)
+        .screenBackground()
+        .navigationTitle("Map")
+        .navigationBarTitleDisplayMode(.inline)
+        .soterraToolbar()
+        .onAppear {
+            expectAppCameraMove()
+            frame(model.mapSelection)
         }
+        .onChange(of: model.mapSelection) { _, place in frame(place) }
+        .onChange(of: model.mapFilters) { dropHiddenSelection() }
+        .onChange(of: model.scenario) { dropHiddenSelection() }
+    }
+
+    // MARK: Map
+
+    private var zoneColorA: Color {
+        model.scenario == .escalated ? SeverityLevel.high.fill : SeverityLevel.medium.fill
+    }
+
+    private var map: some View {
+        Map(position: $position, scope: mapScope) {
+            if hasActiveIncident && model.mapFilters.showsZones {
+                zonePolygon(DemoGeo.son3A, color: zoneColorA)
+                zonePolygon(DemoGeo.son3B, color: SeverityLevel.medium.fill)
+                zoneLabel(DemoGeo.son3A, color: zoneColorA)
+                zoneLabel(DemoGeo.son3B, color: SeverityLevel.medium.fill)
+                MapCircle(center: DemoGeo.fireCenter, radius: DemoGeo.fireRadius)
+                    .foregroundStyle(SeverityLevel.high.fill.opacity(0.35))
+                    .stroke(SeverityLevel.high.fill, lineWidth: model.mapSelection == .fire ? 3 : 1.5)
+                Annotation("Ridgeview Fire", coordinate: DemoGeo.fireCenter, anchor: .center) {
+                    Button { select(.fire) } label: {
+                        Image(systemName: "flame.fill")
+                            .foregroundStyle(.white)
+                            .padding(6)
+                            .background(SeverityLevel.high.fill, in: Circle())
+                            .frame(width: 44, height: 44)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Ridgeview Fire")
+                }
+                .annotationTitles(.hidden)
+            }
+            if hasActiveIncident && model.mapFilters.showsRoads {
+                MapPolyline(coordinates: DemoGeo.roadClosure)
+                    .stroke(SeverityLevel.high.fill,
+                            style: StrokeStyle(lineWidth: model.mapSelection == .roadClosure ? 6 : 4, lineCap: .round, dash: [8, 6]))
+            }
+            if model.mapFilters.showsShelters {
+                ForEach(visibleShelters) { shelter in
+                    Annotation(shelter.name, coordinate: shelter.coordinate) {
+                        ShelterPin(name: shelter.name, isSelected: shelter.id == model.selectedShelterID) {
+                            select(.shelter(shelter.id))
+                        }
+                    }
+                }
+            }
+        }
+        .mapStyle(.standard(pointsOfInterest: .excludingAll))
+        .mapControls {}
+        .onMapCameraChange(frequency: .continuous) {
+            // The person is moving the map: get the search and filters out of the way.
+            guard appCameraMove == nil || position.positionedByUser,
+                  !isSearchFocused, !isVoiceOverOn, !isChromeHidden else { return }
+            setChromeHidden(true)
+        }
+        .onMapCameraChange(frequency: .onEnd) { context in
+            visibleSpan = context.region.span
+            appCameraMove = nil
+        }
+    }
+
+    private func zonePolygon(_ zone: DemoGeo.Zone, color: Color) -> some MapContent {
+        MapPolygon(coordinates: zone.coordinates)
+            .foregroundStyle(color.opacity(model.mapSelection == .zone(zone.id) ? 0.34 : 0.22))
+            .stroke(color, lineWidth: model.mapSelection == .zone(zone.id) ? 3 : 2)
+    }
+
+    private func zoneLabel(_ zone: DemoGeo.Zone, color: Color) -> some MapContent {
+        Annotation("Zone \(zone.id)", coordinate: zone.label, anchor: .center) {
+            Button { select(.zone(zone.id)) } label: {
+                ZoneLabel(text: zone.id, color: color)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Zone \(zone.id)")
+        }
+        .annotationTitles(.hidden)
+    }
+
+    /// Compass (only while the map is rotated) and the demo notice, which stays visible when the search fades.
+    private var mapCorner: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            MapCompass(scope: mapScope)
+            Text("Demo zones · not real boundaries")
+                .font(.caption2.weight(.semibold))
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(Palette.textSecondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Palette.surface.opacity(0.92), in: Capsule())
+        }
+        .padding(.trailing, 12)
+        .padding(.bottom, 28)
+    }
+
+    // MARK: Search and filters
+
+    private var chrome: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            searchField
+            filters
+        }
+        .padding(.top, 8)
     }
 
     private var searchField: some View {
@@ -81,24 +235,28 @@ struct MapScreen: View {
                 .foregroundStyle(Palette.textSecondary)
                 .accessibilityHidden(true)
             TextField("Search shelters", text: $query)
+                .focused($isSearchFocused)
                 .submitLabel(.search)
                 .onSubmit {
-                    if let first = visibleShelters.first { model.selectedShelterID = first.id }
+                    if let first = visibleShelters.first { select(.shelter(first.id)) }
                 }
             if !query.isEmpty {
                 Button {
                     query = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.textSecondary)
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Palette.textSecondary)
+                        .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 44)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.leading, 14)
+        .padding(.trailing, query.isEmpty ? 14 : 0)
+        .frame(minHeight: 48)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.14), radius: 8, y: 3)
         .padding(.horizontal, 16)
-        .padding(.top, 4)
     }
 
     private var filters: some View {
@@ -109,71 +267,122 @@ struct MapScreen: View {
                 FilterChip(title: "Zones", isOn: model.mapFilters.showsZones) { model.mapFilters.showsZones.toggle() }
                 FilterChip(title: "Roads", isOn: model.mapFilters.showsRoads) { model.mapFilters.showsRoads.toggle() }
             }
+            .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
             .padding(.horizontal, 16)
+            .padding(.bottom, 8)
         }
-        .padding(.vertical, 4)
     }
 
-    private var zoneColorA: Color {
-        model.scenario == .escalated ? SeverityLevel.high.fill : SeverityLevel.medium.fill
+    // MARK: Selection
+
+    private func setChromeHidden(_ isHidden: Bool) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { isChromeHidden = isHidden }
     }
 
-    private var map: some View {
-        Map(position: $position) {
-            if hasActiveIncident && model.mapFilters.showsZones {
-                MapPolygon(coordinates: DemoGeo.son3A.coordinates)
-                    .foregroundStyle(zoneColorA.opacity(0.22))
-                    .stroke(zoneColorA, lineWidth: 2)
-                MapPolygon(coordinates: DemoGeo.son3B.coordinates)
-                    .foregroundStyle(SeverityLevel.medium.fill.opacity(0.22))
-                    .stroke(SeverityLevel.medium.fill, lineWidth: 2)
-                Annotation("Zone SON-3A", coordinate: DemoGeo.son3A.label, anchor: .center) {
-                    ZoneLabel(text: "SON-3A", color: zoneColorA)
-                }
-                .annotationTitles(.hidden)
-                Annotation("Zone SON-3B", coordinate: DemoGeo.son3B.label, anchor: .center) {
-                    ZoneLabel(text: "SON-3B", color: SeverityLevel.medium.fill)
-                }
-                .annotationTitles(.hidden)
-                MapCircle(center: DemoGeo.fireCenter, radius: DemoGeo.fireRadius)
-                    .foregroundStyle(SeverityLevel.high.fill.opacity(0.35))
-                    .stroke(SeverityLevel.high.fill, lineWidth: 1.5)
-                Annotation("Ridgeview Fire", coordinate: DemoGeo.fireCenter, anchor: .center) {
-                    Image(systemName: "flame.fill")
-                        .foregroundStyle(.white)
-                        .padding(6)
-                        .background(SeverityLevel.high.fill, in: Circle())
-                }
-                .annotationTitles(.hidden)
-            }
-            if hasActiveIncident && model.mapFilters.showsRoads {
-                MapPolyline(coordinates: DemoGeo.roadClosure)
-                    .stroke(SeverityLevel.high.fill, style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [8, 6]))
-            }
-            if model.mapFilters.showsShelters {
-                ForEach(visibleShelters) { shelter in
-                    Annotation(shelter.name, coordinate: shelter.coordinate) {
-                        ShelterPin(isSelected: shelter.id == model.selectedShelterID) {
-                            model.selectedShelterID = shelter.id
-                        }
-                    }
-                }
-            }
+    private func expectAppCameraMove() {
+        let move = UUID()
+        appCameraMove = move
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            if appCameraMove == move { appCameraMove = nil }
         }
-        .mapStyle(.standard(pointsOfInterest: .excludingAll))
-        .mapControls {
-            MapCompass()
-            MapScaleView()
+    }
+
+    private func select(_ place: MapPlace?) {
+        isSearchFocused = false
+        expectAppCameraMove()
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.28)) { model.mapSelection = place }
+    }
+
+    /// Centers the map on `place` at the current zoom, so it stays in view above the panel.
+    private func frame(_ place: MapPlace?) {
+        guard let place, let center = DemoGeo.coordinate(of: place) else { return }
+        expectAppCameraMove()
+        let region = MKCoordinateRegion(center: center, span: visibleSpan)
+        if reduceMotion {
+            position = .region(region)
+        } else {
+            withAnimation(.easeOut(duration: 0.45)) { position = .region(region) }
         }
-        .overlay(alignment: .topLeading) {
-            Text("Demo zones · not real boundaries")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(Palette.textSecondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Palette.surface.opacity(0.9), in: Capsule())
-                .padding(8)
+    }
+
+    /// Tapping a place opens its panel; tapping empty map closes the panel and brings the search back.
+    private func handleTap(at point: CGPoint, proxy: MapProxy) {
+        if isSearchFocused {
+            isSearchFocused = false
+            return
         }
+        if let place = place(at: point, proxy: proxy) {
+            select(place)
+        } else {
+            if model.mapSelection != nil { select(nil) }
+            setChromeHidden(false)
+        }
+    }
+
+    /// What is under a tap, top-most first: shelter pins, zone labels and the fire icon (drawn above the shapes),
+    /// then the fire area, the road closure and the zones. The pins and labels are also buttons, for VoiceOver;
+    /// a tap reaches both them and this, so the two must agree.
+    private func place(at point: CGPoint, proxy: MapProxy) -> MapPlace? {
+        let reach: CGFloat = 26
+        func offset(to coordinate: CLLocationCoordinate2D) -> CGSize? {
+            proxy.convert(coordinate, to: .local).map { CGSize(width: $0.x - point.x, height: $0.y - point.y) }
+        }
+        func distance(to coordinate: CLLocationCoordinate2D) -> CGFloat {
+            offset(to: coordinate).map { hypot($0.width, $0.height) } ?? .infinity
+        }
+
+        if model.mapFilters.showsShelters,
+           let shelter = visibleShelters.min(by: { distance(to: $0.coordinate) < distance(to: $1.coordinate) }),
+           distance(to: shelter.coordinate) <= reach {
+            return .shelter(shelter.id)
+        }
+        guard hasActiveIncident else { return nil }
+
+        if model.mapFilters.showsZones {
+            if let zone = DemoGeo.zones.first(where: { zone in
+                offset(to: zone.label).map { abs($0.width) <= 36 && abs($0.height) <= 22 } ?? false
+            }) {
+                return .zone(zone.id)
+            }
+            if distance(to: DemoGeo.fireCenter) <= reach { return .fire }
+        }
+        if model.mapFilters.showsZones {
+            let edge = CLLocationCoordinate2D(latitude: DemoGeo.fireCenter.latitude + DemoGeo.fireRadius / 111_320,
+                                              longitude: DemoGeo.fireCenter.longitude)
+            let radius = distance(to: edge) - distance(to: DemoGeo.fireCenter)
+            if distance(to: DemoGeo.fireCenter) <= max(reach, abs(radius)) { return .fire }
+        }
+        if model.mapFilters.showsRoads {
+            let points = DemoGeo.roadClosure.compactMap { proxy.convert($0, to: .local) }
+            let nearest = zip(points, points.dropFirst()).map { segmentDistance(from: point, $0, $1) }.min() ?? .infinity
+            if nearest <= 18 { return .roadClosure }
+        }
+        if model.mapFilters.showsZones, let coordinate = proxy.convert(point, from: .local),
+           let zone = DemoGeo.zones.first(where: { $0.contains(coordinate) }) {
+            return .zone(zone.id)
+        }
+        return nil
+    }
+
+    private func segmentDistance(from p: CGPoint, _ a: CGPoint, _ b: CGPoint) -> CGFloat {
+        let dx = b.x - a.x, dy = b.y - a.y
+        let lengthSquared = dx * dx + dy * dy
+        guard lengthSquared > 0 else { return hypot(p.x - a.x, p.y - a.y) }
+        let t = max(0, min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared))
+        return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+    }
+
+    /// Closes the panel when a filter or the scenario hides what it describes.
+    private func dropHiddenSelection() {
+        let filters = model.mapFilters
+        let isVisible: Bool = switch model.mapSelection {
+        case .shelter(let id): filters.showsShelters && visibleShelters.contains { $0.id == id }
+        case .zone, .fire: hasActiveIncident && filters.showsZones
+        case .roadClosure: hasActiveIncident && filters.showsRoads
+        case nil: true
+        }
+        if !isVisible { select(nil) }
     }
 }
 
@@ -192,6 +401,7 @@ private struct ZoneLabel: View {
 }
 
 private struct ShelterPin: View {
+    let name: String
     let isSelected: Bool
     let action: () -> Void
 
@@ -207,50 +417,176 @@ private struct ShelterPin: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(name)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
-/// The selected shelter, above the tab bar.
-private struct ShelterCard: View {
+// MARK: - Place panel
+
+/// The panel that slides up over the map for a tapped place. Drag the top edge down, or tap Close, to dismiss.
+private struct MapPlacePanel: View {
     @Environment(AppModel.self) private var model
-    let shelter: Shelter
-    let isMeetingPoint: Bool
+    let place: MapPlace
+    /// The tallest the details may get before they scroll (large text, long names).
+    let maxHeight: CGFloat
     let onClose: () -> Void
 
+    @State private var dragOffset: CGFloat = 0
+    @State private var detailsHeight: CGFloat = 0
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(shelter.name)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Palette.textPrimary)
-                    Text("\(shelter.address) · Shelter · \(shelter.animalPolicy)")
-                        .font(.subheadline)
-                        .foregroundStyle(Palette.textSecondary)
-                }
-                Spacer()
-                StatusChip(text: "Open", systemImage: "checkmark", fill: Palette.sage, ink: Palette.abyss)
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            ScrollView {
+                details
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(key: PanelHeightKey.self, value: proxy.size.height)
+                        }
+                    }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: min(detailsHeight, maxHeight))
+            .onPreferenceChange(PanelHeightKey.self) { detailsHeight = $0 }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Palette.surface,
+            in: UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20, style: .continuous)
+        )
+        .shadow(color: .black.opacity(0.14), radius: 14, y: -2)
+        .offset(y: dragOffset)
+    }
+
+    private var header: some View {
+        VStack(spacing: 6) {
+            Capsule()
+                .fill(Palette.separator)
+                .frame(width: 36, height: 5)
+                .padding(.top, 8)
+                .accessibilityHidden(true)
+            HStack(alignment: .top, spacing: 8) {
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 10)
+                    .accessibilityAddTraits(.isHeader)
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(Palette.textSecondary)
+                        .frame(width: 30, height: 30)
+                        .background(Palette.surfaceRaised, in: Circle())
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Close")
             }
-            Text("\(shelter.spacesAvailable) of \(shelter.capacity) spaces")
+            .padding(.leading, 16)
+            .padding(.trailing, 6)
+        }
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 8)
+                .onChanged { dragOffset = max(0, $0.translation.height) }
+                .onEnded { value in
+                    if value.translation.height > 80 || value.predictedEndTranslation.height > 200 {
+                        onClose()
+                    } else {
+                        withAnimation(.easeOut(duration: 0.2)) { dragOffset = 0 }
+                    }
+                }
+        )
+    }
+
+    private var title: String {
+        switch place {
+        case .shelter(let id): DemoData.shelters.first { $0.id == id }?.name ?? "Shelter"
+        case .zone(let id): "Zone \(id)"
+        case .fire: "Ridgeview Fire"
+        case .roadClosure: "Ridgeview Road"
+        }
+    }
+
+    @ViewBuilder
+    private var details: some View {
+        Group {
+            switch place {
+            case .shelter(let id):
+                if let shelter = DemoData.shelters.first(where: { $0.id == id }) {
+                    ShelterDetails(shelter: shelter, isMeetingPoint: shelter.id == model.meetingPointID)
+                }
+            case .zone(let id):
+                if let zone = DemoGeo.zones.first(where: { $0.id == id }) {
+                    AlertPlaceDetails(alert: zoneAlert(zone), notes: [
+                        zone.covers,
+                        "Soterra can't tell you if an address is inside this zone. Demo shape, not a real boundary.",
+                    ])
+                }
+            case .fire:
+                AlertPlaceDetails(alert: DemoData.fireUpdate, notes: [DemoData.fireUpdate.instruction])
+            case .roadClosure:
+                AlertPlaceDetails(alert: DemoData.roadClosure, notes: [DemoData.roadClosure.instruction])
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 16)
+    }
+
+    /// The bulletin in force for a zone: in the "Order" scenario SON-3A is under the Order, SON-3B still a Warning.
+    private func zoneAlert(_ zone: DemoGeo.Zone) -> HazardAlert {
+        zone.id == DemoGeo.son3A.id && model.scenario == .escalated ? DemoData.evacuationOrder : DemoData.evacuationWarning
+    }
+}
+
+private struct PanelHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// Two actions side by side, stacked when the text is too large to fit them on one line.
+private struct PanelActions<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { content }
+            VStack(spacing: 8) { content }
+        }
+        .padding(.top, 4)
+    }
+}
+
+private struct ShelterDetails: View {
+    @Environment(AppModel.self) private var model
+    let shelter: Shelter
+    let isMeetingPoint: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("\(shelter.address) · Shelter · \(shelter.animalPolicy)")
                 .font(.subheadline)
-                .foregroundStyle(Palette.textPrimary)
+                .foregroundStyle(Palette.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { status }
+                VStack(alignment: .leading, spacing: 8) { status }
+            }
             if shelter.needsReconfirming {
                 Label("Checked \(shelter.checkedAt) — capacity needs reconfirming", systemImage: "clock")
                     .font(.footnote)
                     .foregroundStyle(Palette.caution)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Text(DemoData.emergencyManagement)
                 .font(.caption)
                 .foregroundStyle(Palette.textSecondary)
-            HStack(spacing: 8) {
+            PanelActions {
                 Button {
                     let item = MKMapItem(placemark: MKPlacemark(coordinate: shelter.coordinate))
                     item.name = shelter.name
@@ -270,8 +606,56 @@ private struct ShelterCard: View {
                 .disabled(isMeetingPoint)
             }
         }
-        .padding(16)
-        .background(Palette.surface)
-        .overlay(alignment: .top) { Rectangle().fill(Palette.separator).frame(height: 1) }
+    }
+}
+
+private extension ShelterDetails {
+    @ViewBuilder var status: some View {
+        StatusChip(text: "Open", systemImage: "checkmark", fill: Palette.sage, ink: Palette.abyss)
+            .fixedSize()
+        Text("\(shelter.spacesAvailable) of \(shelter.capacity) spaces")
+            .font(.subheadline)
+            .foregroundStyle(Palette.textPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// A zone, the fire or the road closure: the bulletin's level, what it says, and its source and time.
+private struct AlertPlaceDetails: View {
+    @Environment(AppModel.self) private var model
+    let alert: HazardAlert
+    let notes: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SeverityChip(severity: alert.severity, text: alert.chipText)
+            Text(alert.headline)
+                .font(.display(20, relativeTo: .title3))
+                .foregroundStyle(Palette.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach(notes, id: \.self) { note in
+                Text(note)
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                if let time = alert.times.last(where: { $0.label != "Now" }) {
+                    Text("\(time.label) \(time.value)")
+                        .font(.caption.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.textSecondary)
+                }
+                SourceLine(source: alert.source)
+            }
+            PanelActions {
+                Button("See alert") { model.mapPath.append(.alert(alert.id)) }
+                    .buttonStyle(FilledButtonStyle())
+                if !model.isOffline {
+                    Button("Ask about this") { model.mapPath.append(.assistant(topic: alert.title)) }
+                        .buttonStyle(OutlineButtonStyle())
+                }
+            }
+        }
     }
 }
